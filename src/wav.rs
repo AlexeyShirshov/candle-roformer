@@ -96,9 +96,10 @@ pub fn read_audio(path: impl AsRef<Path>) -> Result<AudioBuffer, Error> {
             Err(e) => return Err(Error::Audio(AudioError::UnsupportedFormat(e.to_string()))),
         };
 
-        let spec = *decoded.spec();
-        let _ = spec;
         let ch = decoded.spec().channels.count();
+        if std::env::var("CANDLE_ROFORMER_DUMP").is_ok() {
+            eprintln!("[decode] packet ch={} frames={} rate={}", ch, decoded.frames(), decoded.spec().rate);
+        }
         let mut sample_buf = SampleBuffer::<f32>::new(decoded.capacity() as u64, *decoded.spec());
         sample_buf.copy_interleaved_ref(decoded);
         let samples = sample_buf.samples();

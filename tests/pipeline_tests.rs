@@ -66,6 +66,23 @@ fn expected_keys_match_known_checkpoints() {
 }
 
 #[test]
+fn resample_planar_keeps_channels_separate() {
+    let frames = 1000usize;
+    let mut planar = vec![0.0f32; 2 * frames];
+    for i in 0..frames {
+        planar[i] = (i as f32 * 0.01).sin();
+        planar[frames + i] = (i as f32 * 0.02).cos();
+    }
+    let out = resample::resample_planar(&planar, 2, 48000, 44100);
+    let of = out.len() / 2;
+    let l = resample::resample(&planar[..frames], 48000, 44100);
+    let r = resample::resample(&planar[frames..], 48000, 44100);
+    assert_eq!(of, l.len());
+    assert_eq!(&out[..of], &l[..]);
+    assert_eq!(&out[of..], &r[..]);
+}
+
+#[test]
 fn resample_identity() {
     let input: Vec<f32> = (0..100).map(|i| i as f32 * 0.01).collect();
     let out = resample::resample(&input, 44100, 44100);

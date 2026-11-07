@@ -113,6 +113,18 @@ pub fn run_pipeline_named(
         return Err(Error::Audio(AudioError::TooManyChannels(format!("{}", channels))));
     }
     let input_sr = audio.sample_rate;
+    if let Ok(dir) = std::env::var("CANDLE_ROFORMER_DUMP") {
+        let _ = std::fs::create_dir_all(&dir);
+        let mut bytes = Vec::with_capacity(audio.planar.len() * 4);
+        for x in &audio.planar {
+            bytes.extend_from_slice(&x.to_le_bytes());
+        }
+        let _ = std::fs::write(format!("{}/raw_planar.f32", dir), bytes);
+        let _ = std::fs::write(
+            format!("{}/raw_planar.shape", dir),
+            format!("{},{},{}", channels, audio.planar.len() / channels, input_sr),
+        );
+    }
 
     // mono duplicate
     let model_channels = if channels == 1 { 2 } else { channels };
