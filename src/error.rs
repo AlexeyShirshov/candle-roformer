@@ -35,6 +35,25 @@ pub enum ConverterError {
     Failed(String),
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Error)]
+pub enum AudioError {
+    #[error("audio error: {0}")]
+    Io(String),
+    #[error("unsupported audio format: {0}")]
+    UnsupportedFormat(String),
+    #[error("invalid sample rate: {0}")]
+    InvalidSampleRate(String),
+    #[error("too many channels: {0}")]
+    TooManyChannels(String),
+    #[error("empty audio: {0}")]
+    EmptyInput(String),
+    #[error("non-finite sample: {0}")]
+    NonFinite(String),
+}
+
+pub type WavError = AudioError;
+pub type DecodeError = AudioError;
+
 #[derive(Debug, Error)]
 pub enum Error {
     #[error(transparent)]
@@ -47,6 +66,8 @@ pub enum Error {
     Dsp(#[from] DspError),
     #[error(transparent)]
     Converter(#[from] ConverterError),
+    #[error(transparent)]
+    Audio(#[from] AudioError),
     #[error("candle error: {0}")]
     Candle(#[from] candle_core::Error),
 }

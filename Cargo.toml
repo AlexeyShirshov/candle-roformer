@@ -25,5 +25,8 @@ candle-core = { git = "https://github.com/huggingface/candle", rev = "cfcbd7186d
 candle-nn = { git = "https://github.com/huggingface/candle", rev = "cfcbd7186d13271843ce7eb41d25659bd0835850" }
 rustfft = "6"
 thiserror = "2"
+serde = { version = "1", features = ["derive"] }
+serde_yaml = "0.9"
+symphonia = { version = "0.5", features = ["all"] }
 [dev-dependencies]
 # Tests use only the standard library plus the crate's own dependencies.

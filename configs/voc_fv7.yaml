@@ -1,0 +1,27 @@
+# GaboxR67 voc_fv7 (MelBandRoformer vocals), as pinned in
+# docs/provenance/v7.yaml (HF rev 7860d31d8cc1c73b46c1cbdc2b497210c97478ae).
+# Convert the .ckpt to .safetensors with tools/convert_voc_fv7.py first.
+model:
+  dim: 256
+  depth: 12
+  stereo: true
+  num_stems: 1
+  time_transformer_depth: 1
+  freq_transformer_depth: 1
+  num_bands: 60
+  dim_head: 64
+  heads: 8
+  flash_attn: true
+  dim_freqs_in: 1025
+  sample_rate: 44100
+  stft_n_fft: 2048
+  stft_hop_length: 441
+  stft_win_length: 2048
+  stft_normalized: false
+  mask_estimator_depth: 2
+  use_torch_checkpoint: true
+  mlp_expansion_factor: 4
+  linear_transformer_depth: 0
+  norm_output: true
+  skip_connection: false
+  zero_dc: true

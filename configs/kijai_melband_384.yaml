@@ -1,0 +1,27 @@
+# KimberleyJSN melbandroformer (MUSDB vocals), safetensors mirror by Kijai.
+# Model config as used by kijai/ComfyUI-MelBandRoFormer nodes.py.
+# Weights: MelBandRoformer_fp32.safetensors (684 tensors, F32).
+model:
+  dim: 384
+  depth: 6
+  stereo: true
+  num_stems: 1
+  time_transformer_depth: 1
+  freq_transformer_depth: 1
+  num_bands: 60
+  dim_head: 64
+  heads: 8
+  flash_attn: true
+  dim_freqs_in: 1025
+  sample_rate: 44100
+  stft_n_fft: 2048
+  stft_hop_length: 441
+  stft_win_length: 2048
+  stft_normalized: false
+  mask_estimator_depth: 2
+  use_torch_checkpoint: false
+  mlp_expansion_factor: 4
+  linear_transformer_depth: 0
+  norm_output: true
+  skip_connection: false
+  zero_dc: true

@@ -1,6 +1,7 @@
 use crate::error::ConfigError;
+use serde::Deserialize;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 pub struct SeparatorConfig {
     pub dim: usize,
     pub depth: usize,
@@ -9,22 +10,38 @@ pub struct SeparatorConfig {
     pub num_bands: usize,
     pub dim_head: usize,
     pub heads: usize,
+    #[serde(default = "default_true")]
     pub flash_attn: bool,
     pub dim_freqs_in: usize,
     pub sample_rate: usize,
     pub stft_n_fft: usize,
     pub stft_hop_length: usize,
     pub stft_win_length: usize,
+    #[serde(default)]
     pub stft_normalized: bool,
     pub mask_estimator_depth: usize,
+    #[serde(default)]
     pub use_torch_checkpoint: bool,
     pub time_transformer_depth: usize,
     pub freq_transformer_depth: usize,
+    #[serde(default = "default_mlp_expansion")]
     pub mlp_expansion_factor: usize,
+    #[serde(default)]
     pub linear_transformer_depth: usize,
+    #[serde(default = "default_true")]
     pub norm_output: bool,
+    #[serde(default)]
     pub skip_connection: bool,
+    #[serde(default = "default_true")]
     pub zero_dc: bool,
+}
+
+fn default_true() -> bool {
+    true
+}
+
+fn default_mlp_expansion() -> usize {
+    4
 }
 
 impl SeparatorConfig {
