@@ -48,23 +48,29 @@ Metal: `cargo build --release --features metal` (macOS).
 ## Run
 
 ```sh
-./target/release/candle-roformer separate \
-  --model /path/to/MelBandRoformer_fp32.safetensors \
+./target/release/candle-roformer "/path/to/song.m4a" \
+  --model_filename /path/to/MelBandRoformer_fp32.safetensors \
   --config configs/kijai_melband_384.yaml \
-  --input "/path/to/song.m4a" \
-  --output out/ \
+  --output_dir out/ \
   --device cpu
 ```
 
+Outputs follow the `audio-separator` naming convention:
+`<input>_(Vocals)_<model>.wav` and `<input>_(Instrumental)_<model>.wav`.
+
 Options:
 
+- `--model_filename` / `--model`, `--model_file_dir`, `--config` (defaults to
+  `<model-stem>.yaml` next to the model);
+- `--output_dir`, `--output_format wav` (other formats are not implemented yet);
+- `--single_stem` — write only vocals;
 - `--device cpu|cuda|metal` — an unavailable device is an error, never a silent
   CPU fallback;
+- `--start <s>`, `--duration <s>` — process a window of the input;
 - `--overwrite` — allow replacing existing outputs (default: refuse);
-- `--duration <seconds>` — process only the first N seconds (quick preview);
 - outputs are written to staging files and renamed one by one after success;
   a failure removes this program's staging files and leaves your existing files
-  untouched.
+  untouched. The legacy `separate` prefix (four-argument form) still works.
 
 ## Status and limits
 

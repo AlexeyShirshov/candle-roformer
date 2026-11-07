@@ -18,6 +18,11 @@ struct YamlRoot {
     model: SeparatorConfig,
 }
 
+pub struct OutputNames<'a> {
+    pub vocals: &'a str,
+    pub instrumental: Option<&'a str>,
+}
+
 pub fn run_pipeline(
     model_path: &str,
     config_path: &str,
@@ -27,6 +32,30 @@ pub fn run_pipeline(
     overwrite: bool,
     start_seconds: Option<f64>,
     limit_seconds: Option<f64>,
+) -> Result<(), Error> {
+    run_pipeline_named(
+        model_path,
+        config_path,
+        input_path,
+        output_dir,
+        device,
+        overwrite,
+        start_seconds,
+        limit_seconds,
+        &OutputNames { vocals: "vocals.wav", instrumental: Some("instrumental.wav") },
+    )
+}
+
+pub fn run_pipeline_named(
+    model_path: &str,
+    config_path: &str,
+    input_path: &str,
+    output_dir: &str,
+    device: crate::device::DeviceChoice,
+    overwrite: bool,
+    start_seconds: Option<f64>,
+    limit_seconds: Option<f64>,
+    names: &OutputNames,
 ) -> Result<(), Error> {
     // parse config
     let yaml_str = fs::read_to_string(config_path)
@@ -139,45 +168,54 @@ pub fn run_pipeline(
     fs::create_dir_all(out_dir)
         .map_err(|e| Error::Audio(AudioError::Io(e.to_string())))?;
 
-    let vocals_path = out_dir.join("vocals.wav");
-    let instr_path = out_dir.join("instrumental.wav");
+    let vocals_path = out_dir.join(names.vocals);
+    let instr_path = match names.instrumental {
+        Some(n) => Some(out_dir.join(n)),
+        None => None,
+    };
 
-    if !overwrite && (vocals_path.exists() || instr_path.exists()) {
+    if !overwrite
+        && (vocals_path.exists() || instr_path.as_ref().map(|p| p.exists()).unwrap_or(false))
+    {
         return Err(Error::Audio(AudioError::Io(
             "output file exists; use --overwrite".into(),
         )));
     }
 
-    let staging_v = out_dir.join(".vocals.wav.tmp");
-    let staging_i = out_dir.join(".instrumental.wav.tmp");
+    let staging_v = out_dir.join(format!(".{}.tmp", names.vocals));
+    let staging_i = names
+        .instrumental
+        .map(|n| out_dir.join(format!(".{}.tmp", n)));
 
     let buf_v = AudioBuffer {
         sample_rate: input_sr,
         channels: channels as u16,
         planar: vocals_final,
     };
-    let buf_i = AudioBuffer {
-        sample_rate: input_sr,
-        channels: channels as u16,
-        planar: instr_final,
-    };
 
     if let Err(e) = write_wav_f32(&staging_v, &buf_v) {
         let _ = fs::remove_file(&staging_v);
         return Err(e);
     }
-    if let Err(e) = write_wav_f32(&staging_i, &buf_i) {
-        let _ = fs::remove_file(&staging_v);
-        let _ = fs::remove_file(&staging_i);
-        return Err(e);
+    if let Some(instr_path) = &instr_path {
+        let staging_i = staging_i.as_ref().expect("staging path for instrumental");
+        let buf_i = AudioBuffer {
+            sample_rate: input_sr,
+            channels: channels as u16,
+            planar: instr_final,
+        };
+        if let Err(e) = write_wav_f32(staging_i, &buf_i) {
+            let _ = fs::remove_file(&staging_v);
+            let _ = fs::remove_file(staging_i);
+            return Err(e);
+        }
+        if let Err(e) = fs::rename(staging_i, instr_path) {
+            let _ = fs::remove_file(staging_i);
+            return Err(Error::Audio(AudioError::Io(e.to_string())));
+        }
     }
     if let Err(e) = fs::rename(&staging_v, &vocals_path) {
         let _ = fs::remove_file(&staging_v);
-        let _ = fs::remove_file(&staging_i);
-        return Err(Error::Audio(AudioError::Io(e.to_string())));
-    }
-    if let Err(e) = fs::rename(&staging_i, &instr_path) {
-        let _ = fs::remove_file(&staging_i);
         return Err(Error::Audio(AudioError::Io(e.to_string())));
     }
     Ok(())
