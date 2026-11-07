@@ -1,0 +1,78 @@
+{
+  "mel_band_roformer.py": {
+    "bytes": 22708,
+    "class": "verbatim",
+    "factory_verified": true,
+    "path": "models/bs_roformer/mel_band_roformer.py",
+    "revision": "f0b527736e7da24eae5b561a2bb1efd0569ec757",
+    "sha256": "a28fce62020faad6461176660e012cf5799ae8a26c76fe4b2bc636f5b44b9fc5",
+    "sha256_local": "a28fce62020faad6461176660e012cf5799ae8a26c76fe4b2bc636f5b44b9fc5",
+    "url": "https://github.com/ZFTurbo/Music-Source-Separation-Training/blob/f0b527736e7da24eae5b561a2bb1efd0569ec757/models/bs_roformer/mel_band_roformer.py",
+    "verification": "verified_factory"
+  },
+  "model_utils_load.py": {
+    "bytes": 3003,
+    "class": "authored",
+    "path": "utils/model_utils.py",
+    "revision": "f0b527736e7da24eae5b561a2bb1efd0569ec757",
+    "sha256": "2ab305545d04ebe5288d1b1e67f06a0a936553c673a18b9d80bf6dcc4d87ad4d",
+    "sha256_local": "2ab305545d04ebe5288d1b1e67f06a0a936553c673a18b9d80bf6dcc4d87ad4d",
+    "url": "https://github.com/ZFTurbo/Music-Source-Separation-Training/blob/f0b527736e7da24eae5b561a2bb1efd0569ec757/utils/model_utils.py",
+    "verification": "unverified_offline"
+  },
+  "rotary_embedding_torch.py": {
+    "bytes": 4320,
+    "class": "authored",
+    "path": "rotary_embedding_torch/rotary_embedding_torch.py",
+    "revision": "9a46f1a58a40ad752a647b91b6003290249ef3b5",
+    "sha256": "e06085c6eb435531bfb72e7a8c563a93399eed773699c9996ea7d546f6816893",
+    "sha256_local": "e06085c6eb435531bfb72e7a8c563a93399eed773699c9996ea7d546f6816893",
+    "url": "https://github.com/lucidrains/rotary-embedding-torch/blob/main/rotary_embedding_torch/rotary_embedding_torch.py",
+    "verification": "unverified_offline"
+  },
+  "settings.py": {
+    "bytes": 33237,
+    "class": "verbatim",
+    "factory_verified": true,
+    "path": "utils/settings.py",
+    "revision": "f0b527736e7da24eae5b561a2bb1efd0569ec757",
+    "sha256": "a47a2cd2f81730d7853158284b91d61ca748156e205cdffcdc5f25b21b3b7ef5",
+    "sha256_local": "a47a2cd2f81730d7853158284b91d61ca748156e205cdffcdc5f25b21b3b7ef5",
+    "url": "https://github.com/ZFTurbo/Music-Source-Separation-Training/blob/f0b527736e7da24eae5b561a2bb1efd0569ec757/utils/settings.py",
+    "verification": "verified_factory"
+  },
+  "state_dict_keys.json": {
+    "bytes": 90036,
+    "class": "derived",
+    "factory_verified": true,
+    "num_keys": 828,
+    "path": "docs/provenance/state_dict_keys.json",
+    "revision": "f0b527736e7da24eae5b561a2bb1efd0569ec757",
+    "sha256": "098415873e10f0420f4e3065c9c4e8149691b416b463bc19abc9bd6c01836510",
+    "sha256_local": "098415873e10f0420f4e3065c9c4e8149691b416b463bc19abc9bd6c01836510",
+    "url": "derived from get_model_from_config on v7.yaml (no network)",
+    "verification": "verified_factory"
+  },
+  "v7.yaml": {
+    "bytes": 1815,
+    "class": "verbatim",
+    "factory_verified": true,
+    "path": "melbandroformers/vocals/v7.yaml",
+    "revision": "7860d31d8cc1c73b46c1cbdc2b497210c97478ae",
+    "sha256": "f51b06e470a8f4e73e87fe97ff85fd2471b1034683c5a9088ab33d41a751ce2f",
+    "sha256_local": "f51b06e470a8f4e73e87fe97ff85fd2471b1034683c5a9088ab33d41a751ce2f",
+    "url": "https://huggingface.co/GaboxR67/MelBandRoformers/raw/7860d31d8cc1c73b46c1cbdc2b497210c97478ae/melbandroformers/vocals/v7.yaml",
+    "verification": "verified_factory"
+  },
+  "attend.py": {
+    "bytes": 4410,
+    "class": "verbatim",
+    "factory_verified": true,
+    "path": "models/bs_roformer/attend.py",
+    "revision": "f0b527736e7da24eae5b561a2bb1efd0569ec757",
+    "sha256": "c7abbc40a3fd20ff7f6001fa9f8ee9ad5df6452272712a5e719b8f8468bf2223",
+    "sha256_local": "c7abbc40a3fd20ff7f6001fa9f8ee9ad5df6452272712a5e719b8f8468bf2223",
+    "url": "https://github.com/ZFTurbo/Music-Source-Separation-Training/blob/f0b527736e7da24eae5b561a2bb1efd0569ec757/models/bs_roformer/attend.py",
+    "verification": "verified_factory"
+  }
+}

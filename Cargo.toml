@@ -1,0 +1,29 @@
+[package]
+name = "candle-roformer"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "Offline Rust/Candle library for vocal/instrumental separation and vocal transcription"
+readme = "README.md"
+
+[lib]
+name = "candle_roformer"
+path = "src/lib.rs"
+
+[[bin]]
+name = "candle-roformer"
+path = "src/main.rs"
+required-features = []
+
+[features]
+default = []
+cuda = ["candle-core/cuda", "candle-nn/cuda"]
+metal = ["candle-core/metal", "candle-nn/metal"]
+
+[dependencies]
+candle-core = { git = "https://github.com/huggingface/candle", rev = "cfcbd7186d13271843ce7eb41d25659bd0835850" }
+candle-nn = { git = "https://github.com/huggingface/candle", rev = "cfcbd7186d13271843ce7eb41d25659bd0835850" }
+rustfft = "6"
+thiserror = "2"
+[dev-dependencies]
+# Tests use only the standard library plus the crate's own dependencies.

@@ -1,0 +1,8 @@
+crate: typenum
+version: 1.20.1
+license: MIT OR Apache-2.0
+manifest_path: /home/alex/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/typenum-1.20.1/Cargo.toml
+source_dir: /home/alex/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/typenum-1.20.1
+license_file: /home/alex/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/typenum-1.20.1/LICENSE
+--- license file excerpt (first 40 lines) ---
+MIT OR Apache-2.0

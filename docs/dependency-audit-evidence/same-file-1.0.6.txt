@@ -1,0 +1,10 @@
+crate: same-file
+version: 1.0.6
+license: Unlicense/MIT
+manifest_path: /home/alex/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/same-file-1.0.6/Cargo.toml
+source_dir: /home/alex/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/same-file-1.0.6
+license_file: /home/alex/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/same-file-1.0.6/COPYING
+--- license file excerpt (first 40 lines) ---
+This project is dual-licensed under the Unlicense and MIT licenses.
+
+You may use this code under the terms of either license.

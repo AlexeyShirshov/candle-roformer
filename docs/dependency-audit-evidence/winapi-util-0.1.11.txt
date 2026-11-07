@@ -1,0 +1,10 @@
+crate: winapi-util
+version: 0.1.11
+license: Unlicense OR MIT
+manifest_path: /home/alex/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/winapi-util-0.1.11/Cargo.toml
+source_dir: /home/alex/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/winapi-util-0.1.11
+license_file: /home/alex/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/winapi-util-0.1.11/COPYING
+--- license file excerpt (first 40 lines) ---
+This project is dual-licensed under the Unlicense and MIT licenses.
+
+You may use this code under the terms of either license.

@@ -1,0 +1,10 @@
+crate: aho-corasick
+version: 1.1.5
+license: Unlicense OR MIT
+manifest_path: /home/alex/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/aho-corasick-1.1.5/Cargo.toml
+source_dir: /home/alex/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/aho-corasick-1.1.5
+license_file: /home/alex/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/aho-corasick-1.1.5/COPYING
+--- license file excerpt (first 40 lines) ---
+This project is dual-licensed under the Unlicense and MIT licenses.
+
+You may use this code under the terms of either license.

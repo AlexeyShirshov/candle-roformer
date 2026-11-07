@@ -1,0 +1,160 @@
+crate	version	license	evidence_file
+ahash	0.8.12	MIT OR Apache-2.0	dependency-audit-evidence/ahash-0.8.12.txt
+aho-corasick	1.1.5	Unlicense OR MIT	dependency-audit-evidence/aho-corasick-1.1.5.txt
+allocator-api2	0.2.21	MIT OR Apache-2.0	dependency-audit-evidence/allocator-api2-0.2.21.txt
+autocfg	1.5.1	Apache-2.0 OR MIT	dependency-audit-evidence/autocfg-1.5.1.txt
+base64	0.13.1	MIT/Apache-2.0	dependency-audit-evidence/base64-0.13.1.txt
+bit-set	0.8.0	Apache-2.0 OR MIT	dependency-audit-evidence/bit-set-0.8.0.txt
+bit-vec	0.8.0	Apache-2.0 OR MIT	dependency-audit-evidence/bit-vec-0.8.0.txt
+bitflags	2.13.2	MIT OR Apache-2.0	dependency-audit-evidence/bitflags-2.13.2.txt
+bumpalo	3.20.3	MIT OR Apache-2.0	dependency-audit-evidence/bumpalo-3.20.3.txt
+bytemuck	1.25.2	Zlib OR Apache-2.0 OR MIT	dependency-audit-evidence/bytemuck-1.25.2.txt
+bytemuck_derive	1.12.1	Zlib OR Apache-2.0 OR MIT	dependency-audit-evidence/bytemuck_derive-1.12.1.txt
+byteorder	1.5.0	Unlicense OR MIT	dependency-audit-evidence/byteorder-1.5.0.txt
+candle-core	0.11.1	MIT OR Apache-2.0	dependency-audit-evidence/candle-core-0.11.1.txt
+candle-nn	0.11.1	MIT OR Apache-2.0	dependency-audit-evidence/candle-nn-0.11.1.txt
+castaway	0.2.4	MIT	dependency-audit-evidence/castaway-0.2.4.txt
+cfg-if	1.0.5	MIT OR Apache-2.0	dependency-audit-evidence/cfg-if-1.0.5.txt
+cfg_aliases	0.2.2	MIT	dependency-audit-evidence/cfg_aliases-0.2.2.txt
+compact_str	0.9.1	MIT	dependency-audit-evidence/compact_str-0.9.1.txt
+crc32fast	1.5.4	MIT OR Apache-2.0	dependency-audit-evidence/crc32fast-1.5.4.txt
+crossbeam-deque	0.8.8	MIT OR Apache-2.0	dependency-audit-evidence/crossbeam-deque-0.8.8.txt
+crossbeam-epoch	0.9.21	MIT OR Apache-2.0	dependency-audit-evidence/crossbeam-epoch-0.9.21.txt
+crossbeam-utils	0.8.23	MIT OR Apache-2.0	dependency-audit-evidence/crossbeam-utils-0.8.23.txt
+crunchy	0.2.4	MIT	dependency-audit-evidence/crunchy-0.2.4.txt
+daachorse	3.0.3	MIT OR Apache-2.0	dependency-audit-evidence/daachorse-3.0.3.txt
+darling	0.20.11	MIT	dependency-audit-evidence/darling-0.20.11.txt
+darling_core	0.20.11	MIT	dependency-audit-evidence/darling_core-0.20.11.txt
+darling_macro	0.20.11	MIT	dependency-audit-evidence/darling_macro-0.20.11.txt
+dary_heap	0.3.9	MIT OR Apache-2.0	dependency-audit-evidence/dary_heap-0.3.9.txt
+derive_builder	0.20.2	MIT OR Apache-2.0	dependency-audit-evidence/derive_builder-0.20.2.txt
+derive_builder_core	0.20.2	MIT OR Apache-2.0	dependency-audit-evidence/derive_builder_core-0.20.2.txt
+derive_builder_macro	0.20.2	MIT OR Apache-2.0	dependency-audit-evidence/derive_builder_macro-0.20.2.txt
+dyn-stack	0.13.2	MIT	dependency-audit-evidence/dyn-stack-0.13.2.txt
+dyn-stack-macros	0.1.3	MIT	dependency-audit-evidence/dyn-stack-macros-0.1.3.txt
+either	1.19.0	MIT OR Apache-2.0	dependency-audit-evidence/either-1.19.0.txt
+enum-as-inner	0.6.1	MIT/Apache-2.0	dependency-audit-evidence/enum-as-inner-0.6.1.txt
+equivalent	1.0.3	Apache-2.0 OR MIT	dependency-audit-evidence/equivalent-1.0.3.txt
+errno	0.3.14	MIT OR Apache-2.0	dependency-audit-evidence/errno-0.3.14.txt
+esaxx-rs	0.1.10	Apache-2.0	dependency-audit-evidence/esaxx-rs-0.1.10.txt
+fancy-regex	0.17.0	MIT	dependency-audit-evidence/fancy-regex-0.17.0.txt
+fastrand	2.5.0	Apache-2.0 OR MIT	dependency-audit-evidence/fastrand-2.5.0.txt
+float8	0.7.0	MIT	dependency-audit-evidence/float8-0.7.0.txt
+fnv	1.0.7	Apache-2.0 / MIT	dependency-audit-evidence/fnv-1.0.7.txt
+foldhash	0.2.0	Zlib	dependency-audit-evidence/foldhash-0.2.0.txt
+gemm	0.19.0	MIT	dependency-audit-evidence/gemm-0.19.0.txt
+gemm-c32	0.19.0	MIT	dependency-audit-evidence/gemm-c32-0.19.0.txt
+gemm-c64	0.19.0	MIT	dependency-audit-evidence/gemm-c64-0.19.0.txt
+gemm-common	0.19.0	MIT	dependency-audit-evidence/gemm-common-0.19.0.txt
+gemm-f16	0.19.0	MIT	dependency-audit-evidence/gemm-f16-0.19.0.txt
+gemm-f32	0.19.0	MIT	dependency-audit-evidence/gemm-f32-0.19.0.txt
+gemm-f64	0.19.0	MIT	dependency-audit-evidence/gemm-f64-0.19.0.txt
+getrandom	0.3.4	MIT OR Apache-2.0	dependency-audit-evidence/getrandom-0.3.4.txt
+getrandom	0.4.3	MIT OR Apache-2.0	dependency-audit-evidence/getrandom-0.4.3.txt
+half	2.7.1	MIT OR Apache-2.0	dependency-audit-evidence/half-2.7.1.txt
+hashbrown	0.16.1	MIT OR Apache-2.0	dependency-audit-evidence/hashbrown-0.16.1.txt
+hashbrown	0.17.1	MIT OR Apache-2.0	dependency-audit-evidence/hashbrown-0.17.1.txt
+heck	0.5.0	MIT OR Apache-2.0	dependency-audit-evidence/heck-0.5.0.txt
+hermit-abi	0.5.3	MIT OR Apache-2.0	dependency-audit-evidence/hermit-abi-0.5.3.txt
+ident_case	1.0.1	MIT/Apache-2.0	dependency-audit-evidence/ident_case-1.0.1.txt
+indexmap	2.14.2	Apache-2.0 OR MIT	dependency-audit-evidence/indexmap-2.14.2.txt
+itertools	0.14.0	MIT OR Apache-2.0	dependency-audit-evidence/itertools-0.14.0.txt
+itoa	1.0.18	MIT OR Apache-2.0	dependency-audit-evidence/itoa-1.0.18.txt
+js-sys	0.3.107	MIT OR Apache-2.0	dependency-audit-evidence/js-sys-0.3.107.txt
+libc	0.2.191	MIT OR Apache-2.0	dependency-audit-evidence/libc-0.2.191.txt
+libm	0.2.16	MIT	dependency-audit-evidence/libm-0.2.16.txt
+linux-raw-sys	0.12.1	Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT	dependency-audit-evidence/linux-raw-sys-0.12.1.txt
+lock_api	0.4.14	MIT OR Apache-2.0	dependency-audit-evidence/lock_api-0.4.14.txt
+log	0.4.35	MIT OR Apache-2.0	dependency-audit-evidence/log-0.4.35.txt
+macro_rules_attribute	0.2.3	Apache-2.0 OR MIT OR Zlib	dependency-audit-evidence/macro_rules_attribute-0.2.3.txt
+macro_rules_attribute-proc_macro	0.2.3	Apache-2.0 OR MIT OR Zlib	dependency-audit-evidence/macro_rules_attribute-proc_macro-0.2.3.txt
+memchr	2.8.3	Unlicense OR MIT	dependency-audit-evidence/memchr-2.8.3.txt
+memmap2	0.9.12	MIT OR Apache-2.0	dependency-audit-evidence/memmap2-0.9.12.txt
+minimal-lexical	0.2.1	MIT/Apache-2.0	dependency-audit-evidence/minimal-lexical-0.2.1.txt
+monostate	0.1.18	MIT OR Apache-2.0	dependency-audit-evidence/monostate-0.1.18.txt
+monostate-impl	0.1.18	MIT OR Apache-2.0	dependency-audit-evidence/monostate-impl-0.1.18.txt
+nix	0.31.3	MIT	dependency-audit-evidence/nix-0.31.3.txt
+nom	7.1.3	MIT	dependency-audit-evidence/nom-7.1.3.txt
+num-complex	0.4.6	MIT OR Apache-2.0	dependency-audit-evidence/num-complex-0.4.6.txt
+num-integer	0.1.47	MIT OR Apache-2.0	dependency-audit-evidence/num-integer-0.1.47.txt
+num-traits	0.2.19	MIT OR Apache-2.0	dependency-audit-evidence/num-traits-0.2.19.txt
+num_cpus	1.17.0	MIT OR Apache-2.0	dependency-audit-evidence/num_cpus-1.17.0.txt
+once_cell	1.21.4	MIT OR Apache-2.0	dependency-audit-evidence/once_cell-1.21.4.txt
+parking_lot	0.12.5	MIT OR Apache-2.0	dependency-audit-evidence/parking_lot-0.12.5.txt
+parking_lot_core	0.9.12	MIT OR Apache-2.0	dependency-audit-evidence/parking_lot_core-0.9.12.txt
+paste	1.0.15	MIT OR Apache-2.0	dependency-audit-evidence/paste-1.0.15.txt
+pastey	0.2.3	MIT OR Apache-2.0	dependency-audit-evidence/pastey-0.2.3.txt
+ppv-lite86	0.2.21	MIT OR Apache-2.0	dependency-audit-evidence/ppv-lite86-0.2.21.txt
+primal-check	0.3.4	MIT OR Apache-2.0	dependency-audit-evidence/primal-check-0.3.4.txt
+proc-macro2	1.0.107	MIT OR Apache-2.0	dependency-audit-evidence/proc-macro2-1.0.107.txt
+pulp	0.22.3	MIT	dependency-audit-evidence/pulp-0.22.3.txt
+pulp-wasm-simd-flag	0.1.1	MIT	dependency-audit-evidence/pulp-wasm-simd-flag-0.1.1.txt
+quote	1.0.47	MIT OR Apache-2.0	dependency-audit-evidence/quote-1.0.47.txt
+r-efi	5.3.0	MIT OR Apache-2.0 OR LGPL-2.1-or-later	dependency-audit-evidence/r-efi-5.3.0.txt
+r-efi	6.0.0	MIT OR Apache-2.0 OR LGPL-2.1-or-later	dependency-audit-evidence/r-efi-6.0.0.txt
+rand	0.9.5	MIT OR Apache-2.0	dependency-audit-evidence/rand-0.9.5.txt
+rand_chacha	0.9.0	MIT OR Apache-2.0	dependency-audit-evidence/rand_chacha-0.9.0.txt
+rand_core	0.9.5	MIT OR Apache-2.0	dependency-audit-evidence/rand_core-0.9.5.txt
+rand_distr	0.5.1	MIT OR Apache-2.0	dependency-audit-evidence/rand_distr-0.5.1.txt
+raw-cpuid	11.6.0	MIT	dependency-audit-evidence/raw-cpuid-11.6.0.txt
+rayon	1.12.0	MIT OR Apache-2.0	dependency-audit-evidence/rayon-1.12.0.txt
+rayon-cond	0.4.0	Apache-2.0/MIT	dependency-audit-evidence/rayon-cond-0.4.0.txt
+rayon-core	1.13.0	MIT OR Apache-2.0	dependency-audit-evidence/rayon-core-1.13.0.txt
+reborrow	0.5.5	MIT	dependency-audit-evidence/reborrow-0.5.5.txt
+redox_syscall	0.5.18	MIT	dependency-audit-evidence/redox_syscall-0.5.18.txt
+regex	1.13.1	MIT OR Apache-2.0	dependency-audit-evidence/regex-1.13.1.txt
+regex-automata	0.4.18	MIT OR Apache-2.0	dependency-audit-evidence/regex-automata-0.4.18.txt
+regex-syntax	0.8.11	MIT OR Apache-2.0	dependency-audit-evidence/regex-syntax-0.8.11.txt
+rustfft	6.4.1	MIT OR Apache-2.0	dependency-audit-evidence/rustfft-6.4.1.txt
+rustix	1.1.6	Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT	dependency-audit-evidence/rustix-1.1.6.txt
+rustversion	1.0.23	MIT OR Apache-2.0	dependency-audit-evidence/rustversion-1.0.23.txt
+ryu	1.0.23	Apache-2.0 OR BSL-1.0	dependency-audit-evidence/ryu-1.0.23.txt
+safetensors	0.8.0	Apache-2.0	dependency-audit-evidence/safetensors-0.8.0.txt
+same-file	1.0.6	Unlicense/MIT	dependency-audit-evidence/same-file-1.0.6.txt
+scopeguard	1.2.0	MIT OR Apache-2.0	dependency-audit-evidence/scopeguard-1.2.0.txt
+seq-macro	0.3.6	MIT OR Apache-2.0	dependency-audit-evidence/seq-macro-0.3.6.txt
+serde	1.0.229	MIT OR Apache-2.0	dependency-audit-evidence/serde-1.0.229.txt
+serde_core	1.0.229	MIT OR Apache-2.0	dependency-audit-evidence/serde_core-1.0.229.txt
+serde_derive	1.0.229	MIT OR Apache-2.0	dependency-audit-evidence/serde_derive-1.0.229.txt
+serde_json	1.0.154	MIT OR Apache-2.0	dependency-audit-evidence/serde_json-1.0.154.txt
+smallvec	1.16.5	MIT OR Apache-2.0	dependency-audit-evidence/smallvec-1.16.5.txt
+spm_precompiled	0.1.4	Apache-2.0	dependency-audit-evidence/spm_precompiled-0.1.4.txt
+stable_deref_trait	1.2.1	MIT OR Apache-2.0	dependency-audit-evidence/stable_deref_trait-1.2.1.txt
+static_assertions	1.1.0	MIT OR Apache-2.0	dependency-audit-evidence/static_assertions-1.1.0.txt
+strength_reduce	0.2.4	MIT OR Apache-2.0	dependency-audit-evidence/strength_reduce-0.2.4.txt
+strsim	0.11.1	MIT	dependency-audit-evidence/strsim-0.11.1.txt
+syn	2.0.119	MIT OR Apache-2.0	dependency-audit-evidence/syn-2.0.119.txt
+syn	3.0.9	MIT OR Apache-2.0	dependency-audit-evidence/syn-3.0.9.txt
+synstructure	0.14.0	MIT	dependency-audit-evidence/synstructure-0.14.0.txt
+sysctl	0.6.0	MIT	dependency-audit-evidence/sysctl-0.6.0.txt
+tempfile	3.27.0	MIT OR Apache-2.0	dependency-audit-evidence/tempfile-3.27.0.txt
+thiserror	1.0.69	MIT OR Apache-2.0	dependency-audit-evidence/thiserror-1.0.69.txt
+thiserror	2.0.21	MIT OR Apache-2.0	dependency-audit-evidence/thiserror-2.0.21.txt
+thiserror-impl	1.0.69	MIT OR Apache-2.0	dependency-audit-evidence/thiserror-impl-1.0.69.txt
+thiserror-impl	2.0.21	MIT OR Apache-2.0	dependency-audit-evidence/thiserror-impl-2.0.21.txt
+tokenizers	0.23.2	Apache-2.0	dependency-audit-evidence/tokenizers-0.23.2.txt
+transpose	0.2.3	MIT OR Apache-2.0	dependency-audit-evidence/transpose-0.2.3.txt
+typed-path	0.13.0	MIT OR Apache-2.0	dependency-audit-evidence/typed-path-0.13.0.txt
+unicode-ident	1.0.27	(MIT OR Apache-2.0) AND Unicode-3.0	dependency-audit-evidence/unicode-ident-1.0.27.txt
+unicode-normalization-alignments	0.1.12	MIT/Apache-2.0	dependency-audit-evidence/unicode-normalization-alignments-0.1.12.txt
+unicode-segmentation	1.13.3	MIT OR Apache-2.0	dependency-audit-evidence/unicode-segmentation-1.13.3.txt
+unicode_categories	0.1.1	MIT OR Apache-2.0	dependency-audit-evidence/unicode_categories-0.1.1.txt
+version_check	0.9.5	MIT/Apache-2.0	dependency-audit-evidence/version_check-0.9.5.txt
+walkdir	2.5.0	Unlicense/MIT	dependency-audit-evidence/walkdir-2.5.0.txt
+wasip2	1.0.4+wasi-0.2.12	Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT	dependency-audit-evidence/wasip2-1.0.4+wasi-0.2.12.txt
+wasm-bindgen	0.2.130	MIT OR Apache-2.0	dependency-audit-evidence/wasm-bindgen-0.2.130.txt
+wasm-bindgen-macro	0.2.130	MIT OR Apache-2.0	dependency-audit-evidence/wasm-bindgen-macro-0.2.130.txt
+wasm-bindgen-macro-support	0.2.130	MIT OR Apache-2.0	dependency-audit-evidence/wasm-bindgen-macro-support-0.2.130.txt
+wasm-bindgen-shared	0.2.130	MIT OR Apache-2.0	dependency-audit-evidence/wasm-bindgen-shared-0.2.130.txt
+winapi-util	0.1.11	Unlicense OR MIT	dependency-audit-evidence/winapi-util-0.1.11.txt
+windows-link	0.2.1	MIT OR Apache-2.0	dependency-audit-evidence/windows-link-0.2.1.txt
+windows-sys	0.61.2	MIT OR Apache-2.0	dependency-audit-evidence/windows-sys-0.61.2.txt
+wit-bindgen	0.57.1	Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT	dependency-audit-evidence/wit-bindgen-0.57.1.txt
+yoke	0.8.4	Unicode-3.0	dependency-audit-evidence/yoke-0.8.4.txt
+yoke-derive	0.8.4	Unicode-3.0	dependency-audit-evidence/yoke-derive-0.8.4.txt
+zerocopy	0.8.63	BSD-2-Clause OR Apache-2.0 OR MIT	dependency-audit-evidence/zerocopy-0.8.63.txt
+zerocopy-derive	0.8.63	BSD-2-Clause OR Apache-2.0 OR MIT	dependency-audit-evidence/zerocopy-derive-0.8.63.txt
+zerofrom	0.1.8	Unicode-3.0	dependency-audit-evidence/zerofrom-0.1.8.txt
+zerofrom-derive	0.1.8	Unicode-3.0	dependency-audit-evidence/zerofrom-derive-0.1.8.txt
+zip	9.4.1	MIT	dependency-audit-evidence/zip-9.4.1.txt
+zmij	1.0.23	MIT	dependency-audit-evidence/zmij-1.0.23.txt

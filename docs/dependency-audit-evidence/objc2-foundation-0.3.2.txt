@@ -1,0 +1,47 @@
+crate: objc2-foundation
+version: 0.3.2
+license: MIT
+manifest_path: /tmp/opencode/crate-cache/objc2-foundation-0.3.2/objc2-foundation-0.3.2/Cargo.toml
+source_dir: /tmp/opencode/crate-cache/objc2-foundation-0.3.2/objc2-foundation-0.3.2
+license_file: /tmp/opencode/crate-cache/objc2-foundation-0.3.2/objc2-foundation-0.3.2/src/copying.rs
+--- license file excerpt (first 40 lines) ---
+use objc2::extern_protocol;
+use objc2::rc::Retained;
+use objc2::runtime::NSZone;
+use objc2::runtime::ProtocolObject;
+use objc2::Message;
+
+/// A helper type for implementing [`NSCopying`].
+///
+/// `NSCopying` and `NSMutableCopying` do not in their signatures describe the
+/// result type from the copying operation. This is problematic, as it means
+/// that using them ends up falling back to [`AnyObject`], which makes copying
+/// much less useful and ergonomic.
+///
+/// To properly describe this, we need an associated type which describes the
+/// actual result type from a copy. The associated type can't be present
+/// directly on the protocol traits themselves, however, since we want to use
+/// them as e.g. `ProtocolObject<dyn NSCopying>`, so we introduce this helper
+/// trait instead. See [`MutableCopyingHelper`] for the mutable variant.
+///
+/// We might be able to get rid of this hack once [associated type defaults]
+/// are stabilized.
+///
+/// [`AnyObject`]: objc2::runtime::AnyObject
+/// [associated type defaults]: https://github.com/rust-lang/rust/issues/29661
+///
+///
+/// # Safety
+///
+/// The [`Result`] type must be correct.
+///
+/// [`Result`]: Self::Result
+pub unsafe trait CopyingHelper: Message {
+    /// The immutable counterpart of the type, or `Self` if the type has no
+    /// immutable counterpart.
+    ///
+    /// The implementation for `NSString` has itself (`NSString`) here, while
+    /// `NSMutableString` instead has `NSString`.
+    type Result: Message;
+}
+
