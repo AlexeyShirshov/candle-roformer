@@ -7,7 +7,14 @@ pub const CHUNK_SIZE: usize = 352800;
 /// Chunk size derived from the model's STFT hop: 800 hops per chunk.
 /// For the v7 profile (hop = 441) this is exactly 352800 samples.
 pub fn chunk_size_for(model: &MelBandRoformer) -> usize {
-    model.hop.max(1) * 800
+    // Upstream uses 8 s chunks (800 hops). CANDLE_ROFORMER_CHUNK_HOPS is a
+    // debugging/tuning override; it changes overlap-add granularity only.
+    let hops = std::env::var("CANDLE_ROFORMER_CHUNK_HOPS")
+        .ok()
+        .and_then(|v| v.parse::<usize>().ok())
+        .filter(|v| *v > 0)
+        .unwrap_or(800);
+    model.hop.max(1) * hops
 }
 
 pub fn separate(
@@ -70,6 +77,9 @@ where
     let mut out_acc = vec![0f32; channels * n];
     let mut weight_acc = vec![0f32; n];
     let num_chunks = (n + step - 1) / step;
+    if std::env::var("CANDLE_ROFORMER_DUMP").is_ok() {
+        eprintln!("[ola] samples={} channels={} frames={} chunk={} step={} fade={} chunks={}", input.len(), channels, n, chunk, step, fade, num_chunks);
+    }
     for ci in 0..num_chunks {
         let start = ci * step;
         if start >= n {

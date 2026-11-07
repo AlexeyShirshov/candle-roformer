@@ -240,6 +240,7 @@ fn full_pipeline_tiny() {
         DeviceChoice::Cpu,
         true,
         None,
+        None,
     ).unwrap();
 
     // check outputs

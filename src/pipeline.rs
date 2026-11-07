@@ -25,6 +25,7 @@ pub fn run_pipeline(
     output_dir: &str,
     device: crate::device::DeviceChoice,
     overwrite: bool,
+    start_seconds: Option<f64>,
     limit_seconds: Option<f64>,
 ) -> Result<(), Error> {
     // parse config
@@ -45,6 +46,24 @@ pub fn run_pipeline(
 
     // decode
     let mut audio = read_audio(input_path)?;
+    if let Some(start) = start_seconds {
+        if start < 0.0 || !start.is_finite() {
+            return Err(Error::Audio(AudioError::InvalidSampleRate(
+                "invalid --start".into(),
+            )));
+        }
+        let ch = audio.channels as usize;
+        let frames = audio.planar.len() / ch;
+        let skip = ((start * audio.sample_rate as f64).round() as usize).min(frames);
+        if skip >= frames {
+            return Err(Error::Audio(AudioError::EmptyInput(
+                "--start is beyond the input length".into(),
+            )));
+        }
+        for c in (0..ch).rev() {
+            audio.planar.drain(c * frames..c * frames + skip);
+        }
+    }
     if let Some(secs) = limit_seconds {
         if secs <= 0.0 || !secs.is_finite() {
             return Err(Error::Audio(AudioError::InvalidSampleRate(

@@ -10,7 +10,7 @@ fn print_help() {
     println!("candle-roformer {}", VERSION);
     println!("Usage:");
     println!("  candle-roformer separate --model <safetensors> --config <v7.yaml> --input <file> --output <dir>
-                          [--device cpu|cuda|metal] [--overwrite] [--duration <seconds>]");
+                          [--device cpu|cuda|metal] [--overwrite] [--start <seconds>] [--duration <seconds>]");
     println!("  candle-roformer --version");
     println!("  candle-roformer --help");
 }
@@ -38,6 +38,7 @@ fn main() {
             let mut device = "cpu".to_string();
             let mut overwrite = false;
             let mut duration: Option<f64> = None;
+            let mut start: Option<f64> = None;
             let mut i = 2;
             while i < args.len() {
                 match args[i].as_str() {
@@ -47,6 +48,13 @@ fn main() {
                     "--output" => { output = Some(args[i+1].clone()); i += 2; }
                     "--device" => { device = args[i+1].clone(); i += 2; }
                     "--overwrite" => { overwrite = true; i += 1; }
+                    "--start" => {
+                        start = Some(match args[i+1].parse::<f64>() {
+                            Ok(v) => v,
+                            Err(_) => { eprintln!("bad --start"); process::exit(2); }
+                        });
+                        i += 2;
+                    }
                     "--duration" => {
                         duration = Some(match args[i+1].parse::<f64>() {
                             Ok(v) => v,
@@ -70,7 +78,7 @@ fn main() {
                 "metal" => DeviceChoice::Metal,
                 _ => { eprintln!("bad device"); process::exit(2); }
             };
-            if let Err(e) = run_pipeline(&model, &config, &input, &output, dev, overwrite, duration) {
+            if let Err(e) = run_pipeline(&model, &config, &input, &output, dev, overwrite, start, duration) {
                 eprintln!("error: {}", e);
                 process::exit(1);
             }

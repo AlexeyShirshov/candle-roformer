@@ -52,10 +52,14 @@ impl RotaryEmbedding {
         let dtype = x.dtype();
         let pos = Tensor::arange(0i64, seq_len as i64, device)?.to_dtype(DType::F32)?;
         let f = self.freqs.to_dtype(DType::F32)?;
-        // angles: (seq, dim/2)
+        // angles: (seq, dim/2), then interleaved to (seq, dim) — rotary_embedding_torch
+        // uses repeat(..., 'n -> (n r)', r=2), pairing with its interleaved rotate_half.
         let angles = pos.unsqueeze(1)?.broadcast_mul(&f.unsqueeze(0)?)?;
-        // repeat to (seq, dim)
-        let angles = Tensor::cat(&[&angles, &angles], D::Minus1)?;
+        let half = angles.dim(D::Minus1)?;
+        let angles = angles
+            .unsqueeze(D::Minus1)?
+            .broadcast_as((seq_len, half, 2))?
+            .reshape((seq_len, half * 2))?;
         let cos = angles.cos()?.unsqueeze(0)?.unsqueeze(0)?; // (1,1,seq,dim)
         let sin = angles.sin()?.unsqueeze(0)?.unsqueeze(0)?;
         let rot = rotate_half(x)?;
@@ -494,6 +498,27 @@ where
     Tensor::cat(&outs, 0)
 }
 
+fn dump_tensor(name: &str, t: &Tensor) {
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    static SEQ: AtomicUsize = AtomicUsize::new(0);
+    let Ok(dir) = std::env::var("CANDLE_ROFORMER_DUMP") else {
+        return;
+    };
+    let seq = SEQ.fetch_add(1, Ordering::Relaxed);
+    let name = &format!("{name}_{seq}");
+    let Ok(v) = t.flatten_all().and_then(|x| x.to_vec1::<f32>()) else {
+        return;
+    };
+    let dims: Vec<String> = t.dims().iter().map(|d| d.to_string()).collect();
+    let _ = std::fs::create_dir_all(&dir);
+    let _ = std::fs::write(format!("{dir}/{name}.shape"), dims.join(","));
+    let mut bytes = Vec::with_capacity(v.len() * 4);
+    for x in v {
+        bytes.extend_from_slice(&x.to_le_bytes());
+    }
+    let _ = std::fs::write(format!("{dir}/{name}.f32"), bytes);
+}
+
 impl MelBandRoformer {
     pub fn new(cfg: &SeparatorConfig, vb: VarBuilder) -> candle_core::Result<Self> {
         let stereo = cfg.stereo;
@@ -607,6 +632,7 @@ impl MelBandRoformer {
             raw_audio.clone()
         };
         let (batch, _channels, raw_len) = raw_audio.dims3()?;
+        dump_tensor("00_pcm", &raw_audio);
         let device = raw_audio.device();
         let samples_per = raw_len;
 
@@ -645,6 +671,7 @@ impl MelBandRoformer {
         let stft_repr = stft_repr.permute((0, 2, 1, 3, 4))?; // (b, freqs, ch, frames, 2)
         let stft_repr = stft_repr.reshape((batch, freqs * self.audio_channels, frames, 2))?;
 
+        dump_tensor("01_stft", &stft_repr);
         let fi_tensor = Tensor::from_vec(
             self.freq_indices.iter().map(|&x| x as i64).collect::<Vec<_>>(),
             self.freq_indices.len(),
@@ -656,6 +683,7 @@ impl MelBandRoformer {
         let x = x.reshape((batch, frames, selected * 2))?;
 
         let mut cur = self.band_split.forward(&x)?; // (b, frames, num_bands, dim)
+        dump_tensor("02_bandsplit", &cur);
 
         for (i, block) in self.layers.iter().enumerate() {
             if block.len() == 3 {
@@ -675,6 +703,9 @@ impl MelBandRoformer {
                 let freq_tr = &block[1];
                 cur = run_time_transformer(&cur, BAND_BLOCK, |x| time_tr.forward(x))?;
                 cur = run_freq_transformer(&cur, T_BLOCK, |x| freq_tr.forward(x))?;
+            }
+            if i == 0 {
+                dump_tensor("03_layer0", &cur);
             }
             let _ = i;
         }
@@ -744,6 +775,7 @@ impl MelBandRoformer {
         let denom = Tensor::from_vec(denom_vec, (full_freqs, 1), device)?;
         let denom = denom.reshape((1, 1, full_freqs, 1))?;
 
+        dump_tensor("04_masks_sum", &ms_re);
         // masks_averaged
         let ms_re = ms_re.broadcast_div(&(denom.clone() + 1e-8)?)?;
         let ms_im = ms_im.broadcast_div(&(denom + 1e-8)?)?;
@@ -756,6 +788,7 @@ impl MelBandRoformer {
         let sr_im = sr_im.unsqueeze(1)?.broadcast_as((batch, self.mask_estimators.len(), full_freqs, frames))?;
 
         // complex multiply: (a+ib)*(c+id) = (ac-bd)+i(ad+bc)
+        dump_tensor("05_mask_avg", &ms_re);
         let out_re = (sr_re.broadcast_mul(&ms_re)? - sr_im.broadcast_mul(&ms_im)?)?;
         let out_im = (sr_re.broadcast_mul(&ms_im)? + sr_im.broadcast_mul(&ms_re)?)?;
 
@@ -778,6 +811,7 @@ impl MelBandRoformer {
             // Our full_freqs layout after merge: freq-major with channels interleaved? stft_repr merge: (b, freqs, ch, ...) -> reshape (b, freqs*ch, ...). So full_freqs index = f*ch + c. To get (b*n*ch, freqs, frames), need deinterleave.
             // Build arrays per batch/stem/channel.
             let nstems = self.mask_estimators.len();
+            let total_signals = batch * nstems * self.audio_channels;
             let mut istft_re = vec![0f32; batch * nstems * self.audio_channels * freqs * frames];
             let mut istft_im = vec![0f32; batch * nstems * self.audio_channels * freqs * frames];
             let out_re_vec: Vec<f32> = out_re_f.flatten_all()?.to_vec1()?;
@@ -789,7 +823,7 @@ impl MelBandRoformer {
                             let full_idx = f * self.audio_channels + c;
                             for fr in 0..frames {
                                 let src = ((b * nstems + n) * full_freqs + full_idx) * frames + fr;
-                                let dst = ((b * nstems + n) * self.audio_channels + c) * freqs * frames + f * frames + fr;
+                                let dst = ((b * nstems + n) * self.audio_channels + c) * freqs * frames + fr * freqs + f;
                                 istft_re[dst] = out_re_vec[src];
                                 istft_im[dst] = out_im_vec[src];
                             }
@@ -797,8 +831,11 @@ impl MelBandRoformer {
                     }
                 }
             }
+            let spec_re = Tensor::from_vec(istft_re.clone(), (total_signals, frames, freqs), device)?;
+            let spec_im = Tensor::from_vec(istft_im.clone(), (total_signals, frames, freqs), device)?;
+            dump_tensor("07_spec_re", &spec_re);
+            dump_tensor("07_spec_im", &spec_im);
             // Now istft per (batch*nstems*channels)
-            let total_signals = batch * nstems * self.audio_channels;
             let mut recon = vec![0f32; total_signals * raw_len];
             for sig in 0..total_signals {
                 let off = sig * freqs * frames;
@@ -816,6 +853,7 @@ impl MelBandRoformer {
             }
             // rearrange recon (b, n, ch, samples) -> if num_stems==1 squeeze stem
             let recon_t = Tensor::from_vec(recon, (batch, nstems, self.audio_channels, raw_len), device)?;
+            dump_tensor("06_recon", &recon_t);
             if nstems == 1 {
                 let recon_t = recon_t.squeeze(1)?; // (b, ch, samples)
                 return Ok(recon_t);
@@ -826,6 +864,7 @@ impl MelBandRoformer {
             let out_re_f = out_re;
             let out_im_f = out_im;
             let nstems = self.mask_estimators.len();
+            let total_signals = batch * nstems * self.audio_channels;
             let mut istft_re = vec![0f32; batch * nstems * self.audio_channels * freqs * frames];
             let mut istft_im = vec![0f32; batch * nstems * self.audio_channels * freqs * frames];
             let out_re_vec: Vec<f32> = out_re_f.flatten_all()?.to_vec1()?;
@@ -837,7 +876,7 @@ impl MelBandRoformer {
                             let full_idx = f * self.audio_channels + c;
                             for fr in 0..frames {
                                 let src = ((b * nstems + n) * full_freqs + full_idx) * frames + fr;
-                                let dst = ((b * nstems + n) * self.audio_channels + c) * freqs * frames + f * frames + fr;
+                                let dst = ((b * nstems + n) * self.audio_channels + c) * freqs * frames + fr * freqs + f;
                                 istft_re[dst] = out_re_vec[src];
                                 istft_im[dst] = out_im_vec[src];
                             }
@@ -845,7 +884,6 @@ impl MelBandRoformer {
                     }
                 }
             }
-            let total_signals = batch * nstems * self.audio_channels;
             let mut recon = vec![0f32; total_signals * raw_len];
             for sig in 0..total_signals {
                 let off = sig * freqs * frames;
@@ -862,6 +900,7 @@ impl MelBandRoformer {
                 }
             }
             let recon_t = Tensor::from_vec(recon, (batch, nstems, self.audio_channels, raw_len), device)?;
+            dump_tensor("06_recon", &recon_t);
             if nstems == 1 {
                 let recon_t = recon_t.squeeze(1)?;
                 return Ok(recon_t);
