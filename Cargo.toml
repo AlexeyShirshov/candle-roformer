@@ -5,6 +5,10 @@ edition = "2021"
 license = "MIT"
 description = "Offline Rust/Candle library for vocal/instrumental separation and vocal transcription"
 readme = "README.md"
+repository = "https://github.com/AlexeyShirshov/candle-roformer"
+keywords = ["audio", "vocal-separation", "whisper", "machine-learning", "candle"]
+categories = ["multimedia::audio", "artificial-intelligence", "science"]
+exclude = ["/docs", "/tools/tests", "/AGENTS.md"]
 
 [lib]
 name = "candle_roformer"
@@ -21,9 +25,9 @@ cuda = ["candle-core/cuda", "candle-nn/cuda"]
 metal = ["candle-core/metal", "candle-nn/metal"]
 
 [dependencies]
-candle-core = { git = "https://github.com/huggingface/candle", rev = "cfcbd7186d13271843ce7eb41d25659bd0835850" }
-candle-nn = { git = "https://github.com/huggingface/candle", rev = "cfcbd7186d13271843ce7eb41d25659bd0835850" }
-candle-transformers = { git = "https://github.com/huggingface/candle", rev = "cfcbd7186d13271843ce7eb41d25659bd0835850" }
+candle-core = { version = "0.11.1", git = "https://github.com/huggingface/candle", rev = "cfcbd7186d13271843ce7eb41d25659bd0835850" }
+candle-nn = { version = "0.11.1", git = "https://github.com/huggingface/candle", rev = "cfcbd7186d13271843ce7eb41d25659bd0835850" }
+candle-transformers = { version = "0.11.1", git = "https://github.com/huggingface/candle", rev = "cfcbd7186d13271843ce7eb41d25659bd0835850" }
 tokenizers = { version = "0.23", default-features = false, features = ["fancy-regex"] }
 serde_json = "1"
 flate2 = "1"
