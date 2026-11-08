@@ -126,8 +126,14 @@ Metal: `cargo build --release --features metal` (macOS).
   MelBandRoformer 384/6 pass runs at roughly a quarter of real time.
   `CANDLE_NUM_THREADS=8` uses more cores. CUDA/Metal execution has **not**
   been tested here (no NVIDIA GPU, no macOS host).
-- Numerical parity with the PyTorch reference is verified end-to-end
-  (corr 1.000000 on a frozen 8 s input); hardware smoke tests (G2) remain open.
+- Numerical parity with the PyTorch reference on a frozen 8 s chunk of a real
+  song (Kijai 384/6): the model pass matches at correlation 0.9999999 and
+  max abs error 3.5e-4, inside the provisional gate (max abs ≤ 1e-3 when
+  reference RMS > 1e-3). The file-level adapter overlaps 8 s chunks with a
+  4 s step, so a written stem is not bit-identical to a single-pass reference
+  run. Measured with the original Candle git revision and re-checked against
+  crates.io `candle-core 0.11.1`: both builds produce byte-identical stems.
+  Hardware smoke tests (G2) remain open.
 - Supported architecture family: MelBandRoformer (`voc_fv7` 256/12 and
   Kimberley 384/6). `audio-separator` also covers MDX-Net, VR/UVR, Demucs and
   MDX23C — those are not ported yet.
@@ -148,4 +154,24 @@ Metal: `cargo build --release --features metal` (macOS).
   cargo run --release --example transcribe -- song.wav /path/to/whisper-dir ru
   ```
 - Weights licensing is not resolved by this repository; see the design spec
-  `docs/superpowers/specs/2026-11-07-candle-roformer-design.md`.
+  [docs/superpowers/specs/2026-11-07-candle-roformer-design.md](https://github.com/AlexeyShirshov/candle-roformer/blob/main/docs/superpowers/specs/2026-11-07-candle-roformer-design.md).
+
+## License and attribution
+
+MIT, see
+[`LICENSE`](https://github.com/AlexeyShirshov/candle-roformer/blob/main/LICENSE) and
+[`NOTICE`](https://github.com/AlexeyShirshov/candle-roformer/blob/main/NOTICE).
+
+The separation model is a Rust/Candle port of MelBandRoformer from
+[Music-Source-Separation-Training](https://github.com/ZFTurbo/Music-Source-Separation-Training)
+(MIT, Copyright 2024 Roman Solovyev), which builds on code by
+[lucidrains](https://github.com/lucidrains) (rotary embeddings) and the
+[Ultimate Vocal Remover](https://github.com/Anjok07/ultimatevocalremovergui)
+project. The Whisper layer follows the
+[Candle Whisper example](https://github.com/huggingface/candle) and OpenAI's
+[Whisper](https://github.com/openai/whisper) reference (tokenizer order,
+language table, timestamp rules); the mel filter banks are OpenAI's published
+constants. Pinned revisions and checksums are recorded in the repository under
+`docs/provenance/`.
+
+Model weights are not part of this crate and keep their own licences.
