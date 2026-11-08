@@ -51,6 +51,16 @@ pub enum AudioError {
     NonFinite(String),
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Error)]
+pub enum AsrError {
+    #[error("whisper assets: {0}")]
+    InvalidAssets(String),
+    #[error("unsupported language: {0}")]
+    UnsupportedLanguage(String),
+    #[error("transcription failed: {0}")]
+    Failed(String),
+}
+
 pub type WavError = AudioError;
 pub type DecodeError = AudioError;
 
@@ -68,6 +78,8 @@ pub enum Error {
     Converter(#[from] ConverterError),
     #[error(transparent)]
     Audio(#[from] AudioError),
+    #[error(transparent)]
+    Asr(#[from] AsrError),
     #[error("candle error: {0}")]
     Candle(#[from] candle_core::Error),
 }

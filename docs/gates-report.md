@@ -92,3 +92,42 @@ Schema status: **derived, corroborated, unproven against the checkpoint**. The r
 ## G3 — numerical parity (real checkpoint)
 
 - `BLOCKED — missing local checkpoint voc_fv7.ckpt`. Not run; no partial/range read performed. G3 target thresholds per spec §12:118 (provisional / unmeasured until real weights): when ref RMS > 1e-3: RMS error ≤ 1e-4 and max_abs ≤ 1e-3; when 0 < ref RMS ≤ 1e-3: relL2 ≤ 1e-3; silence (ref RMS == 0): absolute only, max_abs ≤ 1e-3. Provisional / unmeasured before real weights; no PASS claimed. (G3 silence threshold: max_abs <= 1e-3.)
+
+## Whisper (ASR) — Step 4
+
+Status of the transcription layer, reported separately from the separation
+gates because it has its own blocker (no local Whisper weights).
+
+Verified offline on synthetic fixtures:
+
+- `cargo build --offline` — exit code 0 (with the pinned Candle
+  `candle-transformers` at rev `cfcbd7186d13271843ce7eb41d25659bd0835850`).
+- `cargo test --offline` — 43 tests, 0 failed:
+  - 10 crate unit tests, including Whisper timestamp-token math (20 ms steps,
+    window offsets, clamping, special-token filtering, decode-error
+    propagation), mel filter shapes (80x201 and 128x201, finite/non-negative),
+    zlib compression-ratio repetition detection, deterministic sampler, channel
+    downmix;
+  - 5 `tests/whisper_tests.rs` integration tests, including an end-to-end run
+    of `Transcriber::load` + `transcribe` against a tiny randomly-initialised
+    Whisper checkpoint with a hand-written tokenizer (proves loading, log-mel,
+    encoder/decoder plumbing, timestamp rules, segment assembly and the
+    `[0, duration]`/monotonic invariants execute), and a full
+    `separate_and_transcribe_file` run that writes two WAVs plus `.txt`/`.json`
+    and refuses to overwrite without the flag;
+  - the existing 3 library-API, 13 pipeline, 11 DSP and 1 doc tests.
+- Embedded mel filter assets: byte-for-byte copies from the pinned Candle
+  checkout, sha256 recorded in `assets/whisper/README.md`.
+
+Blocked:
+
+- `BLOCKED — no local Whisper weights`: no `config.json` + `tokenizer.json` +
+  `model.safetensors` checkpoint is present in this environment, and downloading
+  or bundling weights is forbidden by the project rules. Therefore real
+  transcription, language detection on real audio, and any accuracy/WER claim
+  were **not** run. The synthetic test uses random weights and is a plumbing
+  check only, not a quality result.
+- `BLOCKED — no GPU/Metal host` (shared with G2): Whisper was exercised on CPU
+  only. CUDA/Metal execution is untested here.
+- Known risk (spec §9): Whisper on sung vocals may hallucinate or mis-transcribe
+  lyrics; timestamps are segment-level, not word alignment.
