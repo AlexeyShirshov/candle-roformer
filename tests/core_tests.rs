@@ -1,11 +1,12 @@
 //! Core crate tests: model construction, resampling, OLA and WAV I/O.
 
+use std::cell::Cell;
 use std::fs;
 use std::path::PathBuf;
 
 use candle_core::Device;
 use candle_nn::VarBuilder;
-use candle_roformer::config::SeparatorConfig;
+use candle_roformer::config::{InferenceConfig, SeparatorConfig};
 use candle_roformer::model::MelBandRoformer;
 use candle_roformer::resample;
 use candle_roformer::separate;
@@ -272,4 +273,191 @@ fn wav_read_pcm16_pcm24() {
     let r24 = read_audio(&p24).unwrap();
     assert_eq!(r24.channels, 1);
     assert_eq!(r24.planar.len(), samples24.len());
+}
+
+#[test]
+fn ola_pass_count_sweep() {
+    // step series
+    for &step in &[1usize, 2, 3, 5, 10, 100, 800] {
+        let n = 4000usize;
+        let chunk = 800usize;
+        let input = vec![0.0f32; n];
+        let calls = Cell::new(0usize);
+        let out = separate::ola_with(&input, 1, chunk, step, (chunk / 10).max(1), &|c: &[f32]| {
+            calls.set(calls.get() + 1);
+            Ok(c.to_vec())
+        })
+        .unwrap();
+        assert_eq!(out.len(), n);
+        let expected = (n + step - 1) / step;
+        assert_eq!(calls.get(), expected, "step={} calls={} expected={}", step, calls.get(), expected);
+    }
+    // overlap series
+    let mut prev_calls = 0usize;
+    for &overlap in &[8usize, 4, 2, 1] {
+        let n = 4000usize;
+        let chunk = 800usize;
+        let input = vec![0.0f32; n];
+        let calls = Cell::new(0usize);
+        let step = (chunk / overlap).max(1);
+        let _ = separate::ola_overlap(&input, 1, chunk, overlap, &|c: &[f32]| {
+            calls.set(calls.get() + 1);
+            Ok(c.to_vec())
+        })
+        .unwrap();
+        let expected = (n + step - 1) / step;
+        assert_eq!(calls.get(), expected, "overlap={} calls={} expected={}", overlap, calls.get(), expected);
+        let _ = prev_calls;
+        prev_calls = calls.get();
+    }
+}
+
+#[test]
+fn defaults_reproduce_current_numbers() {
+    let hops = 800usize;
+    let hop = 441usize;
+    let chunk = hop * hops;
+    let step = (chunk / 2).max(1);
+    let fade = (chunk / 10).max(1);
+    assert_eq!(chunk, 352800);
+    assert_eq!(step, 176400);
+    assert_eq!(fade, 35280);
+
+    let ic = InferenceConfig::default();
+    assert_eq!(ic.chunk_hops, 800);
+    assert_eq!(ic.num_overlap, 2);
+    assert_eq!(ic.batch_size, 1);
+    assert_eq!(ic.pitch_shift, 0.0);
+    assert!(!ic.denoise);
+    assert!(!ic.tta);
+
+    let input: Vec<f32> = (0..1000).map(|i| (i as f32 * 0.001).sin()).collect();
+    let c1 = Cell::new(0usize);
+    let c2 = Cell::new(0usize);
+    let a = separate::ola(&input, 1, 800, &|c: &[f32]| {
+        c1.set(c1.get() + 1);
+        Ok(c.to_vec())
+    })
+    .unwrap();
+    let b = separate::ola_with(&input, 1, 800, 400, 80, &|c: &[f32]| {
+        c2.set(c2.get() + 1);
+        Ok(c.to_vec())
+    })
+    .unwrap();
+    assert_eq!(c1.get(), c2.get());
+    let maxdiff = a
+        .iter()
+        .zip(b.iter())
+        .map(|(x, y)| (x - y).abs())
+        .fold(0.0f32, f32::max);
+    assert_eq!(maxdiff, 0.0);
+}
+
+#[test]
+fn inference_config_invalid_overlap() {
+    let mut c = InferenceConfig::default();
+    c.num_overlap = 0;
+    let err = c.validate().unwrap_err();
+    assert!(err.to_string().contains("overlap"), "{}", err);
+}
+
+#[test]
+fn inference_config_invalid_batch() {
+    let mut c = InferenceConfig::default();
+    c.batch_size = 0;
+    let err = c.validate().unwrap_err();
+    assert!(err.to_string().contains("batch"), "{}", err);
+}
+
+#[test]
+fn inference_config_yaml_defaults() {
+    let yaml = "model:\n  dim: 8\n";
+    let ic = InferenceConfig::from_yaml_str(yaml).unwrap();
+    assert_eq!(ic, InferenceConfig::default());
+}
+
+#[test]
+fn pitch_shift_changes_output() {
+    let cfg = tiny_config();
+    cfg.validate().unwrap();
+    let dev = Device::Cpu;
+    let varmap = candle_nn::VarMap::new();
+    let vb = VarBuilder::from_varmap(&varmap, candle_core::DType::F32, &dev);
+    let model = MelBandRoformer::new(&cfg, vb).unwrap();
+    let n = 64usize;
+    let channels = 2usize;
+    let input: Vec<f32> = (0..channels * n).map(|i| (i as f32 * 0.01).sin()).collect();
+
+    let base = InferenceConfig::default();
+    let out0 = separate::separate_with_config(&model, &input, channels, &base).unwrap();
+
+    let mut ic = InferenceConfig::default();
+    ic.pitch_shift = 12.0;
+    ic.sample_rate = cfg.sample_rate;
+    let out1 = separate::separate_with_config(&model, &input, channels, &ic).unwrap();
+
+    assert_eq!(out0.len(), input.len());
+    assert_eq!(out1.len(), input.len());
+    let maxdiff = out0
+        .iter()
+        .zip(out1.iter())
+        .map(|(a, b)| (a - b).abs())
+        .fold(0.0f32, f32::max);
+    assert!(maxdiff > 0.0, "pitch_shift must change output, got maxdiff {}", maxdiff);
+    assert!(out1.iter().all(|x| x.is_finite()));
+}
+
+#[test]
+fn batch_size_changes_model_invocations() {
+    let n = 4000usize;
+    let chunk = 800usize;
+    let step = 400usize;
+    let fade = 80usize;
+    let input = vec![0.0f32; n];
+
+    use std::cell::Cell;
+    let calls1 = Cell::new(0usize);
+    let maxbatch1 = Cell::new(0usize);
+    let _ = separate::ola_with_batch(&input, 1, chunk, step, fade, 1, &|pcm: &[f32]| {
+        calls1.set(calls1.get() + 1);
+        maxbatch1.set(maxbatch1.get().max(pcm.len() / chunk));
+        Ok(pcm.to_vec())
+    })
+    .unwrap();
+
+    let calls4 = Cell::new(0usize);
+    let maxbatch4 = Cell::new(0usize);
+    let _ = separate::ola_with_batch(&input, 1, chunk, step, fade, 4, &|pcm: &[f32]| {
+        calls4.set(calls4.get() + 1);
+        maxbatch4.set(maxbatch4.get().max(pcm.len() / chunk));
+        Ok(pcm.to_vec())
+    })
+    .unwrap();
+
+    assert!(calls4.get() < calls1.get(), "batch=4 should reduce calls");
+    assert!(maxbatch4.get() > 1, "batch=4 should observe batch dim > 1");
+    assert_eq!(maxbatch1.get(), 1);
+}
+
+#[test]
+fn inference_config_yaml_absent_defaults() {
+    let yaml = "model:\n  dim: 8\n";
+    let ic = InferenceConfig::from_yaml_str(yaml).unwrap();
+    assert_eq!(ic, InferenceConfig::default());
+}
+
+#[test]
+fn inference_config_yaml_malformed_errors() {
+    let yaml = "model:\n  dim: 8\ninference:\n  batch_size: 0\n";
+    let err = InferenceConfig::from_yaml_str(yaml).unwrap_err();
+    assert!(err.to_string().contains("batch"), "{}", err);
+}
+
+#[test]
+fn inference_config_invalid_fade_range() {
+    let mut c = InferenceConfig::default();
+    c.segment_size = Some(8);
+    c.fade_size = Some(9);
+    let err = c.validate().unwrap_err();
+    assert!(err.to_string().contains("fade"), "{}", err);
 }

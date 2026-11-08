@@ -144,3 +144,152 @@ impl SeparatorConfig {
         Ok(())
     }
 }
+
+// ---------- Inference configuration (issue #9) ----------
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ModelFamily {
+    MelBandRoformer,
+    BSRoformer,
+}
+
+#[derive(Debug, Clone, PartialEq, serde::Deserialize)]
+#[serde(default)]
+pub struct InferenceConfig {
+    pub segment_size: Option<usize>,
+    pub chunk_hops: usize,
+    pub num_overlap: usize,
+    pub step_size: Option<usize>,
+    pub overlap_size: Option<usize>,
+    pub fade_size: Option<usize>,
+    pub batch_size: usize,
+    pub pitch_shift: f32,
+    pub denoise: bool,
+    pub tta: bool,
+    pub sample_rate: usize,
+}
+
+impl Default for InferenceConfig {
+    fn default() -> Self {
+        Self::melband()
+    }
+}
+
+impl InferenceConfig {
+    pub fn melband() -> Self {
+        Self {
+            segment_size: None,
+            chunk_hops: 800,
+            num_overlap: 2,
+            step_size: None,
+            overlap_size: None,
+            fade_size: None,
+            batch_size: 1,
+            pitch_shift: 0.0,
+            denoise: false,
+            tta: false,
+            sample_rate: 44100,
+        }
+    }
+
+    pub fn bsroformer() -> Self {
+        Self::melband()
+    }
+
+    pub fn for_family(family: ModelFamily) -> Self {
+        match family {
+            ModelFamily::MelBandRoformer => Self::melband(),
+            ModelFamily::BSRoformer => Self::bsroformer(),
+        }
+    }
+
+    pub fn validate(&self) -> Result<(), ConfigError> {
+        if let Some(s) = self.segment_size {
+            if s == 0 {
+                return Err(ConfigError::Invalid("segment must be > 0".into()));
+            }
+        }
+        if self.segment_size.is_none() && self.chunk_hops == 0 {
+            return Err(ConfigError::Invalid("chunk_hops must be > 0".into()));
+        }
+        if let Some(s) = self.step_size {
+            if s == 0 {
+                return Err(ConfigError::Invalid("step must be > 0".into()));
+            }
+        }
+        if let Some(o) = self.overlap_size {
+            if o == 0 {
+                return Err(ConfigError::Invalid("overlap must be > 0".into()));
+            }
+        }
+        if self.num_overlap == 0 {
+            return Err(ConfigError::Invalid("overlap must be > 0".into()));
+        }
+        if let Some(f) = self.fade_size {
+            if f == 0 {
+                return Err(ConfigError::Invalid("fade must be > 0".into()));
+            }
+        }
+        if let (Some(seg), Some(fade)) = (self.segment_size, self.fade_size) {
+            if fade > seg {
+                return Err(ConfigError::Invalid("fade must be <= chunk size".into()));
+            }
+        }
+        if self.batch_size == 0 {
+            return Err(ConfigError::Invalid("batch must be > 0".into()));
+        }
+        if !self.pitch_shift.is_finite() {
+            return Err(ConfigError::Invalid("pitch_shift must be finite".into()));
+        }
+        if self.sample_rate == 0 {
+            return Err(ConfigError::Invalid("sample_rate must be > 0".into()));
+        }
+        Ok(())
+    }
+
+    pub fn chunk_size(&self, model: &crate::model::MelBandRoformer) -> usize {
+        if let Some(c) = self.segment_size {
+            c.max(1)
+        } else {
+            let hops = std::env::var("CANDLE_ROFORMER_CHUNK_HOPS")
+                .ok()
+                .and_then(|v| v.parse::<usize>().ok())
+                .filter(|v| *v > 0)
+                .unwrap_or(self.chunk_hops);
+            model.hop.max(1) * hops.max(1)
+        }
+    }
+
+    pub fn step_for(&self, chunk: usize) -> usize {
+        if let Some(s) = self.step_size {
+            return s.max(1);
+        }
+        if let Some(k) = self.overlap_size {
+            return (chunk / k.max(1)).max(1);
+        }
+        (chunk / self.num_overlap.max(1)).max(1)
+    }
+
+    pub fn fade_for(&self, chunk: usize) -> usize {
+        self.fade_size.unwrap_or((chunk / 10).max(1)).max(1)
+    }
+
+    pub fn from_yaml_str(text: &str) -> Result<Self, ConfigError> {
+        #[derive(serde::Deserialize)]
+        struct Root {
+            #[serde(default)]
+            inference: Option<InferenceConfig>,
+        }
+        let root: Root =
+            serde_yaml::from_str(text).map_err(|e| ConfigError::Invalid(e.to_string()))?;
+        let cfg = root.inference.unwrap_or_default();
+        cfg.validate()?;
+        Ok(cfg)
+    }
+
+    pub fn from_yaml_file(path: impl AsRef<std::path::Path>) -> Result<Self, ConfigError> {
+        let text = std::fs::read_to_string(path)
+            .map_err(|e| ConfigError::Invalid(format!("cannot read config: {}", e)))?;
+        Self::from_yaml_str(&text)
+    }
+}

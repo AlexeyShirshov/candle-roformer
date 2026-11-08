@@ -20,7 +20,7 @@ pub mod wav;
 pub mod whisper;
 
 pub use assets::{LocalSeparationAssets, LocalWhisperAssets};
-pub use config::SeparatorConfig;
+pub use config::{InferenceConfig, ModelFamily, SeparatorConfig};
 pub use device::DeviceChoice;
 pub use error::{
     AsrError, AssetError, AudioError, ConfigError, ConverterError, DecodeError, DeviceError,

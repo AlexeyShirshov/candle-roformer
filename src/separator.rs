@@ -22,7 +22,7 @@ use candle_core::{DType, Device};
 use candle_nn::VarBuilder;
 
 use crate::assets::LocalSeparationAssets;
-use crate::config::SeparatorConfig;
+use crate::config::{InferenceConfig, SeparatorConfig};
 use crate::device::DeviceChoice;
 use crate::error::{AudioError, Error};
 use crate::model::{expected_key_shapes, MelBandRoformer};
@@ -46,6 +46,7 @@ pub struct Stems {
 pub struct Separator {
     model: MelBandRoformer,
     config: SeparatorConfig,
+    inference: InferenceConfig,
     device: DeviceChoice,
 }
 
@@ -55,6 +56,8 @@ impl Separator {
         assets.validate()?;
         let cfg = SeparatorConfig::from_yaml_file(&assets.config)?;
         cfg.validate()?;
+        let inference = InferenceConfig::from_yaml_file(&assets.config)?;
+        inference.validate()?;
         let dev = device.resolve()?;
         strict_check(
             assets.checkpoint.to_str().ok_or_else(|| {
@@ -72,6 +75,7 @@ impl Separator {
         Ok(Self {
             model,
             config: cfg,
+            inference,
             device,
         })
     }
@@ -88,6 +92,10 @@ impl Separator {
 
     pub fn config(&self) -> &SeparatorConfig {
         &self.config
+    }
+
+    pub fn inference_config(&self) -> &InferenceConfig {
+        &self.inference
     }
 
     pub fn device_choice(&self) -> DeviceChoice {
@@ -116,7 +124,7 @@ impl Separator {
 
         let model_sr = self.config.sample_rate as u32;
         let resampled = resample::resample_planar(&model_input, model_channels, input_sr, model_sr);
-        let vocals_model = separate::separate(&self.model, &resampled, model_channels)?;
+        let vocals_model = separate::separate_with_config(&self.model, &resampled, model_channels, &self.inference)?;
 
         let vocals_orig_sr = if channels == 1 {
             let n = vocals_model.len() / 2;
