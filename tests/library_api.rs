@@ -1,4 +1,4 @@
-//! Public API tests: the crate is the product, the CLI is just a wrapper.
+//! Public API tests: the crate is the product, the CLI lives in `karaoke-cli`.
 
 use std::fs;
 

@@ -14,11 +14,6 @@ exclude = ["/docs", "/tools/tests", "/AGENTS.md"]
 name = "candle_roformer"
 path = "src/lib.rs"
 
-[[bin]]
-name = "candle-roformer"
-path = "src/main.rs"
-required-features = []
-
 [features]
 default = []
 cuda = ["candle-core/cuda", "candle-nn/cuda"]

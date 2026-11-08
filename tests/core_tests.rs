@@ -1,12 +1,12 @@
+//! Core crate tests: model construction, resampling, OLA and WAV I/O.
+
 use std::fs;
 use std::path::PathBuf;
 
 use candle_core::Device;
 use candle_nn::VarBuilder;
 use candle_roformer::config::SeparatorConfig;
-use candle_roformer::device::DeviceChoice;
 use candle_roformer::model::MelBandRoformer;
-use candle_roformer::pipeline::run_pipeline;
 use candle_roformer::resample;
 use candle_roformer::separate;
 use candle_roformer::wav::{read_audio, write_wav_f32, AudioBuffer};
@@ -129,16 +129,11 @@ fn strict_loader_missing_extra() {
     let path = dir.join("m.safetensors");
     varmap.save(&path).unwrap();
 
-    // missing key: remove one tensor by rebuilding safetensors manually? Instead test extra key by adding
-    // We'll test missing by using a config with different num_bands? Hard. Test extra key:
-    let mut data = std::fs::read(&path).unwrap();
-    // can't easily. Instead verify strict_check via pipeline? Skip deep; check loader error on wrong config
-    // At least ensure file loads with matching config
+    // A matching profile must still load from the saved checkpoint.
     let vb2 = unsafe { VarBuilder::from_mmaped_safetensors(&[path.to_str().unwrap()], candle_core::DType::F32, &dev) }.unwrap();
     let m = MelBandRoformer::new(&cfg, vb2).unwrap();
     let inp = candle_core::Tensor::zeros((1, 2, 64), candle_core::DType::F32, &dev).unwrap();
     let _ = m.forward(&inp).unwrap();
-    let _ = data;
 }
 
 #[test]
@@ -222,62 +217,10 @@ fn residual_exact() {
 }
 
 #[test]
-fn full_pipeline_tiny() {
-    let cfg = tiny_config();
-    cfg.validate().unwrap();
-    let dir = tmpdir("full");
-    // create model safetensors
-    let dev = Device::Cpu;
-    let varmap = candle_nn::VarMap::new();
-    let vb = VarBuilder::from_varmap(&varmap, candle_core::DType::F32, &dev);
-    let _ = MelBandRoformer::new(&cfg, vb).unwrap();
-    let model_path = dir.join("model.safetensors");
-    varmap.save(&model_path).unwrap();
-
-    // config yaml
-    let yaml = format!(
-        "model:\n  dim: {}\n  depth: {}\n  stereo: true\n  num_stems: 1\n  time_transformer_depth: 1\n  freq_transformer_depth: 1\n  num_bands: {}\n  dim_head: {}\n  heads: {}\n  flash_attn: false\n  dim_freqs_in: {}\n  sample_rate: 44100\n  stft_n_fft: {}\n  stft_hop_length: {}\n  stft_win_length: {}\n  stft_normalized: false\n  mask_estimator_depth: 2\n  use_torch_checkpoint: false\n  mlp_expansion_factor: 4\n  linear_transformer_depth: 0\n  norm_output: true\n  skip_connection: false\n  zero_dc: true\n",
-        cfg.dim, cfg.depth, cfg.num_bands, cfg.dim_head, cfg.heads, cfg.dim_freqs_in, cfg.stft_n_fft, cfg.stft_hop_length, cfg.stft_win_length
-    );
-    let config_path = dir.join("config.yaml");
-    fs::write(&config_path, yaml).unwrap();
-
-    // input wav
-    let input_samples: Vec<f32> = (0..2000).map(|i| (i as f32 * 0.05).sin() * 0.5).collect();
-    let in_buf = AudioBuffer { sample_rate: 44100, channels: 1, planar: input_samples.clone() };
-    let input_path = dir.join("input.wav");
-    write_wav_f32(&input_path, &in_buf).unwrap();
-
-    let out_dir = dir.join("out");
-    run_pipeline(
-        model_path.to_str().unwrap(),
-        config_path.to_str().unwrap(),
-        input_path.to_str().unwrap(),
-        out_dir.to_str().unwrap(),
-        DeviceChoice::Cpu,
-        true,
-        None,
-        None,
-    ).unwrap();
-
-    // check outputs
-    let v = read_audio(&out_dir.join("vocals.wav")).unwrap();
-    let iv = read_audio(&out_dir.join("instrumental.wav")).unwrap();
-    assert_eq!(v.sample_rate, 44100);
-    assert_eq!(v.channels, 1);
-    assert_eq!(v.planar.len(), input_samples.len());
-    assert_eq!(iv.planar.len(), input_samples.len());
-    // residual
-    for i in 0..input_samples.len() {
-        assert!((input_samples[i] - (v.planar[i] + iv.planar[i])).abs() < 1e-4);
-    }
-}
-
-#[test]
 fn wav_read_pcm16_pcm24() {
     // craft PCM16 wav
     let dir = tmpdir("pcm");
-    let samples: Vec<i16> = (0..100).map(|i| (i as i16 * 100)).collect();
+    let samples: Vec<i16> = (0..100).map(|i| i as i16 * 100).collect();
     let mut data = Vec::new();
     // RIFF
     data.extend_from_slice(b"RIFF");

@@ -1,9 +1,9 @@
 //! Offline vocal/instrumental separation in Rust on top of Candle.
 //!
 //! The crate is the product: [`Separator`] loads a local MelBandRoformer
-//! checkpoint once and separates in-memory audio buffers. File handling lives
-//! in [`wav`] and [`pipeline`]; the `candle-roformer` binary is only a thin
-//! CLI over this API.
+//! checkpoint once and separates in-memory audio buffers. Encoding and decoding
+//! live in [`wav`]; command-line front ends (output naming, sidecars, batches)
+//! are not part of this crate — see the separate `karaoke-cli` project.
 
 pub mod assets;
 pub mod config;
@@ -12,7 +12,6 @@ pub mod dsp;
 pub mod error;
 pub mod mel;
 pub mod model;
-pub mod pipeline;
 pub mod resample;
 pub mod separate;
 pub mod separator;

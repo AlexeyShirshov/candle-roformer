@@ -21,7 +21,7 @@ Offline-checked (synthetic fixtures, no real checkpoint):
   - Command: `python3 tools/convert_voc_fv7.py`
   - Exit code: `1`
   - Message: `ERROR: explicit local checkpoint path is required`
-- Normal CLI path mandatorily validates against the versioned v7 schema (no `None`/optional disable):
+- The normal model-loading path mandatorily validates against the versioned v7 schema (no `None`/optional disable):
   - Negative control: `.pdca/candle-roformer-impl/rv1/attempts/s1-neg-control-schema.log`
   - Exit code: `1`
   - Message: `ERROR: state_dict key mismatch: missing=[], unexpected=['totally_unexpected_key']`
@@ -163,12 +163,17 @@ probability is read from the logits after the full prompt.
 
 ### Automated tests
 
-`cargo test --offline` — 44 tests, 0 failed: 11 crate unit tests (timestamp
-math, assembly, clamping and no-audio-support dropping, mel filter shapes,
-zlib ratio, sampler, downmix), 5 Whisper integration tests (including an
-end-to-end run on a tiny random checkpoint and the full
-`separate_and_transcribe_file` flow), 3 library-API, 13 pipeline, 11 DSP and
-1 doc test.
+`cargo test --offline` (crate) — 41 tests, 0 failed: 11 crate unit tests
+(timestamp math, assembly, clamping and no-audio-support dropping, mel filter
+shapes, zlib ratio, sampler, downmix), 3 Whisper integration tests (including an
+end-to-end run on a tiny random checkpoint), 3 library-API, 12 core
+(model/resample/OLA/WAV) and 11 DSP plus 1 doc test.
+
+The file-level flow (output naming, `.txt`/`.json` sidecars, `--overwrite`
+preflight, trim window, full separate-then-transcribe run) was part of this
+crate's suite before the split; it now lives in the `karaoke-cli` repository,
+which depends on the crate by git revision and re-runs the same synthetic
+end-to-end test there.
 
 ### Still blocked / not claimed
 

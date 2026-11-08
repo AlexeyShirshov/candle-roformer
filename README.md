@@ -3,8 +3,11 @@
 Offline vocal/instrumental separation in Rust on top of [Candle](https://github.com/huggingface/candle).
 No Python at runtime, no hidden model downloads.
 
-**The crate is the product.** The `candle-roformer` binary is a thin CLI wrapper
-over the same public API.
+**The crate is the product.** It is the Rust/Candle port of the
+[`audio-separator`](https://github.com/nomadkaraoke/python-audio-separator)
+library API: load a local checkpoint once, separate in-memory audio buffers.
+Command-line usage (output naming, timestamped sidecars, batches) lives in the
+separate [`karaoke-cli`](https://github.com/AlexeyShirshov/karaoke-cli) project.
 
 ## Library API
 
@@ -29,8 +32,9 @@ candle_roformer::wav::write_wav_f32("out/instrumental.wav", &stems.instrumental)
   input-waveform residual: `input - vocals`.
 - `AudioBuffer::validate` rejects absurd rates, >2 channels, misaligned or
   non-finite buffers.
-- File orchestration (decode, trim window, staging + rename) is the separate
-  `pipeline` module; programs that already hold audio in memory never touch it.
+- Reading and writing files is limited to [`wav`]: `read_audio` (m4a/mp3/flac/
+  ogg/wav) and `write_wav_f32`. Buffers are planar f32; the crate never invents
+  file names and never writes sidecars.
 
 ### Vocal transcription (Whisper)
 
@@ -56,60 +60,27 @@ multilingual checkpoints; `TranscribeOptions::language` forces a code and
 `transcribe_with` exposes the no-speech / log-prob / compression-ratio
 thresholds. A `*.en` checkpoint rejects an explicit foreign language.
 
-### File flow: stems + text + JSON
+### Combining the two
+
+The crate deliberately stops at in-memory buffers: it does not pick output
+names, write `.txt`/`.json` sidecars or manage batches. Wire the layers together
+in the order you need, e.g.
 
 ```rust
-use candle_roformer::pipeline::{separate_and_transcribe_file, TranscriptionRequest};
-use candle_roformer::{DeviceChoice, LocalSeparationAssets, LocalWhisperAssets};
-
-let mut request = TranscriptionRequest::new(
-    LocalSeparationAssets::new("vocals.safetensors", "vocals.yaml"),
-    LocalWhisperAssets::new("config.json", "tokenizer.json", "model.safetensors"),
-    "song.m4a",
-    "out/",
-);
-request.device = DeviceChoice::Cpu;
-let out = separate_and_transcribe_file(&request)?;
+let stems = separator.separate(&audio)?;
+let transcript = transcriber.transcribe(&stems.vocals)?;
+candle_roformer::wav::write_wav_f32("out/vocals.wav", &stems.vocals)?;
 ```
 
-This writes `<input>_(Vocals)_<model>.wav`, `<input>_(Instrumental)_<model>.wav`,
-`<input>_(Vocals)_<model>.txt` (timestamped lines) and `.json` (language,
-duration, segments). All paths are preflighted before any work starts; without
-`overwrite` existing outputs are refused. Each file goes through a staging name
-and a rename, but this is not a multi-file atomic transaction. The separator is
-dropped before Whisper loads, so both model sets are never resident at once.
+The separator can be dropped before the Whisper model is loaded, so both model
+sets are never resident at once.
 
-## CLI (thin wrapper)
+## CLI
 
-```sh
-./target/release/candle-roformer "/path/to/song.m4a" \
-  --model_filename /path/to/MelBandRoformer_fp32.safetensors \
-  --config configs/kijai_melband_384.yaml \
-  --output_dir out/
-```
-
-Outputs follow the `audio-separator` naming convention:
-`<input>_(Vocals)_<model>.wav` and `<input>_(Instrumental)_<model>.wav`.
-
-Options: `--model_filename`/`--model`, `--model_file_dir`, `--config`
-(defaults to `<model-stem>.yaml` next to the model), `--output_dir`,
-`--output_format wav` (other formats are not implemented yet), `--single_stem`,
-`--device cpu|cuda|metal` (an unavailable device is an error, never a silent
-CPU fallback), `--start`, `--duration`, `--overwrite`.
-
-Transcription is opt-in and never downloads anything:
-
-```sh
-./target/release/candle-roformer "song.m4a" \
-  --model_filename /models/MelBandRoformer_fp32.safetensors \
-  --config configs/kijai_melband_384.yaml --output_dir out/ \
-  --transcribe --whisper_model_dir /models/whisper-small-ft \
-  --language auto
-```
-
-`--whisper_model_dir` must contain `config.json`, `tokenizer.json` and
-`model.safetensors` (override individually with `--whisper_config`,
-`--whisper_tokenizer`, `--whisper_model`).
+The command-line tool is a separate project:
+[`karaoke-cli`](https://github.com/AlexeyShirshov/karaoke-cli) (batch input,
+`<input>_(Vocals)_<model>.wav` naming, timestamped `.txt`/`.json` sidecars).
+It depends on this crate by git revision.
 
 ## Input formats
 
