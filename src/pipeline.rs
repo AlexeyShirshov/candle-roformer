@@ -219,6 +219,8 @@ pub struct TranscriptionOutput {
     pub instrumental: Option<PathBuf>,
     pub text: PathBuf,
     pub json: PathBuf,
+    /// Offset of the written stems on the original input timeline (`--start`).
+    pub start_offset_seconds: f64,
     pub duration_seconds: f64,
     pub transcript: Transcript,
 }
@@ -294,6 +296,7 @@ pub fn separate_and_transcribe_file(
 
     let mut audio = read_audio(&request.input)?;
     trim_window(&mut audio, request.start_seconds, request.limit_seconds)?;
+    let start_offset_seconds = request.start_seconds.unwrap_or(0.0);
     let duration_seconds = audio.duration_secs();
 
     // Scope the separator so its weights are released before Whisper loads.
@@ -321,7 +324,13 @@ pub fn separate_and_transcribe_file(
     write_text(&text_path, &text_sidecar(&transcript))?;
     write_text(
         &json_path,
-        &json_sidecar(&request.input, &model_stem, duration_seconds, &transcript)?,
+        &json_sidecar(
+            &request.input,
+            &model_stem,
+            start_offset_seconds,
+            duration_seconds,
+            &transcript,
+        )?,
     )?;
 
     Ok(TranscriptionOutput {
@@ -329,6 +338,7 @@ pub fn separate_and_transcribe_file(
         instrumental: instrumental_name.map(|name| out_dir.join(name)),
         text: text_path,
         json: json_path,
+        start_offset_seconds,
         duration_seconds,
         transcript,
     })
@@ -352,6 +362,8 @@ struct JsonSidecar<'a> {
     input: &'a str,
     model: &'a str,
     language: Option<&'a str>,
+    /// `--start` of the processed window; segment times are relative to it.
+    start_offset_seconds: f64,
     duration_seconds: f64,
     segments: &'a [TranscriptSegment],
 }
@@ -359,6 +371,7 @@ struct JsonSidecar<'a> {
 fn json_sidecar(
     input: &Path,
     model: &str,
+    start_offset_seconds: f64,
     duration_seconds: f64,
     transcript: &Transcript,
 ) -> Result<String, Error> {
@@ -366,6 +379,7 @@ fn json_sidecar(
         input: input.to_str().unwrap_or_default(),
         model,
         language: transcript.language.as_deref(),
+        start_offset_seconds,
         duration_seconds,
         segments: &transcript.segments,
     };

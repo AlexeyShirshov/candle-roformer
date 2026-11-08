@@ -533,11 +533,16 @@ impl Transcriber {
                 .last()
                 .map(|&t| t >= timestamp_begin)
                 .unwrap_or(false);
+            // OpenAI treats a single trailing timestamp as "penultimate was a
+            // timestamp" (see `len(seq) < 2 or ...` in whisper/decoding.py).
+            // The Candle example uses `false` here, which suppresses text right
+            // after the initial timestamp and makes greedy decoding degenerate
+            // into `[ts_start, ts_end, eot]`.
             let penultimate_was_timestamp = sampled_tokens
                 .len()
                 .checked_sub(2)
                 .map(|i| sampled_tokens[i] >= timestamp_begin)
-                .unwrap_or(false);
+                .unwrap_or(true);
 
             if last_was_timestamp {
                 if penultimate_was_timestamp {

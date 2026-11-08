@@ -95,39 +95,86 @@ Schema status: **derived, corroborated, unproven against the checkpoint**. The r
 
 ## Whisper (ASR) — Step 4
 
-Status of the transcription layer, reported separately from the separation
-gates because it has its own blocker (no local Whisper weights).
+Status: **functional validation on real weights done; no accuracy/WER guarantee**
+(especially for singing). Reported separately from the separation gates.
 
-Verified offline on synthetic fixtures:
+### Models and fixtures (local validation only, not committed)
 
-- `cargo build --offline` — exit code 0 (with the pinned Candle
-  `candle-transformers` at rev `cfcbd7186d13271843ce7eb41d25659bd0835850`).
-- `cargo test --offline` — 43 tests, 0 failed:
-  - 10 crate unit tests, including Whisper timestamp-token math (20 ms steps,
-    window offsets, clamping, special-token filtering, decode-error
-    propagation), mel filter shapes (80x201 and 128x201, finite/non-negative),
-    zlib compression-ratio repetition detection, deterministic sampler, channel
-    downmix;
-  - 5 `tests/whisper_tests.rs` integration tests, including an end-to-end run
-    of `Transcriber::load` + `transcribe` against a tiny randomly-initialised
-    Whisper checkpoint with a hand-written tokenizer (proves loading, log-mel,
-    encoder/decoder plumbing, timestamp rules, segment assembly and the
-    `[0, duration]`/monotonic invariants execute), and a full
-    `separate_and_transcribe_file` run that writes two WAVs plus `.txt`/`.json`
-    and refuses to overwrite without the flag;
-  - the existing 3 library-API, 13 pipeline, 11 DSP and 1 doc tests.
-- Embedded mel filter assets: byte-for-byte copies from the pinned Candle
-  checkout, sha256 recorded in `assets/whisper/README.md`.
+Downloaded on 2026-11-08 into `/tmp/opencode/` for this validation; they are not
+bundled, cached in the repository, or redistributed, and the crate never
+downloads weights itself.
 
-Blocked:
+| Asset | Size | SHA256 |
+|---|---:|---|
+| `openai/whisper-tiny` `model.safetensors` | 151,061,672 | `7ebd0e69e78190ffe1438491fa05cc1f5c1aa3a4c4db3bc1723adbb551ea2395` |
+| `openai/whisper-tiny` `config.json` | 1,983 | `ffdccec4f3211f4c63310f2b7098f309fe70f3952cedc5e4d11e43f5b2379b98` |
+| `openai/whisper-tiny` `tokenizer.json` | 2,480,466 | `27fc476bfe7f17299480be2273fc0608e4d5a99aba2ab5dec5374b4482d1a566` |
+| `openai/whisper-small` `model.safetensors` | 966,995,080 | `1d7734884874f1a1513ed9aa760a4f8e97aaa02fd6d93a3a85d27b2ae9ca596b` |
+| `openai/whisper-small` `config.json` | 1,967 | `e6a2b489da1b5aed65a8eb8d1e7466fa867ad5643a8bc138ba708bd56b2875c4` |
+| `samples_jfk.wav` (Candle demo dataset) | 352,078 | `59dfb9a4acb36fe2a2affc14bacbee2920ff435cb13cc314a08c13f66ba7860e` |
 
-- `BLOCKED — no local Whisper weights`: no `config.json` + `tokenizer.json` +
-  `model.safetensors` checkpoint is present in this environment, and downloading
-  or bundling weights is forbidden by the project rules. Therefore real
-  transcription, language detection on real audio, and any accuracy/WER claim
-  were **not** run. The synthetic test uses random weights and is a plumbing
-  check only, not a quality result.
-- `BLOCKED — no GPU/Metal host` (shared with G2): Whisper was exercised on CPU
-  only. CUDA/Metal execution is untested here.
-- Known risk (spec §9): Whisper on sung vocals may hallucinate or mis-transcribe
-  lyrics; timestamps are segment-level, not word alignment.
+### Speech check — JFK sample (known reference text)
+
+Command (example built from this crate):
+`./target/release/examples/transcribe /tmp/opencode/jfk/samples_jfk.wav <model-dir>`
+
+- tiny, auto language: `en`, `[0.00 -> 10.50] And so my fellow Americans ask not
+  what your country can do for you ask what you can do for your country.`
+  — wall 2.3 s, peak RSS 323 MB.
+- small, auto language: `en`, `[0.00 -> 11.00] And so my fellow Americans, ask
+  not what your country can do for you, ask what you can do for your country.`
+  — wall 16.1 s, peak RSS 1.90 GB.
+
+Both match the reference sentence; this is a correctness check of mel
+computation, encoder/decoder plumbing, timestamp rules and segment assembly.
+
+### Real vocal check — «В сигаретном дыму» (cover)
+
+Input: the user's m4a, separated by this crate with the Kijai MelBandRoformer
+checkpoint. Whisper consumed the **vocal stem only**, never the mix.
+
+- 8 s window at 75 s, small, forced `ru`: `0.0–7.0 Умирал оттаскирив.`
+  — a garbled mid-phrase result; wall 2:27 including separation, peak RSS
+  1.97 GB. This is the expected failure mode for a short, mid-phrase window.
+- 30 s window at 75 s, small, forced `ru`:
+  `[20.00–25.00] Я болею тобой` — verified against the published lyrics of the
+  song; wall 8:39 including separation, peak RSS 2.05 GB.
+  The same run initially also produced
+  `[30.00–30.00] Редактор субтитров Н.Новикова` / `Корректор А.Кулакова`, the
+  well-known Whisper hallucination for padded silence (the window is exactly
+  30 s). Those segments had timestamps past the audio and are now dropped by the
+  no-audio-support rule; re-running the saved stem leaves only the real line.
+- Language auto-detection on this sung vocal is unreliable (tiny chose `ja`,
+  small chose `lt`); forcing `ru` is required for a usable result.
+
+### Bug found in the Candle reference (fixed here)
+
+The pinned Candle whisper example computes
+`penultimate_was_timestamp = len >= 2 && tokens[len-2] >= timestamp_begin`,
+i.e. `false` for the first generated token. OpenAI's reference uses
+`len(seq) < 2 or ...`, i.e. `true` there. With the example's version the first
+timestamp suppresses all text tokens, so greedy decoding degenerates to
+`[<|0.00|>, <|21.00|>, <|eot|>]` and the text only appeared through
+temperature fallback, with hallucinated timestamps. Fixed to match OpenAI;
+JFK now decodes the full sentence at temperature 0. Two other deliberate
+differences from the example: timestamp seconds use
+`(token - timestamp_begin) / 50` (the example adds 0.04 s), and no-speech
+probability is read from the logits after the full prompt.
+
+### Automated tests
+
+`cargo test --offline` — 44 tests, 0 failed: 11 crate unit tests (timestamp
+math, assembly, clamping and no-audio-support dropping, mel filter shapes,
+zlib ratio, sampler, downmix), 5 Whisper integration tests (including an
+end-to-end run on a tiny random checkpoint and the full
+`separate_and_transcribe_file` flow), 3 library-API, 13 pipeline, 11 DSP and
+1 doc test.
+
+### Still blocked / not claimed
+
+- `BLOCKED — CUDA/Metal`: Whisper ran on CPU only (no NVIDIA GPU, no Metal
+  host). No PASS is claimed for GPU execution.
+- No WER, no lyric-accuracy or language-coverage claim. Whisper on singing can
+  hallucinate or mis-transcribe; timestamps are segment-level, not word
+  alignment. Segment times in a trimmed run are relative to the written stems,
+  with the window offset recorded as `start_offset_seconds` in the JSON sidecar.

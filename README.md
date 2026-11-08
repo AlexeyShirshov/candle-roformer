@@ -162,11 +162,19 @@ Metal: `cargo build --release --features metal` (macOS).
   MDX23C — those are not ported yet.
 - Whisper transcription is implemented (80/128 mel bins, multilingual and
   English-only checkpoints, auto/explicit language, segment timestamps, 30 s
-  windows) but has **not** been run with real Whisper weights on this machine:
-  none are available locally. Loading, mel computation, decoding, timestamp
-  rules and sidecar writing are exercised by an end-to-end test with a tiny
-  randomly-initialised model; that is a plumbing test, not an accuracy claim.
-  Hallucinations and wrong lyrics on sung vocals remain an explicit risk
-  (spec §9).
+  windows) and was exercised with real `openai/whisper-tiny` and
+  `openai/whisper-small` checkpoints (downloaded only for local verification;
+  not part of this repository): the JFK sample transcribes exactly, and a 30 s
+  window of the separated vocal of «В сигаретном дыму» yields the real lyric
+  line «Я болею тобой». Singing remains hard for Whisper: short windows and
+  some regions produce gibberish or hallucinated text. Segments with no audio
+  support (timestamps past the end of the window) are dropped instead of being
+  reported at the boundary. There is no WER/accuracy guarantee (spec §9).
+
+  Try it with the example (no separator needed):
+
+  ```sh
+  cargo run --release --example transcribe -- song.wav /path/to/whisper-dir ru
+  ```
 - Weights licensing is not resolved by this repository; see the design spec
   `docs/superpowers/specs/2026-11-07-candle-roformer-design.md`.

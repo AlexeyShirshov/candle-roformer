@@ -68,7 +68,16 @@ where
         return Ok(());
     }
     let start = (offset_seconds + start_rel).clamp(0.0, total_duration_seconds);
+    // Whisper often emits real-looking text for padded silence past the end of
+    // the audio (e.g. subtitle credits). Such a segment has no audio support:
+    // drop it instead of reporting a zero-length span at the end.
+    if start >= total_duration_seconds {
+        return Ok(());
+    }
     let end = (offset_seconds + end_rel).clamp(start, total_duration_seconds.max(start));
+    if end <= start {
+        return Ok(());
+    }
     out.push(TranscriptSegment {
         start_seconds: start,
         end_seconds: end,
@@ -206,6 +215,20 @@ mod tests {
         assert_eq!(segs.len(), 1);
         assert_eq!(segs[0].start_seconds, 0.0);
         assert_eq!(segs[0].end_seconds, 12.5);
+    }
+
+    #[test]
+    fn drops_segments_without_audio_support() {
+        // A timestamp pair entirely beyond the track duration must not become
+        // a zero-length "credits" segment at the end.
+        let tokens = [1000 + 100, 7, 1000 + 150];
+        let segs = segments_from_tokens(&tokens, 1000, 0.0, 30.0, 1.0, &[], fake_decode).unwrap();
+        assert!(segs.is_empty());
+
+        // Equal timestamps inside the audio are also dropped (no time span).
+        let tokens = [1000, 7, 1000];
+        let segs = segments_from_tokens(&tokens, 1000, 0.0, 30.0, 30.0, &[], fake_decode).unwrap();
+        assert!(segs.is_empty());
     }
 
     #[test]

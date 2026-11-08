@@ -320,6 +320,7 @@ fn separate_and_transcribe_writes_stems_and_sidecars() {
     let json: serde_json::Value =
         serde_json::from_str(&fs::read_to_string(&out.json).unwrap()).unwrap();
     assert_eq!(json["language"], "en");
+    assert_eq!(json["start_offset_seconds"].as_f64().unwrap(), 0.0);
     assert!(json["duration_seconds"].as_f64().unwrap() > 0.0);
     assert_eq!(
         json["segments"].as_array().unwrap().len(),
