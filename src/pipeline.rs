@@ -89,8 +89,19 @@ pub fn run_pipeline_named(
                 "--start is beyond the input length".into(),
             )));
         }
+        let full = audio.planar.clone();
         for c in (0..ch).rev() {
             audio.planar.drain(c * frames..c * frames + skip);
+        }
+        if std::env::var("CANDLE_ROFORMER_DUMP").is_ok() {
+            let nf = audio.planar.len() / ch;
+            for c in 0..ch {
+                let a = &audio.planar[c * nf..(c + 1) * nf];
+                let b = &full[c * frames + skip..(c + 1) * frames];
+                let mut dot = 0f64; let mut na = 0f64; let mut nb = 0f64;
+                for (x, y) in a.iter().zip(b.iter()) { dot += *x as f64 * *y as f64; na += (*x as f64).powi(2); nb += (*y as f64).powi(2); }
+                eprintln!("[trim] ch{} corr {}", c, dot / (na.sqrt() * nb.sqrt()));
+            }
         }
     }
     if let Some(secs) = limit_seconds {
@@ -106,7 +117,15 @@ pub fn run_pipeline_named(
                 "duration trims the whole input".into(),
             )));
         }
-        audio.planar.truncate(want * audio.channels as usize);
+        // planar layout is channel-major: truncating the flat vector would drop
+        // the tail of channel 0 and part of channel 1. Cut per channel instead.
+        let ch = audio.channels as usize;
+        let frames = audio.planar.len() / ch;
+        let mut cut = Vec::with_capacity(want * ch);
+        for c in 0..ch {
+            cut.extend_from_slice(&audio.planar[c * frames..c * frames + want]);
+        }
+        audio.planar = cut;
     }
     let channels = audio.channels as usize;
     if channels == 0 || channels > 2 {
@@ -120,10 +139,20 @@ pub fn run_pipeline_named(
             bytes.extend_from_slice(&x.to_le_bytes());
         }
         let _ = std::fs::write(format!("{}/raw_planar.f32", dir), bytes);
+        {
+            let nf = audio.planar.len() / channels;
+            let mut sum = 0f64;
+            for x in &audio.planar[nf..] { sum += (*x as f64) * (*x as f64); }
+            eprintln!("[dump] frames={} ch1_rms={}", nf, (sum / nf as f64).sqrt());
+        }
         let _ = std::fs::write(
             format!("{}/raw_planar.shape", dir),
             format!("{},{},{}", channels, audio.planar.len() / channels, input_sr),
         );
+    }
+
+    if std::env::var("CANDLE_ROFORMER_DECODE_ONLY").is_ok() {
+        return Ok(());
     }
 
     // mono duplicate

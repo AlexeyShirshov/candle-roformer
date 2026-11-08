@@ -27,6 +27,7 @@ rustfft = "6"
 thiserror = "2"
 serde = { version = "1", features = ["derive"] }
 serde_yaml = "0.9"
-symphonia = { version = "0.5", features = ["all"] }
+symphonia = { version = "0.6", features = ["all"] }
+claxon = "0.4"
 [dev-dependencies]
 # Tests use only the standard library plus the crate's own dependencies.

@@ -15,7 +15,8 @@ The instrumental is the input-waveform residual: `instrumental = input - vocals`
 
 ## Input formats
 
-Anything Symphonia decodes: **m4a/AAC**, mp3, flac, ogg/vorbis, wav.
+m4a (AAC, ALAC, **FLAC-in-MP4**), mp3, flac, ogg/vorbis, wav. FLAC is decoded
+with claxon because symphonia mis-decodes some FLAC-in-MP4 bitstreams.
 Mono input is duplicated to stereo for the model and the separated vocal is
 downmixed back to mono; stereo stays stereo.
 

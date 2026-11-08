@@ -1,12 +1,12 @@
 use std::fs::File;
 use std::path::Path;
 
-use symphonia::core::audio::SampleBuffer;
-use symphonia::core::codecs::DecoderOptions;
-use symphonia::core::formats::FormatOptions;
+use symphonia::core::codecs::audio::AudioDecoderOptions;
+use symphonia::core::errors::Error as SymphoniaError;
+use symphonia::core::formats::probe::Hint;
+use symphonia::core::formats::{FormatOptions, TrackType};
 use symphonia::core::io::MediaSourceStream;
 use symphonia::core::meta::MetadataOptions;
-use symphonia::core::probe::Hint;
 
 use crate::error::{AudioError, Error};
 
@@ -27,17 +27,28 @@ pub fn read_audio(path: impl AsRef<Path>) -> Result<AudioBuffer, Error> {
         hint.with_extension(ext);
     }
 
-    let probed = symphonia::default::get_probe()
-        .format(&hint, mss, &FormatOptions::default(), &MetadataOptions::default())
+    let mut format = symphonia::default::get_probe()
+        .probe(
+            &hint,
+            mss,
+            FormatOptions::default(),
+            MetadataOptions::default(),
+        )
         .map_err(|e| Error::Audio(AudioError::UnsupportedFormat(e.to_string())))?;
 
-    let mut format = probed.format;
     let track = format
-        .default_track()
+        .default_track(TrackType::Audio)
         .ok_or_else(|| Error::Audio(AudioError::UnsupportedFormat("no audio track".into())))?;
 
     let track_id = track.id;
-    let codec_params = track.codec_params.clone();
+    let codec_params = track
+        .codec_params
+        .as_ref()
+        .ok_or_else(|| Error::Audio(AudioError::UnsupportedFormat("no codec parameters".into())))?
+        .audio()
+        .ok_or_else(|| Error::Audio(AudioError::UnsupportedFormat("not an audio codec".into())))?
+        .clone();
+
     let sample_rate = codec_params
         .sample_rate
         .ok_or_else(|| Error::Audio(AudioError::InvalidSampleRate("missing sample rate".into())))?;
@@ -49,7 +60,7 @@ pub fn read_audio(path: impl AsRef<Path>) -> Result<AudioBuffer, Error> {
     }
     let channels = codec_params
         .channels
-        .map(|c| c.count() as u16)
+        .as_ref().map(|c| c.count() as u16)
         .unwrap_or(1);
     if channels == 0 || channels > 2 {
         return Err(Error::Audio(AudioError::TooManyChannels(format!(
@@ -58,56 +69,62 @@ pub fn read_audio(path: impl AsRef<Path>) -> Result<AudioBuffer, Error> {
         ))));
     }
 
+    // FLAC-in-MP4 streams (rare, but real) are decoded incorrectly by
+    // symphonia for some bitstreams (the second channel comes out wrong).
+    // Route FLAC through claxon: rebuild a raw FLAC stream from the demuxed
+    // frames plus the STREAMINFO block and decode that.
+    if codec_params.codec == symphonia::core::codecs::audio::well_known::CODEC_ID_FLAC {
+        return read_flac(path, &mut format, track_id);
+    }
+
     let mut decoder = symphonia::default::get_codecs()
-        .make(&codec_params, &DecoderOptions::default())
+        .make_audio_decoder(&codec_params, &AudioDecoderOptions::default())
         .map_err(|e| Error::Audio(AudioError::UnsupportedFormat(e.to_string())))?;
 
     let mut planar: Vec<Vec<f32>> = vec![Vec::new(); channels as usize];
 
     loop {
         let packet = match format.next_packet() {
-            Ok(p) => p,
-            Err(symphonia::core::errors::Error::IoError(e))
-                if e.kind() == std::io::ErrorKind::UnexpectedEof =>
-            {
-                break;
-            }
-            Err(symphonia::core::errors::Error::ResetRequired) => {
-                // reset decoder
+            Ok(Some(p)) => p,
+            Ok(None) => break,
+            Err(SymphoniaError::ResetRequired) => {
                 decoder.reset();
                 continue;
             }
             Err(e) => {
-                // end of stream or error
-                if format!("{}", e).contains("end of stream") {
-                    break;
-                }
                 return Err(Error::Audio(AudioError::UnsupportedFormat(e.to_string())));
             }
         };
 
-        if packet.track_id() != track_id {
+        if packet.track_id != track_id {
             continue;
         }
 
         let decoded = match decoder.decode(&packet) {
             Ok(d) => d,
-            Err(symphonia::core::errors::Error::DecodeError(_)) => continue,
+            Err(SymphoniaError::DecodeError(_)) => continue,
             Err(e) => return Err(Error::Audio(AudioError::UnsupportedFormat(e.to_string()))),
         };
 
-        let ch = decoded.spec().channels.count();
-        if std::env::var("CANDLE_ROFORMER_DUMP").is_ok() {
-            eprintln!("[decode] packet ch={} frames={} rate={}", ch, decoded.frames(), decoded.spec().rate);
+        let ch = decoded.spec().channels().count();
+        if ch == 0 {
+            continue;
         }
-        let mut sample_buf = SampleBuffer::<f32>::new(decoded.capacity() as u64, *decoded.spec());
-        sample_buf.copy_interleaved_ref(decoded);
-        let samples = sample_buf.samples();
-        // interleave -> planar
-        let frames = samples.len() / ch;
+        let mut interleaved = vec![0f32; decoded.frames() * ch];
+        decoded.copy_to_slice_interleaved(&mut interleaved);
+
+        let frames = interleaved.len() / ch;
         for f in 0..frames {
             for c in 0..channels as usize {
-                let v = samples[f * ch + c];
+                // A packet with fewer channels than the stream (rare, malformed) is
+                // refused rather than silently mis-interleaved.
+                if c >= ch {
+                    return Err(Error::Audio(AudioError::UnsupportedFormat(format!(
+                        "decoder returned {} channels, expected {}",
+                        ch, channels
+                    ))));
+                }
+                let v = interleaved[f * ch + c];
                 if !v.is_finite() {
                     return Err(Error::Audio(AudioError::NonFinite(
                         "non-finite sample".into(),
@@ -118,15 +135,6 @@ pub fn read_audio(path: impl AsRef<Path>) -> Result<AudioBuffer, Error> {
         }
     }
 
-    // flatten planar
-    let mut flat = Vec::new();
-    for c in 0..channels as usize {
-        if planar[c].is_empty() {
-            // empty input
-        }
-        flat.extend_from_slice(&planar[c]);
-    }
-    // total frames
     let frames = planar[0].len();
     if frames == 0 {
         return Err(Error::Audio(AudioError::EmptyInput("empty audio".into())));
@@ -139,7 +147,6 @@ pub fn read_audio(path: impl AsRef<Path>) -> Result<AudioBuffer, Error> {
         }
     }
 
-    // rebuild planar as ch-major contiguous (already)
     let mut planar_flat = Vec::with_capacity(channels as usize * frames);
     for c in 0..channels as usize {
         planar_flat.extend_from_slice(&planar[c]);
@@ -194,4 +201,112 @@ pub fn write_wav_f32(path: impl AsRef<Path>, buf: &AudioBuffer) -> Result<(), Er
         }
     }
     Ok(())
+}
+
+fn read_flac(
+    path: &Path,
+    format: &mut Box<dyn symphonia::core::formats::FormatReader>,
+    track_id: u32,
+) -> Result<AudioBuffer, Error> {
+    use std::io::Cursor;
+    let bytes = std::fs::read(path).map_err(|e| Error::Audio(AudioError::Io(e.to_string())))?;
+    let mut stream: Vec<u8> = Vec::new();
+    if bytes.starts_with(b"fLaC") {
+        stream = bytes;
+    } else {
+        // MP4 (dfLa box): 'dfLa' + version/flags (4) + FLAC metadata block
+        // header (4, 0x80|type and 24-bit length) + STREAMINFO payload.
+        let needle = b"dfLa";
+        let pos = bytes
+            .windows(needle.len())
+            .position(|w| w == needle)
+            .ok_or_else(|| {
+                Error::Audio(AudioError::UnsupportedFormat(
+                    "FLAC stream without dfLa box".into(),
+                ))
+            })?;
+        let hdr_start = pos + 4 + 4;
+        if hdr_start + 4 > bytes.len() {
+            return Err(Error::Audio(AudioError::UnsupportedFormat(
+                "truncated dfLa box".into(),
+            )));
+        }
+        let block_hdr = &bytes[hdr_start..hdr_start + 4];
+        let len = ((block_hdr[1] as usize) << 16)
+            | ((block_hdr[2] as usize) << 8)
+            | (block_hdr[3] as usize);
+        let data_start = hdr_start + 4;
+        if data_start + len > bytes.len() {
+            return Err(Error::Audio(AudioError::UnsupportedFormat(
+                "truncated STREAMINFO".into(),
+            )));
+        }
+        stream.extend_from_slice(b"fLaC");
+        stream.extend_from_slice(block_hdr);
+        stream.extend_from_slice(&bytes[data_start..data_start + len]);
+        loop {
+            match format.next_packet() {
+                Ok(Some(packet)) => {
+                    if packet.track_id == track_id {
+                        stream.extend_from_slice(&packet.data);
+                    }
+                }
+                Ok(None) => break,
+                Err(SymphoniaError::ResetRequired) => break,
+                Err(e) => {
+                    return Err(Error::Audio(AudioError::UnsupportedFormat(e.to_string())))
+                }
+            }
+        }
+    }
+
+    let mut reader = claxon::FlacReader::new(Cursor::new(stream))
+        .map_err(|e| Error::Audio(AudioError::UnsupportedFormat(format!("flac: {}", e))))?;
+    let info = reader.streaminfo();
+    let channels = info.channels as usize;
+    if channels == 0 || channels > 2 {
+        return Err(Error::Audio(AudioError::TooManyChannels(format!(
+            "unsupported channel count {}",
+            channels
+        ))));
+    }
+    let bits = if info.bits_per_sample == 0 || info.bits_per_sample > 32 {
+        16
+    } else {
+        info.bits_per_sample
+    };
+    let scale = 1.0f32 / (1u64 << (bits - 1)) as f32;
+    let mut planar: Vec<Vec<f32>> = vec![Vec::new(); channels];
+    let mut idx = 0usize;
+    for sample in reader.samples() {
+        let v = sample
+            .map_err(|e| Error::Audio(AudioError::UnsupportedFormat(format!("flac: {}", e))))?
+            as f32
+            * scale;
+        if !v.is_finite() {
+            return Err(Error::Audio(AudioError::NonFinite("non-finite sample".into())));
+        }
+        planar[idx % channels].push(v);
+        idx += 1;
+    }
+    let frames = planar[0].len();
+    if frames == 0 {
+        return Err(Error::Audio(AudioError::EmptyInput("empty audio".into())));
+    }
+    for c in 0..channels {
+        if planar[c].len() != frames {
+            return Err(Error::Audio(AudioError::UnsupportedFormat(
+                "channel length mismatch".into(),
+            )));
+        }
+    }
+    let mut planar_flat = Vec::with_capacity(channels * frames);
+    for c in 0..channels {
+        planar_flat.extend_from_slice(&planar[c]);
+    }
+    Ok(AudioBuffer {
+        sample_rate: info.sample_rate,
+        channels: channels as u16,
+        planar: planar_flat,
+    })
 }
