@@ -3,26 +3,62 @@
 Offline vocal/instrumental separation in Rust on top of [Candle](https://github.com/huggingface/candle).
 No Python at runtime, no hidden model downloads.
 
-## What it does
+**The crate is the product.** The `candle-roformer` binary is a thin CLI wrapper
+over the same public API.
 
-1. loads a local MelBandRoformer checkpoint (safetensors) and its YAML profile;
-2. takes an input audio file from the command line;
-3. separates it with the model (chunked inference with weighted overlap-add);
-4. writes the results: `vocals.wav` and `instrumental.wav` (float32 WAV, input
-   sample rate and channel layout, exact input length).
+## Library API
 
-The instrumental is the input-waveform residual: `instrumental = input - vocals`.
+```rust
+use candle_roformer::{AudioBuffer, DeviceChoice, LocalSeparationAssets, Separator};
+
+let assets = LocalSeparationAssets::new("vocals.safetensors", "vocals.yaml");
+let separator = Separator::load(&assets, DeviceChoice::Cpu)?;
+
+let audio = candle_roformer::wav::read_audio("song.m4a")?;   // or build AudioBuffer yourself
+let stems = separator.separate(&audio)?;                     // in-memory, no file I/O
+
+candle_roformer::wav::write_wav_f32("out/vocals.wav", &stems.vocals)?;
+candle_roformer::wav::write_wav_f32("out/instrumental.wav", &stems.instrumental)?;
+```
+
+- `Separator::load` validates the checkpoint against the profile (full key set,
+  shapes) before allocating the model, so a mismatched pair fails loudly.
+- `Separator::separate` takes an `AudioBuffer` (planar f32 + sample rate +
+  channels) and returns `Stems { vocals, instrumental }` at the input's sample
+  rate, channel layout and exact length. The instrumental is the
+  input-waveform residual: `input - vocals`.
+- `AudioBuffer::validate` rejects absurd rates, >2 channels, misaligned or
+  non-finite buffers.
+- File orchestration (decode, trim window, staging + rename) is the separate
+  `pipeline` module; programs that already hold audio in memory never touch it.
+
+## CLI (thin wrapper)
+
+```sh
+./target/release/candle-roformer "/path/to/song.m4a" \
+  --model_filename /path/to/MelBandRoformer_fp32.safetensors \
+  --config configs/kijai_melband_384.yaml \
+  --output_dir out/
+```
+
+Outputs follow the `audio-separator` naming convention:
+`<input>_(Vocals)_<model>.wav` and `<input>_(Instrumental)_<model>.wav`.
+
+Options: `--model_filename`/`--model`, `--model_file_dir`, `--config`
+(defaults to `<model-stem>.yaml` next to the model), `--output_dir`,
+`--output_format wav` (other formats are not implemented yet), `--single_stem`,
+`--device cpu|cuda|metal` (an unavailable device is an error, never a silent
+CPU fallback), `--start`, `--duration`, `--overwrite`.
 
 ## Input formats
 
-m4a (AAC, ALAC, **FLAC-in-MP4**), mp3, flac, ogg/vorbis, wav. FLAC is decoded
-with claxon because symphonia mis-decodes some FLAC-in-MP4 bitstreams.
+m4a (AAC, ALAC, FLAC-in-MP4), mp3, flac, ogg/vorbis, wav. FLAC is decoded with
+claxon because symphonia mis-decodes some FLAC-in-MP4 bitstreams.
+
 Mono input is duplicated to stereo for the model and the separated vocal is
 downmixed back to mono; stereo stays stereo.
 
 ## Model files
-
-Two profiles are supported out of the box:
 
 | Profile | Config | Weights |
 |---|---|---|
@@ -31,7 +67,7 @@ Two profiles are supported out of the box:
 
 The original `.ckpt` is a PyTorch pickle and is **not** read by the runtime.
 `tools/convert_voc_fv7.py` performs the one-time offline conversion
-(`torch.load(weights_only=True)`, pinned SHA256, strict v7 key/shape/dtype
+(`torch.load(weights_only=True)`, pinned SHA256, strict key/shape/dtype
 validation) and emits safetensors plus a manifest.
 
 Weights are never downloaded, bundled, cached or redistributed by this project.
@@ -46,44 +82,17 @@ cargo build --release
 CUDA: `cargo build --release --features cuda` (NVIDIA + CUDA toolkit).
 Metal: `cargo build --release --features metal` (macOS).
 
-## Run
-
-```sh
-./target/release/candle-roformer "/path/to/song.m4a" \
-  --model_filename /path/to/MelBandRoformer_fp32.safetensors \
-  --config configs/kijai_melband_384.yaml \
-  --output_dir out/ \
-  --device cpu
-```
-
-Outputs follow the `audio-separator` naming convention:
-`<input>_(Vocals)_<model>.wav` and `<input>_(Instrumental)_<model>.wav`.
-
-Options:
-
-- `--model_filename` / `--model`, `--model_file_dir`, `--config` (defaults to
-  `<model-stem>.yaml` next to the model);
-- `--output_dir`, `--output_format wav` (other formats are not implemented yet);
-- `--single_stem` — write only vocals;
-- `--device cpu|cuda|metal` — an unavailable device is an error, never a silent
-  CPU fallback;
-- `--start <s>`, `--duration <s>` — process a window of the input;
-- `--overwrite` — allow replacing existing outputs (default: refuse);
-- outputs are written to staging files and renamed one by one after success;
-  a failure removes this program's staging files and leaves your existing files
-  untouched. The legacy `separate` prefix (four-argument form) still works.
-
 ## Status and limits
 
-- CPU inference works but is slow: this machine has no NVIDIA GPU, so a
-  MelBandRoformer 384/6 pass runs at roughly half real time and far slower than
-  an optimized BLAS/PyTorch build. `CANDLE_NUM_THREADS=8` uses more cores.
-  CUDA/Metal execution has **not** been tested on this machine.
+- CPU inference works but is slow: on a machine without a GPU a
+  MelBandRoformer 384/6 pass runs at roughly a quarter of real time.
+  `CANDLE_NUM_THREADS=8` uses more cores. CUDA/Metal execution has **not**
+  been tested here (no NVIDIA GPU, no macOS host).
+- Numerical parity with the PyTorch reference is verified end-to-end
+  (corr 1.000000 on a frozen 8 s input); hardware smoke tests (G2) remain open.
 - Supported architecture family: MelBandRoformer (`voc_fv7` 256/12 and
-  Kimberley 384/6 profiles). `audio-separator` also covers MDX-Net, VR/UVR,
-  Demucs and MDX23C — those are not ported yet.
-- Real-checkpoint numerical parity (G3) and hardware smoke tests (G2) are open
-  gates; see `docs/gates-report.md`.
+  Kimberley 384/6). `audio-separator` also covers MDX-Net, VR/UVR, Demucs and
+  MDX23C — those are not ported yet.
 - Vocal transcription (Whisper) is not implemented yet.
 - Weights licensing is not resolved by this repository; see the design spec
   `docs/superpowers/specs/2026-11-07-candle-roformer-design.md`.

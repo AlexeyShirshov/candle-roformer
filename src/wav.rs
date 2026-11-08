@@ -17,6 +17,50 @@ pub struct AudioBuffer {
     pub planar: Vec<f32>,
 }
 
+impl AudioBuffer {
+    pub fn frames(&self) -> usize {
+        self.planar.len() / self.channels.max(1) as usize
+    }
+
+    pub fn duration_secs(&self) -> f64 {
+        if self.sample_rate == 0 {
+            0.0
+        } else {
+            self.frames() as f64 / self.sample_rate as f64
+        }
+    }
+
+    /// Reject buffers the rest of the pipeline cannot process faithfully:
+    /// non-audio sample rates, more than two channels, an empty or
+    /// channel-misaligned buffer, and non-finite samples.
+    pub fn validate(&self) -> Result<(), Error> {
+        if self.sample_rate == 0 || self.sample_rate > 384_000 {
+            return Err(Error::Audio(AudioError::InvalidSampleRate(format!(
+                "invalid sample rate {}",
+                self.sample_rate
+            ))));
+        }
+        if self.channels == 0 || self.channels > 2 {
+            return Err(Error::Audio(AudioError::TooManyChannels(format!(
+                "unsupported channel count {}",
+                self.channels
+            ))));
+        }
+        let ch = self.channels as usize;
+        if self.planar.is_empty() || self.planar.len() % ch != 0 {
+            return Err(Error::Audio(AudioError::UnsupportedFormat(
+                "buffer length is not a whole number of frames".into(),
+            )));
+        }
+        if self.planar.iter().any(|s| !s.is_finite()) {
+            return Err(Error::Audio(AudioError::NonFinite(
+                "buffer contains non-finite samples".into(),
+            )));
+        }
+        Ok(())
+    }
+}
+
 pub fn read_audio(path: impl AsRef<Path>) -> Result<AudioBuffer, Error> {
     let path = path.as_ref();
     let file = File::open(path).map_err(|e| Error::Audio(AudioError::Io(e.to_string())))?;

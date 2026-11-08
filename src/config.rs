@@ -1,3 +1,5 @@
+use std::path::Path;
+
 use crate::error::ConfigError;
 use serde::Deserialize;
 
@@ -45,6 +47,24 @@ fn default_mlp_expansion() -> usize {
 }
 
 impl SeparatorConfig {
+    /// Parse a v7-style YAML profile (`model:` section).
+    pub fn from_yaml_str(text: &str) -> Result<Self, ConfigError> {
+        #[derive(Deserialize)]
+        struct Root {
+            model: SeparatorConfig,
+        }
+        let root: Root =
+            serde_yaml::from_str(text).map_err(|e| ConfigError::Invalid(e.to_string()))?;
+        Ok(root.model)
+    }
+
+    /// Read and parse a v7-style YAML profile from disk.
+    pub fn from_yaml_file(path: impl AsRef<Path>) -> Result<Self, ConfigError> {
+        let text = std::fs::read_to_string(path)
+            .map_err(|e| ConfigError::Invalid(format!("cannot read config: {}", e)))?;
+        Self::from_yaml_str(&text)
+    }
+
     /// The exact profile from `v7.yaml` (MelBandRoformer vocals).
     pub fn v7() -> Self {
         Self {

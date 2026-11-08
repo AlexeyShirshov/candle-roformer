@@ -1,28 +1,24 @@
+//! File orchestration. This is the thin I/O layer on top of [`Separator`]:
+//! decode an input file, hand the buffers to the library, write the stems.
+//!
+//! Programs that already hold audio in memory should use [`Separator`]
+//! directly instead of this module.
+
 use std::fs;
 use std::path::Path;
 
-use candle_core::{DType, Device};
-use candle_core::safetensors::Load;
-use candle_nn::{VarBuilder, VarMap};
-use serde::Deserialize;
-
-use crate::config::SeparatorConfig;
 use crate::error::{AudioError, Error};
-use crate::model::MelBandRoformer;
-use crate::resample;
-use crate::separate;
+use crate::separator::Separator;
 use crate::wav::{read_audio, write_wav_f32, AudioBuffer};
 
-#[derive(Deserialize)]
-struct YamlRoot {
-    model: SeparatorConfig,
-}
-
+/// Output file names (relative to the output directory).
 pub struct OutputNames<'a> {
     pub vocals: &'a str,
     pub instrumental: Option<&'a str>,
 }
 
+/// Separate a file and write `vocals.wav` / `instrumental.wav`.
+#[allow(clippy::too_many_arguments)]
 pub fn run_pipeline(
     model_path: &str,
     config_path: &str,
@@ -42,10 +38,15 @@ pub fn run_pipeline(
         overwrite,
         start_seconds,
         limit_seconds,
-        &OutputNames { vocals: "vocals.wav", instrumental: Some("instrumental.wav") },
+        &OutputNames {
+            vocals: "vocals.wav",
+            instrumental: Some("instrumental.wav"),
+        },
     )
 }
 
+/// Separate a file with explicit output names.
+#[allow(clippy::too_many_arguments)]
 pub fn run_pipeline_named(
     model_path: &str,
     config_path: &str,
@@ -57,166 +58,83 @@ pub fn run_pipeline_named(
     limit_seconds: Option<f64>,
     names: &OutputNames,
 ) -> Result<(), Error> {
-    // parse config
-    let yaml_str = fs::read_to_string(config_path)
-        .map_err(|e| Error::Audio(AudioError::Io(e.to_string())))?;
-    let root: YamlRoot = serde_yaml::from_str(&yaml_str)
-        .map_err(|e| Error::Config(crate::error::ConfigError::Invalid(e.to_string())))?;
-    let cfg = root.model;
-    cfg.validate()?;
+    let assets = crate::assets::LocalSeparationAssets::new(model_path, config_path);
+    let separator = Separator::load(&assets, device)?;
 
-    let dev = device.resolve()?;
-
-    // strict key check + load
-    strict_check(model_path, &cfg, &dev)?;
-    let vb = unsafe { VarBuilder::from_mmaped_safetensors(&[model_path], DType::F32, &dev) }
-        .map_err(Error::Candle)?;
-    let model = MelBandRoformer::new(&cfg, vb).map_err(Error::Candle)?;
-
-    // decode
     let mut audio = read_audio(input_path)?;
+    trim_window(&mut audio, start_seconds, limit_seconds)?;
+    let stems = separator.separate(&audio)?;
+
+    write_stems(output_dir, names, &stems, overwrite)
+}
+
+/// Trim a decoded buffer to a `[start, start + duration)` window. Buffers are
+/// channel-major, so both ends are cut per channel.
+pub fn trim_window(
+    audio: &mut AudioBuffer,
+    start_seconds: Option<f64>,
+    limit_seconds: Option<f64>,
+) -> Result<(), Error> {
+    let ch = audio.channels as usize;
+    let frames = audio.planar.len() / ch;
     if let Some(start) = start_seconds {
         if start < 0.0 || !start.is_finite() {
             return Err(Error::Audio(AudioError::InvalidSampleRate(
-                "invalid --start".into(),
+                "invalid start offset".into(),
             )));
         }
-        let ch = audio.channels as usize;
-        let frames = audio.planar.len() / ch;
         let skip = ((start * audio.sample_rate as f64).round() as usize).min(frames);
         if skip >= frames {
             return Err(Error::Audio(AudioError::EmptyInput(
-                "--start is beyond the input length".into(),
+                "start offset is beyond the input length".into(),
             )));
         }
-        let full = audio.planar.clone();
-        for c in (0..ch).rev() {
-            audio.planar.drain(c * frames..c * frames + skip);
+        let mut cut = Vec::with_capacity(audio.planar.len() - skip * ch);
+        for c in 0..ch {
+            cut.extend_from_slice(&audio.planar[c * frames + skip..(c + 1) * frames]);
         }
-        if std::env::var("CANDLE_ROFORMER_DUMP").is_ok() {
-            let nf = audio.planar.len() / ch;
-            for c in 0..ch {
-                let a = &audio.planar[c * nf..(c + 1) * nf];
-                let b = &full[c * frames + skip..(c + 1) * frames];
-                let mut dot = 0f64; let mut na = 0f64; let mut nb = 0f64;
-                for (x, y) in a.iter().zip(b.iter()) { dot += *x as f64 * *y as f64; na += (*x as f64).powi(2); nb += (*y as f64).powi(2); }
-                eprintln!("[trim] ch{} corr {}", c, dot / (na.sqrt() * nb.sqrt()));
-            }
-        }
+        audio.planar = cut;
     }
     if let Some(secs) = limit_seconds {
         if secs <= 0.0 || !secs.is_finite() {
             return Err(Error::Audio(AudioError::InvalidSampleRate(
-                "invalid --duration".into(),
+                "invalid duration".into(),
             )));
         }
-        let frames = audio.planar.len() / audio.channels as usize;
+        let frames = audio.planar.len() / ch;
         let want = ((secs * audio.sample_rate as f64).round() as usize).min(frames);
         if want == 0 {
             return Err(Error::Audio(AudioError::EmptyInput(
                 "duration trims the whole input".into(),
             )));
         }
-        // planar layout is channel-major: truncating the flat vector would drop
-        // the tail of channel 0 and part of channel 1. Cut per channel instead.
-        let ch = audio.channels as usize;
-        let frames = audio.planar.len() / ch;
         let mut cut = Vec::with_capacity(want * ch);
         for c in 0..ch {
             cut.extend_from_slice(&audio.planar[c * frames..c * frames + want]);
         }
         audio.planar = cut;
     }
-    let channels = audio.channels as usize;
-    if channels == 0 || channels > 2 {
-        return Err(Error::Audio(AudioError::TooManyChannels(format!("{}", channels))));
-    }
-    let input_sr = audio.sample_rate;
-    if let Ok(dir) = std::env::var("CANDLE_ROFORMER_DUMP") {
-        let _ = std::fs::create_dir_all(&dir);
-        let mut bytes = Vec::with_capacity(audio.planar.len() * 4);
-        for x in &audio.planar {
-            bytes.extend_from_slice(&x.to_le_bytes());
-        }
-        let _ = std::fs::write(format!("{}/raw_planar.f32", dir), bytes);
-        {
-            let nf = audio.planar.len() / channels;
-            let mut sum = 0f64;
-            for x in &audio.planar[nf..] { sum += (*x as f64) * (*x as f64); }
-            eprintln!("[dump] frames={} ch1_rms={}", nf, (sum / nf as f64).sqrt());
-        }
-        let _ = std::fs::write(
-            format!("{}/raw_planar.shape", dir),
-            format!("{},{},{}", channels, audio.planar.len() / channels, input_sr),
-        );
-    }
+    Ok(())
+}
 
-    if std::env::var("CANDLE_ROFORMER_DECODE_ONLY").is_ok() {
-        return Ok(());
-    }
-
-    // mono duplicate
-    let model_channels = if channels == 1 { 2 } else { channels };
-    let mut model_input = if channels == 1 {
-        let mut v = Vec::with_capacity(audio.planar.len() * 2);
-        v.extend_from_slice(&audio.planar);
-        v.extend_from_slice(&audio.planar);
-        v
-    } else {
-        audio.planar.clone()
-    };
-
-    // resample to 44100
-    let resampled = resample::resample_planar(&model_input, model_channels, input_sr, 44100);
-
-    // separate
-    let vocals_44k = separate::separate(&model, &resampled, model_channels)?;
-
-    // downmix vocals to original channels
-    let vocals_orig_44k = if channels == 1 {
-        let n = vocals_44k.len() / 2;
-        let mut mono = vec![0f32; n];
-        for i in 0..n {
-            mono[i] = (vocals_44k[i] + vocals_44k[n + i]) * 0.5;
-        }
-        mono
-    } else {
-        vocals_44k
-    };
-
-    // resample back
-    let vocals_out = resample::resample_planar(&vocals_orig_44k, channels, 44100, input_sr);
-
-    // exact N
-    let n = audio.planar.len() / channels;
-    let vframes = vocals_out.len() / channels;
-    let mut vocals_final = vec![0f32; channels * n];
-    for ch in 0..channels {
-        for i in 0..n {
-            let src = ch * vframes + i;
-            if src < vocals_out.len() {
-                vocals_final[ch * n + i] = vocals_out[src];
-            }
-        }
-    }
-    let mut instr_final = vec![0f32; channels * n];
-    for i in 0..channels * n {
-        instr_final[i] = audio.planar[i] - vocals_final[i];
-    }
-
-    // output dir
+/// Write stems through staging files: both are written first, then renamed
+/// (one by one, not a multi-file atomic transaction). On failure this removes
+/// only its own staging files.
+pub fn write_stems(
+    output_dir: &str,
+    names: &OutputNames,
+    stems: &crate::separator::Stems,
+    overwrite: bool,
+) -> Result<(), Error> {
     let out_dir = Path::new(output_dir);
-    fs::create_dir_all(out_dir)
-        .map_err(|e| Error::Audio(AudioError::Io(e.to_string())))?;
+    fs::create_dir_all(out_dir).map_err(|e| Error::Audio(AudioError::Io(e.to_string())))?;
 
     let vocals_path = out_dir.join(names.vocals);
-    let instr_path = match names.instrumental {
-        Some(n) => Some(out_dir.join(n)),
-        None => None,
-    };
+    let instr_path = names.instrumental.map(|n| out_dir.join(n));
 
     if !overwrite
-        && (vocals_path.exists() || instr_path.as_ref().map(|p| p.exists()).unwrap_or(false))
+        && (vocals_path.exists()
+            || instr_path.as_ref().map(|p| p.exists()).unwrap_or(false))
     {
         return Err(Error::Audio(AudioError::Io(
             "output file exists; use --overwrite".into(),
@@ -228,24 +146,13 @@ pub fn run_pipeline_named(
         .instrumental
         .map(|n| out_dir.join(format!(".{}.tmp", n)));
 
-    let buf_v = AudioBuffer {
-        sample_rate: input_sr,
-        channels: channels as u16,
-        planar: vocals_final,
-    };
-
-    if let Err(e) = write_wav_f32(&staging_v, &buf_v) {
+    if let Err(e) = write_wav_f32(&staging_v, &stems.vocals) {
         let _ = fs::remove_file(&staging_v);
         return Err(e);
     }
     if let Some(instr_path) = &instr_path {
         let staging_i = staging_i.as_ref().expect("staging path for instrumental");
-        let buf_i = AudioBuffer {
-            sample_rate: input_sr,
-            channels: channels as u16,
-            planar: instr_final,
-        };
-        if let Err(e) = write_wav_f32(staging_i, &buf_i) {
+        if let Err(e) = write_wav_f32(staging_i, &stems.instrumental) {
             let _ = fs::remove_file(&staging_v);
             let _ = fs::remove_file(staging_i);
             return Err(e);
@@ -258,46 +165,6 @@ pub fn run_pipeline_named(
     if let Err(e) = fs::rename(&staging_v, &vocals_path) {
         let _ = fs::remove_file(&staging_v);
         return Err(Error::Audio(AudioError::Io(e.to_string())));
-    }
-    Ok(())
-}
-
-fn strict_check(model_path: &str, cfg: &SeparatorConfig, dev: &Device) -> Result<(), Error> {
-    use std::collections::HashSet;
-
-    let expected = crate::model::expected_key_shapes(cfg);
-    let expected_names: HashSet<String> = expected.iter().map(|(n, _)| n.clone()).collect();
-
-    let ms = unsafe { candle_core::safetensors::MmapedSafetensors::multi(&[model_path]) }
-        .map_err(Error::Candle)?;
-    let actual_names: HashSet<String> = ms.tensors().iter().map(|(n, _)| n.clone()).collect();
-
-    let mut missing: Vec<String> = expected_names.difference(&actual_names).cloned().collect();
-    let mut extra: Vec<String> = actual_names.difference(&expected_names).cloned().collect();
-    missing.sort();
-    extra.sort();
-    if !missing.is_empty() || !extra.is_empty() {
-        return Err(Error::Audio(AudioError::UnsupportedFormat(format!(
-            "checkpoint key mismatch: missing {:?}, extra {:?}",
-            missing, extra
-        ))));
-    }
-
-    // Per-tensor shape check; tensors are loaded one at a time (a few MB each)
-    // instead of materialising a full dummy model.
-    let mut shape_errors: Vec<String> = Vec::new();
-    for (name, shape) in &expected {
-        let tv = ms.get(name).map_err(Error::Candle)?;
-        let t = tv.load(dev).map_err(Error::Candle)?;
-        if t.dims() != shape.as_slice() {
-            shape_errors.push(format!("{}: file {:?} vs expected {:?}", name, t.dims(), shape));
-        }
-    }
-    if !shape_errors.is_empty() {
-        return Err(Error::Audio(AudioError::UnsupportedFormat(format!(
-            "checkpoint shape mismatch: {:?}",
-            shape_errors
-        ))));
     }
     Ok(())
 }
