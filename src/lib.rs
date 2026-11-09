@@ -30,7 +30,7 @@ pub use mel::mel_bin_membership;
 pub use model::MelBandRoformer;
 pub use separator::{Separator, Stems};
 pub use tensor_ops::{average_by_counts, gather_1d, scatter_add_1d};
-pub use wav::AudioBuffer;
+pub use wav::{AudioBuffer, AudioStreamReader, StreamingWavWriter};
 pub use whisper::{TranscribeOptions, Transcriber, Transcript, TranscriptSegment};
 
 // Re-export candle_core::Device for convenience.

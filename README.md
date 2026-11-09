@@ -156,6 +156,57 @@ Metal: `cargo build --release --features metal` (macOS).
 - Weights licensing is not resolved by this repository; see the design spec
   [docs/superpowers/specs/2026-11-07-candle-roformer-design.md](https://github.com/AlexeyShirshov/candle-roformer/blob/main/docs/superpowers/specs/2026-11-07-candle-roformer-design.md).
 
+
+## Bounded-memory chunked separation (`--chunk_duration`)
+
+`Separator::separate_file` / `separate_streaming` (and the `separate` example)
+process a file in bounded memory: decode chunk N → separate (overlap-add) →
+write stems → drop chunk N. The OLA window size is derived from
+`chunk_duration` (seconds): `chunk = round(chunk_duration * sample_rate)` model
+frames, `step = chunk / num_overlap`, `fade = chunk / 10`, reusing the same
+overlap-add weights as the in-memory `Separator::separate`. Only the current
+input chunk, the stem overlap tail and the ready step buffer are held in memory;
+finalised frames are written to the output WAVs through `StreamingWavWriter`
+and freed, so peak RSS depends on `chunk_duration`, not on input length.
+
+### Boundary quality
+
+Joints are artefact-free by construction: every output sample is the
+overlap-add (with the same triangular fade window) of the chunks that cover it,
+normalised by the accumulated weight, identical to the monolithic path. Measured
+on a 6000-frame stereo signal at 44.1 kHz with `chunk_duration = 3200/44100`
+(OLA chunk = 3200 frames, step = 1600, fade = 320):
+
+- `E_boundary` (max abs) = 0.0 (bit-identical)
+- `E_boundary` (RMSE) = 0.0
+
+Test: `cargo test --test streaming_chunked chunked_boundary_parity`.
+
+### Invariants
+
+- Output length equals input length exactly (0-sample deviation) for every stem.
+- `sum(stems) + residual = input` with `max |...| <= 1e-5` (f32 WAV precision).
+- No NaN/Inf in outputs.
+
+Tests: `cargo test --test streaming_chunked chunked_length_and_residual`,
+`chunked_mono`.
+
+### Peak RSS evidence (tiny model, CPU, `chunk_duration = 0.07256 s`)
+
+| input length | VmHWM (MiB) | wall time |
+|---|---|---|
+| 10 s  | 16.0 | 13 s |
+| 60 s  | 17.5 | 1:08 |
+| 300 s | 16.5 | 8:29 |
+
+Relative growth 10 s → 300 s: +3 %. These are short-scale measurements only
+(10–300 s, tiny model, `chunk_duration = 0.07256 s`); the 2 h (7200 s) scale
+and a 4 s `chunk_duration` are NOT measured (see
+`.pdca/issues-milestone-1.0/rv1/item10/SCALE-CAVEAT.md`). A real-weights
+series could not be run: the available v7 profile does not match the
+`MelBandRoformer_fp32.safetensors` checkpoint key set (see residual gap).
+
+
 ## License and attribution
 
 MIT, see

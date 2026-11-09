@@ -209,3 +209,326 @@ fn strict_check(model_path: &str, cfg: &SeparatorConfig, dev: &Device) -> Result
     }
     Ok(())
 }
+
+struct FrameBuf {
+    channels: usize,
+    data: Vec<f32>,
+    base: usize,
+}
+
+impl FrameBuf {
+    fn frames(&self) -> usize {
+        self.data.len() / self.channels.max(1)
+    }
+    fn available(&self) -> usize {
+        self.base + self.frames()
+    }
+    fn append(&mut self, planar: &[f32]) {
+        let ch = self.channels.max(1);
+        let new_frames = planar.len() / ch;
+        if new_frames == 0 {
+            return;
+        }
+        let old_frames = self.frames();
+        let mut merged = vec![0f32; ch * (old_frames + new_frames)];
+        for c in 0..ch {
+            for i in 0..old_frames {
+                merged[c * (old_frames + new_frames) + i] =
+                    self.data[c * old_frames + i];
+            }
+            for i in 0..new_frames {
+                merged[c * (old_frames + new_frames) + (old_frames + i)] =
+                    planar[c * new_frames + i];
+            }
+        }
+        self.data = merged;
+    }
+    fn slice(&self, global_start: usize, n: usize) -> Vec<f32> {
+        let ch = self.channels.max(1);
+        let frames = self.frames();
+        let off = global_start.saturating_sub(self.base);
+        let n = n.min(frames.saturating_sub(off));
+        let mut out = vec![0f32; ch * n];
+        for c in 0..ch {
+            for i in 0..n {
+                out[c * n + i] = self.data[c * frames + (off + i)];
+            }
+        }
+        out
+    }
+    fn drop_before(&mut self, idx: usize) {
+        let ch = self.channels.max(1);
+        if idx <= self.base {
+            return;
+        }
+        let frames = self.frames();
+        let drop = (idx - self.base).min(frames);
+        let keep = frames - drop;
+        let mut new = vec![0f32; ch * keep];
+        for c in 0..ch {
+            for i in 0..keep {
+                new[c * keep + i] = self.data[c * frames + (drop + i)];
+            }
+        }
+        self.data = new;
+        self.base = self.base + drop;
+    }
+}
+
+impl Separator {
+    pub fn separate_file(
+        &self,
+        input_path: impl AsRef<std::path::Path>,
+        vocals_path: impl AsRef<std::path::Path>,
+        instrumental_path: impl AsRef<std::path::Path>,
+        chunk_duration: f64,
+    ) -> Result<(), crate::error::Error> {
+        use crate::wav::{AudioStreamReader, StreamingWavWriter};
+
+        let mut reader = AudioStreamReader::open(input_path.as_ref())?;
+        let input_sr = reader.sample_rate();
+        let channels = reader.channels() as usize;
+        let model_sr = self.config.sample_rate as u32;
+
+        // Fallback for non-matching sample rates: decode whole input, use the
+        // in-memory path, write outputs. Correct but not bounded.
+        if input_sr != model_sr {
+            let mut all = Vec::new();
+            loop {
+                let c = reader.read_frames(65536)?;
+                if c.is_empty() {
+                    break;
+                }
+                all.extend(c);
+            }
+            let audio = crate::wav::AudioBuffer {
+                sample_rate: input_sr,
+                channels: channels as u16,
+                planar: all,
+            };
+            let stems = self.separate(&audio)?;
+            crate::wav::write_wav_f32(vocals_path, &stems.vocals)?;
+            crate::wav::write_wav_f32(instrumental_path, &stems.instrumental)?;
+            return Ok(());
+        }
+
+        let model_channels = if channels == 1 { 2 } else { channels };
+        let chunk = ((chunk_duration * model_sr as f64).round() as usize).max(1);
+        let step = self.inference.step_for(chunk).max(1);
+        let fade = self.inference.fade_for(chunk).max(1).min(chunk);
+
+        let mut fade_w = vec![1f32; chunk];
+        for (t, w) in fade_w.iter_mut().enumerate() {
+            let mut fi = 1.0f32;
+            if t < fade {
+                fi = (t as f32 + 1.0) / fade as f32;
+            }
+            let mut fo = 1.0f32;
+            if t >= chunk - fade {
+                fo = (chunk - t) as f32 / fade as f32;
+            }
+            *w = fi.min(fo).max(1.0 / fade as f32);
+        }
+
+        let mut vw = StreamingWavWriter::create(vocals_path.as_ref(), input_sr, channels as u16)?;
+        let mut iw = StreamingWavWriter::create(instrumental_path.as_ref(), input_sr, channels as u16)?;
+
+        let capacity = chunk + step + 4;
+        let mut acc_v = vec![0f32; model_channels * capacity];
+        let mut acc_w = vec![0f32; capacity];
+        let mut frontier: usize = 0;
+        let mut current_max: usize = 0;
+        let mut idx: usize = 0;
+        let mut eof = false;
+        let mut total_frames: usize = 0;
+
+        let mut orig_buf = FrameBuf {
+            channels,
+            data: Vec::new(),
+            base: 0,
+        };
+        let mut model_buf = FrameBuf {
+            channels: model_channels,
+            data: Vec::new(),
+            base: 0,
+        };
+
+        loop {
+            let start = idx * step;
+
+            // Ensure enough decoded frames for this chunk (or hit EOF).
+            while !eof && model_buf.available() < start + chunk {
+                let need = (start + chunk).saturating_sub(model_buf.available()).max(1);
+                let block = reader.read_frames(need.min(65536))?;
+                if block.is_empty() {
+                    eof = true;
+                    break;
+                }
+                let frames = block.len() / channels;
+                if frames == 0 {
+                    eof = true;
+                    break;
+                }
+                orig_buf.append(&block);
+                let mut model_block = vec![0f32; model_channels * frames];
+                for mc in 0..model_channels {
+                    let oc = if channels == 1 { 0 } else { mc };
+                    for f in 0..frames {
+                        model_block[mc * frames + f] = block[oc * frames + f];
+                    }
+                }
+                model_buf.append(&model_block);
+            }
+
+            if eof && total_frames == 0 {
+                total_frames = model_buf.available();
+            }
+
+            if model_buf.available() <= start {
+                break;
+            }
+
+            let seg_len = (model_buf.available() - start).min(chunk);
+            if seg_len == 0 {
+                break;
+            }
+
+            // Build padded chunk for model inference.
+            let mut pcm = vec![0f32; model_channels * chunk];
+            let seg = model_buf.slice(start, seg_len);
+
+            for mc in 0..model_channels {
+                for i in 0..seg_len {
+                    pcm[mc * chunk + i] = seg[mc * seg_len + i];
+                }
+            }
+            let model_out = crate::separate::infer_chunk(&self.model, &self.inference, &pcm, model_channels, chunk)?;
+
+            for i in 0..seg_len {
+                let t = start + i;
+                let local = t % capacity;
+                if local >= capacity {
+                    // Should not happen; guard.
+                    continue;
+                }
+                for mc in 0..model_channels {
+                    acc_v[mc * capacity + local] += model_out[mc * chunk + i] * fade_w[i];
+                }
+                acc_w[local] += fade_w[i];
+            }
+            current_max = current_max.max(start + seg_len);
+
+            // Finalize up to start+step.
+            let mut up_to = start + step;
+            if eof {
+                up_to = up_to.min(total_frames);
+            }
+            if up_to > current_max {
+                up_to = current_max;
+            }
+            if up_to > frontier {
+                for t in frontier..up_to {
+                    let local = t % capacity;
+                    let w = acc_w[local];
+                    let mut vocals_model = vec![0f32; model_channels];
+                    for mc in 0..model_channels {
+                        vocals_model[mc] = if w > 1e-8 {
+                            acc_v[mc * capacity + local] / w
+                        } else {
+                            0.0
+                        };
+                    }
+                    let mut vocals_orig = vec![0f32; channels];
+                    if channels == 1 {
+                        vocals_orig[0] = (vocals_model[0] + vocals_model[1]) * 0.5;
+                    } else {
+                        for c in 0..channels {
+                            vocals_orig[c] = vocals_model[c];
+                        }
+                    }
+                    let orig_frame = orig_buf.slice(t, 1);
+                    let mut instr_orig = vec![0f32; channels];
+                    for c in 0..channels {
+                        instr_orig[c] = orig_frame[c] - vocals_orig[c];
+                    }
+                    vw.write_planar(&vocals_orig)?;
+                    iw.write_planar(&instr_orig)?;
+                }
+                for t in frontier..up_to {
+                    let local = t % capacity;
+                    for mc in 0..model_channels {
+                        acc_v[mc * capacity + local] = 0.0;
+                    }
+                    acc_w[local] = 0.0;
+                }
+                frontier = up_to;
+            }
+
+            model_buf.drop_before(frontier);
+            orig_buf.drop_before(frontier);
+
+            idx += 1;
+
+            if eof && start + step >= total_frames {
+                // finalize remaining up to total_frames
+                let mut up_to = total_frames;
+                if up_to > current_max {
+                    up_to = current_max;
+                }
+                if up_to > frontier {
+                    for t in frontier..up_to {
+                        let local = t % capacity;
+                        let w = acc_w[local];
+                        let mut vocals_model = vec![0f32; model_channels];
+                        for mc in 0..model_channels {
+                            vocals_model[mc] = if w > 1e-8 {
+                                acc_v[mc * capacity + local] / w
+                            } else {
+                                0.0
+                            };
+                        }
+                        let mut vocals_orig = vec![0f32; channels];
+                        if channels == 1 {
+                            vocals_orig[0] = (vocals_model[0] + vocals_model[1]) * 0.5;
+                        } else {
+                            for c in 0..channels {
+                                vocals_orig[c] = vocals_model[c];
+                            }
+                        }
+                        let orig_frame = orig_buf.slice(t, 1);
+                        let mut instr_orig = vec![0f32; channels];
+                        for c in 0..channels {
+                            instr_orig[c] = orig_frame[c] - vocals_orig[c];
+                        }
+                        vw.write_planar(&vocals_orig)?;
+                        iw.write_planar(&instr_orig)?;
+                    }
+                    // zero finalized
+                    for t in frontier..up_to {
+                        let local = t % capacity;
+                        for mc in 0..model_channels {
+                            acc_v[mc * capacity + local] = 0.0;
+                        }
+                        acc_w[local] = 0.0;
+                    }
+                    frontier = up_to;
+                }
+                break;
+            }
+        }
+
+        vw.finalize()?;
+        iw.finalize()?;
+        Ok(())
+    }
+
+    pub fn separate_streaming(
+        &self,
+        input_path: impl AsRef<std::path::Path>,
+        vocals_path: impl AsRef<std::path::Path>,
+        instrumental_path: impl AsRef<std::path::Path>,
+        chunk_duration: f64,
+    ) -> Result<(), crate::error::Error> {
+        self.separate_file(input_path, vocals_path, instrumental_path, chunk_duration)
+    }
+}

@@ -354,3 +354,290 @@ fn read_flac(
         planar: planar_flat,
     })
 }
+
+use std::io::{Seek, SeekFrom, Write};
+
+/// A WAV writer that appends f32 frames incrementally and finalises the RIFF
+/// size fields on close. Used by the bounded-memory file separation path so
+/// that only the current chunk (not the whole output) is held in memory.
+pub struct StreamingWavWriter {
+    file: File,
+    channels: u16,
+    data_bytes: u64,
+}
+
+impl StreamingWavWriter {
+    pub fn create(path: impl AsRef<std::path::Path>, sample_rate: u32, channels: u16) -> Result<Self, Error> {
+        let mut f = File::create(path.as_ref())
+            .map_err(|e| Error::Audio(AudioError::Io(e.to_string())))?;
+        let bits_per_sample: u16 = 32;
+        let byte_rate = sample_rate * channels as u32 * (bits_per_sample as u32 / 8);
+        let block_align = channels * (bits_per_sample / 8);
+        // Placeholder header; sizes patched in `finalize`.
+        f.write_all(b"RIFF").unwrap();
+        f.write_all(&0u32.to_le_bytes()).unwrap();
+        f.write_all(b"WAVE").unwrap();
+        f.write_all(b"fmt ").unwrap();
+        f.write_all(&16u32.to_le_bytes()).unwrap();
+        f.write_all(&3u16.to_le_bytes()).unwrap(); // IEEE float
+        f.write_all(&channels.to_le_bytes()).unwrap();
+        f.write_all(&sample_rate.to_le_bytes()).unwrap();
+        f.write_all(&byte_rate.to_le_bytes()).unwrap();
+        f.write_all(&block_align.to_le_bytes()).unwrap();
+        f.write_all(&bits_per_sample.to_le_bytes()).unwrap();
+        f.write_all(b"data").unwrap();
+        f.write_all(&0u32.to_le_bytes()).unwrap();
+        Ok(Self {
+            file: f,
+            channels,
+            data_bytes: 0,
+        })
+    }
+
+    /// Append `planar` samples (layout `channels * frames`, planar) to the file.
+    pub fn write_planar(&mut self, planar: &[f32]) -> Result<(), Error> {
+        let channels = self.channels as usize;
+        if planar.len() % channels != 0 {
+            return Err(Error::Audio(AudioError::UnsupportedFormat(
+                "planar length is not a whole number of frames".into(),
+            )));
+        }
+        let frames = planar.len() / channels;
+        for frame in 0..frames {
+            for c in 0..channels {
+                let s = planar[c * frames + frame];
+                if !s.is_finite() {
+                    return Err(Error::Audio(AudioError::NonFinite("non-finite output".into())));
+                }
+                self.file
+                    .write_all(&s.to_le_bytes())
+                    .map_err(|e| Error::Audio(AudioError::Io(e.to_string())))?;
+            }
+        }
+        self.data_bytes += (planar.len() * 4) as u64;
+        Ok(())
+    }
+
+    pub fn finalize(mut self) -> Result<(), Error> {
+        let file_size = 36u32 + self.data_bytes as u32;
+        let data_size = self.data_bytes as u32;
+        self.file
+            .seek(SeekFrom::Start(4))
+            .map_err(|e| Error::Audio(AudioError::Io(e.to_string())))?;
+        self.file
+            .write_all(&file_size.to_le_bytes())
+            .map_err(|e| Error::Audio(AudioError::Io(e.to_string())))?;
+        // data chunk size is at offset 40
+        self.file
+            .seek(SeekFrom::Start(40))
+            .map_err(|e| Error::Audio(AudioError::Io(e.to_string())))?;
+        self.file
+            .write_all(&data_size.to_le_bytes())
+            .map_err(|e| Error::Audio(AudioError::Io(e.to_string())))?;
+        self.file
+            .flush()
+            .map_err(|e| Error::Audio(AudioError::Io(e.to_string())))?;
+        Ok(())
+    }
+}
+
+/// Incremental decoder used by the bounded-memory file separation path.
+pub struct AudioStreamReader {
+    inner: ReaderInner,
+}
+
+enum ReaderInner {
+    Sym {
+        format: Box<dyn symphonia::core::formats::FormatReader>,
+        track_id: u32,
+        decoder: Box<dyn symphonia::core::codecs::audio::AudioDecoder>,
+        channels: usize,
+        sample_rate: u32,
+        pending: Vec<f32>, // interleaved
+        eof: bool,
+    },
+    Buffered {
+        data: Vec<f32>, // planar
+        channels: usize,
+        sample_rate: u32,
+        pos: usize,
+    },
+}
+
+impl AudioStreamReader {
+    pub fn open(path: &std::path::Path) -> Result<Self, Error> {
+        let file = File::open(path).map_err(|e| Error::Audio(AudioError::Io(e.to_string())))?;
+        let mss = MediaSourceStream::new(Box::new(file), Default::default());
+
+        let mut hint = Hint::new();
+        if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
+            hint.with_extension(ext);
+        }
+
+        let mut format = symphonia::default::get_probe()
+            .probe(&hint, mss, FormatOptions::default(), MetadataOptions::default())
+            .map_err(|e| Error::Audio(AudioError::UnsupportedFormat(e.to_string())))?;
+
+        let track = format
+            .default_track(TrackType::Audio)
+            .ok_or_else(|| Error::Audio(AudioError::UnsupportedFormat("no audio track".into())))?;
+
+        let track_id = track.id;
+        let codec_params = track
+            .codec_params
+            .as_ref()
+            .ok_or_else(|| Error::Audio(AudioError::UnsupportedFormat("no codec params".into())))?
+            .audio()
+            .ok_or_else(|| Error::Audio(AudioError::UnsupportedFormat("not audio".into())))?
+            .clone();
+
+        let sample_rate = codec_params
+            .sample_rate
+            .ok_or_else(|| Error::Audio(AudioError::InvalidSampleRate("missing".into())))?;
+        let channels = codec_params.channels.as_ref().map(|c| c.count()).unwrap_or(1);
+        if channels == 0 || channels > 2 {
+            return Err(Error::Audio(AudioError::TooManyChannels(format!(
+                "unsupported channel count {}",
+                channels
+            ))));
+        }
+
+        // FLAC: decode whole via read_audio and serve buffered.
+        if codec_params.codec == symphonia::core::codecs::audio::well_known::CODEC_ID_FLAC {
+            let buf = read_audio(path)?;
+            return Ok(Self {
+                inner: ReaderInner::Buffered {
+                    data: buf.planar,
+                    channels: buf.channels as usize,
+                    sample_rate: buf.sample_rate,
+                    pos: 0,
+                },
+            });
+        }
+
+        let decoder = symphonia::default::get_codecs()
+            .make_audio_decoder(&codec_params, &AudioDecoderOptions::default())
+            .map_err(|e| Error::Audio(AudioError::UnsupportedFormat(e.to_string())))?;
+
+        Ok(Self {
+            inner: ReaderInner::Sym {
+                format,
+                track_id,
+                decoder,
+                channels,
+                sample_rate,
+                pending: Vec::new(),
+                eof: false,
+            },
+        })
+    }
+
+    pub fn sample_rate(&self) -> u32 {
+        match &self.inner {
+            ReaderInner::Sym { sample_rate, .. } => *sample_rate,
+            ReaderInner::Buffered { sample_rate, .. } => *sample_rate,
+        }
+    }
+
+    pub fn channels(&self) -> u16 {
+        match &self.inner {
+            ReaderInner::Sym { channels, .. } => *channels as u16,
+            ReaderInner::Buffered { channels, .. } => *channels as u16,
+        }
+    }
+
+    pub fn read_frames(&mut self, n: usize) -> Result<Vec<f32>, Error> {
+        match &mut self.inner {
+            ReaderInner::Buffered { data, channels, pos, .. } => {
+                let ch = *channels;
+                let frames_avail = (data.len() / ch).saturating_sub(*pos);
+                let take = n.min(frames_avail);
+                if take == 0 {
+                    return Ok(Vec::new());
+                }
+                let mut out = vec![0f32; ch * take];
+                for c in 0..ch {
+                    for i in 0..take {
+                        out[c * take + i] = data[c * (data.len() / ch) + (*pos + i)];
+                    }
+                }
+                *pos += take;
+                Ok(out)
+            }
+            ReaderInner::Sym {
+                format,
+                track_id,
+                decoder,
+                channels,
+                pending,
+                eof,
+                ..
+            } => {
+                let ch = *channels;
+                // Collect enough interleaved samples.
+                while !*eof && pending.len() < n * ch {
+                    let packet = match format.next_packet() {
+                        Ok(Some(p)) => p,
+                        Ok(None) => {
+                            *eof = true;
+                            break;
+                        }
+                        Err(SymphoniaError::ResetRequired) => {
+                            decoder.reset();
+                            continue;
+                        }
+                        Err(e) => {
+                            return Err(Error::Audio(AudioError::UnsupportedFormat(e.to_string())));
+                        }
+                    };
+                    if packet.track_id != *track_id {
+                        continue;
+                    }
+                    let decoded = match decoder.decode(&packet) {
+                        Ok(d) => d,
+                        Err(SymphoniaError::DecodeError(_)) => continue,
+                        Err(e) => {
+                            return Err(Error::Audio(AudioError::UnsupportedFormat(e.to_string())));
+                        }
+                    };
+                    let pc = decoded.spec().channels().count();
+                    if pc == 0 {
+                        continue;
+                    }
+                    let mut interleaved = vec![0f32; decoded.frames() * pc];
+                    decoded.copy_to_slice_interleaved(&mut interleaved);
+                    let frames = interleaved.len() / pc;
+                    for f in 0..frames {
+                        for c in 0..ch {
+                            if c >= pc {
+                                return Err(Error::Audio(AudioError::UnsupportedFormat(format!(
+                                    "decoder returned {} channels, expected {}",
+                                    pc, ch
+                                ))));
+                            }
+                            let v = interleaved[f * pc + c];
+                            if !v.is_finite() {
+                                return Err(Error::Audio(AudioError::NonFinite("non-finite sample".into())));
+                            }
+                            pending.push(v);
+                        }
+                    }
+                }
+                let frames_avail = pending.len() / ch;
+                let take = n.min(frames_avail);
+                if take == 0 {
+                    return Ok(Vec::new());
+                }
+                // Convert first take frames interleaved -> planar.
+                let mut out = vec![0f32; ch * take];
+                for f in 0..take {
+                    for c in 0..ch {
+                        out[c * take + f] = pending[f * ch + c];
+                    }
+                }
+                pending.drain(0..take * ch);
+                Ok(out)
+            }
+        }
+    }
+}

@@ -73,83 +73,9 @@ pub fn separate_with_config(
     let chunk = cfg.chunk_size(model);
     let step = cfg.step_for(chunk);
     let fade = cfg.fade_for(chunk);
-    let device = model.device.clone();
-    let denoise = cfg.denoise;
-    let tta = cfg.tta;
     let batch_size = cfg.batch_size;
     let run = |pcm: &[f32]| -> Result<Vec<f32>, Error> {
-        let b = pcm.len() / (channels * chunk).max(1);
-        let b = b.max(1);
-        if denoise {
-            let t = Tensor::from_vec(pcm.to_vec(), (b, channels, chunk), &device)
-                .map_err(Error::Candle)?;
-            let out_pos = model.forward(&t).map_err(Error::Candle)?;
-            let vpos: Vec<f32> = out_pos.flatten_all().map_err(Error::Candle)?.to_vec1().map_err(Error::Candle)?;
-            let neg: Vec<f32> = pcm.iter().map(|x| -x).collect();
-            let t2 = Tensor::from_vec(neg, (b, channels, chunk), &device).map_err(Error::Candle)?;
-            let out_neg = model.forward(&t2).map_err(Error::Candle)?;
-            let vneg: Vec<f32> = out_neg.flatten_all().map_err(Error::Candle)?.to_vec1().map_err(Error::Candle)?;
-            let v: Vec<f32> = vpos.iter().zip(vneg.iter()).map(|(a, b)| (a - b) * 0.5).collect();
-            Ok(v)
-        } else if tta {
-            let mut acc = vec![0f32; b * channels * chunk];
-            let mut ncount = 0usize;
-            // identity
-            {
-                let t = Tensor::from_vec(pcm.to_vec(), (b, channels, chunk), &device).map_err(Error::Candle)?;
-                let out = model.forward(&t).map_err(Error::Candle)?;
-                let v: Vec<f32> = out.flatten_all().map_err(Error::Candle)?.to_vec1().map_err(Error::Candle)?;
-                for i in 0..acc.len() { acc[i] += v[i]; }
-                ncount += 1;
-            }
-            // phase inversion
-            {
-                let neg: Vec<f32> = pcm.iter().map(|x| -x).collect();
-                let t = Tensor::from_vec(neg, (b, channels, chunk), &device).map_err(Error::Candle)?;
-                let out = model.forward(&t).map_err(Error::Candle)?;
-                let v: Vec<f32> = out.flatten_all().map_err(Error::Candle)?.to_vec1().map_err(Error::Candle)?;
-                for i in 0..acc.len() { acc[i] -= v[i]; }
-                ncount += 1;
-            }
-            // channel swap (if stereo+)
-            if channels >= 2 {
-                let mut swapped = vec![0f32; b * channels * chunk];
-                for bi in 0..b {
-                    for ch in 0..channels {
-                        for i in 0..chunk {
-                            swapped[bi * channels * chunk + ch * chunk + i] =
-                                pcm[bi * channels * chunk + (channels - 1 - ch) * chunk + i];
-                        }
-                    }
-                }
-                let t = Tensor::from_vec(swapped, (b, channels, chunk), &device).map_err(Error::Candle)?;
-                let out = model.forward(&t).map_err(Error::Candle)?;
-                let v: Vec<f32> = out.flatten_all().map_err(Error::Candle)?.to_vec1().map_err(Error::Candle)?;
-                let mut unswapped = vec![0f32; b * channels * chunk];
-                for bi in 0..b {
-                    for ch in 0..channels {
-                        for i in 0..chunk {
-                            unswapped[bi * channels * chunk + ch * chunk + i] =
-                                v[bi * channels * chunk + (channels - 1 - ch) * chunk + i];
-                        }
-                    }
-                }
-                for i in 0..acc.len() { acc[i] += unswapped[i]; }
-                ncount += 1;
-            }
-            for x in &mut acc { *x /= ncount as f32; }
-            Ok(acc)
-        } else {
-            let t = Tensor::from_vec(pcm.to_vec(), (b, channels, chunk), &device)
-                .map_err(Error::Candle)?;
-            let out = model.forward(&t).map_err(Error::Candle)?;
-            let v: Vec<f32> = out
-                .flatten_all()
-                .map_err(Error::Candle)?
-                .to_vec1()
-                .map_err(Error::Candle)?;
-            Ok(v)
-        }
+        infer_chunk(model, cfg, pcm, channels, chunk)
     };
     ola_with_batch(&input, channels, chunk, step, fade, batch_size, &run)
 }
@@ -308,4 +234,98 @@ where
     let k = overlap.max(1);
     let step = (chunk / k).max(1);
     ola_with(input, channels, chunk, step, (chunk / 10).max(1), model_fn)
+}
+
+pub fn infer_chunk(
+    model: &MelBandRoformer,
+    cfg: &InferenceConfig,
+    pcm: &[f32],
+    channels: usize,
+    chunk: usize,
+) -> Result<Vec<f32>, Error> {
+    cfg.validate().map_err(Error::Config)?;
+    let device = model.device.clone();
+    let denoise = cfg.denoise;
+    let tta = cfg.tta;
+        let b = pcm.len() / (channels * chunk).max(1);
+        let b = b.max(1);
+        if denoise {
+            let t = Tensor::from_vec(pcm.to_vec(), (b, channels, chunk), &device)
+                .map_err(Error::Candle)?;
+            let out_pos = model.forward(&t).map_err(Error::Candle)?;
+            let vpos: Vec<f32> = out_pos.flatten_all().map_err(Error::Candle)?.to_vec1().map_err(Error::Candle)?;
+            let neg: Vec<f32> = pcm.iter().map(|x| -x).collect();
+            let t2 = Tensor::from_vec(neg, (b, channels, chunk), &device).map_err(Error::Candle)?;
+            let out_neg = model.forward(&t2).map_err(Error::Candle)?;
+            let vneg: Vec<f32> = out_neg.flatten_all().map_err(Error::Candle)?.to_vec1().map_err(Error::Candle)?;
+            let v: Vec<f32> = vpos.iter().zip(vneg.iter()).map(|(a, b)| (a - b) * 0.5).collect();
+            Ok(v)
+        } else if tta {
+            let mut acc = vec![0f32; b * channels * chunk];
+            let mut ncount = 0usize;
+            // identity
+            {
+                let t = Tensor::from_vec(pcm.to_vec(), (b, channels, chunk), &device).map_err(Error::Candle)?;
+                let out = model.forward(&t).map_err(Error::Candle)?;
+                let v: Vec<f32> = out.flatten_all().map_err(Error::Candle)?.to_vec1().map_err(Error::Candle)?;
+                for i in 0..acc.len() { acc[i] += v[i]; }
+                ncount += 1;
+            }
+            // phase inversion
+            {
+                let neg: Vec<f32> = pcm.iter().map(|x| -x).collect();
+                let t = Tensor::from_vec(neg, (b, channels, chunk), &device).map_err(Error::Candle)?;
+                let out = model.forward(&t).map_err(Error::Candle)?;
+                let v: Vec<f32> = out.flatten_all().map_err(Error::Candle)?.to_vec1().map_err(Error::Candle)?;
+                for i in 0..acc.len() { acc[i] -= v[i]; }
+                ncount += 1;
+            }
+            // channel swap (if stereo+)
+            if channels >= 2 {
+                let mut swapped = vec![0f32; b * channels * chunk];
+                for bi in 0..b {
+                    for ch in 0..channels {
+                        for i in 0..chunk {
+                            swapped[bi * channels * chunk + ch * chunk + i] =
+                                pcm[bi * channels * chunk + (channels - 1 - ch) * chunk + i];
+                        }
+                    }
+                }
+                let t = Tensor::from_vec(swapped, (b, channels, chunk), &device).map_err(Error::Candle)?;
+                let out = model.forward(&t).map_err(Error::Candle)?;
+                let v: Vec<f32> = out.flatten_all().map_err(Error::Candle)?.to_vec1().map_err(Error::Candle)?;
+                let mut unswapped = vec![0f32; b * channels * chunk];
+                for bi in 0..b {
+                    for ch in 0..channels {
+                        for i in 0..chunk {
+                            unswapped[bi * channels * chunk + ch * chunk + i] =
+                                v[bi * channels * chunk + (channels - 1 - ch) * chunk + i];
+                        }
+                    }
+                }
+                for i in 0..acc.len() { acc[i] += unswapped[i]; }
+                ncount += 1;
+            }
+            for x in &mut acc { *x /= ncount as f32; }
+            Ok(acc)
+        } else {
+            let t = Tensor::from_vec(pcm.to_vec(), (b, channels, chunk), &device)
+                .map_err(Error::Candle)?;
+            let out = model.forward(&t).map_err(Error::Candle)?;
+            let v: Vec<f32> = out
+                .flatten_all()
+                .map_err(Error::Candle)?
+                .to_vec1()
+                .map_err(Error::Candle)?;
+            Ok(v)
+        }
+}
+
+#[cfg(test)]
+mod debug_tests {
+    use super::*;
+    #[test]
+    fn det() {
+        // can't easily build model here; skip
+    }
 }
