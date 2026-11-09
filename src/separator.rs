@@ -30,12 +30,97 @@ use crate::resample;
 use crate::separate;
 use crate::wav::AudioBuffer;
 
-/// The two stems produced by the separator. Sample rate, channel count and
-/// length match the input buffer exactly.
+/// The stem set produced by the separator.
+///
+/// # Named stems
+///
+/// A separator may produce any number of named stems (`num_stems` in the
+/// profile). They are all returned here in model order under [`Stems::stems`]
+/// as `(name, AudioBuffer)` pairs, and are reachable by name through
+/// [`Stems::get`]. The buffer's sample rate, channel count and length match
+/// the input buffer exactly.
+///
+/// # Two-stem convenience
+///
+/// For the common vocal/instrumental ("rest of the mix") case the separator
+/// still exposes [`Stems::vocals`] and [`Stems::instrumental`] as direct
+/// fields, so existing two-stem callers keep working unchanged. In that mode
+/// `stems` contains exactly the two entries `("vocals", ..)` and
+/// `("instrumental", ..)`.
+///
+/// # Residual semantics
+///
+/// Two distinct modes exist and are *not* interchangeable:
+///
+/// * **Residual mode ("rest of the mix").** Used when the model estimates a
+///   single target stem (`num_stems == 1`, e.g. a MelBandRoformer vocals
+///   model). The model produces the target (`vocals`); the secondary stem
+///   (`instrumental`) is computed as the input-waveform residual
+///   `input - vocals`. Therefore `vocals + instrumental == input` exactly
+///   (within f32 round-off) and the two buffers are complementary.
+/// * **Independent multi-stem mode.** Used when the model estimates several
+///   stems (`num_stems > 1`, e.g. Demucs / MDX / VR karaoke 4-stem models).
+///   Every stem is an independent estimate taken straight from the model's own
+///   mask estimator; **no** stem is replaced by `input - stem` and the sum of
+///   the stems **need not** (and generally does not) equal the input. Treating
+///   the last stem as "the residual" in this mode would be wrong.
+///
+/// Which mode applies is determined by `num_stems` of the loaded profile, not
+/// by a runtime flag: a single-stem profile is residual, a multi-stem profile
+/// is independent.
 #[derive(Debug, Clone)]
 pub struct Stems {
+    /// Two-stem convenience: the vocal (target) stem. In residual mode this
+    /// is the model estimate; in independent mode it is the stem named
+    /// `"vocals"` if present, otherwise the first stem.
     pub vocals: AudioBuffer,
+    /// Two-stem convenience: the instrumental stem. In residual mode this is
+    /// the exact input residual `input - vocals`; in independent mode it is
+    /// the stem named `"instrumental"` if present, otherwise the second stem
+    /// (or the first when only one exists).
     pub instrumental: AudioBuffer,
+    /// All stems returned by the model, in model order, as `(name, buffer)`
+    /// pairs. In residual mode this is `[("vocals", ..), ("instrumental", ..)]`;
+    /// in independent mode it has one entry per `num_stems`.
+    pub stems: Vec<(String, AudioBuffer)>,
+}
+
+impl Stems {
+    /// Look up a stem by name.
+    pub fn get(&self, name: &str) -> Option<&AudioBuffer> {
+        self.stems
+            .iter()
+            .find(|(n, _)| n == name)
+            .map(|(_, b)| b)
+    }
+
+    /// Look up a stem by name (mutable).
+    pub fn get_mut(&mut self, name: &str) -> Option<&mut AudioBuffer> {
+        self.stems
+            .iter_mut()
+            .find(|(n, _)| n == name)
+            .map(|(_, b)| b)
+    }
+
+    /// Number of named stems.
+    pub fn len(&self) -> usize {
+        self.stems.len()
+    }
+
+    /// Whether the stem set is empty.
+    pub fn is_empty(&self) -> bool {
+        self.stems.is_empty()
+    }
+
+    /// Names of the stems, in model order.
+    pub fn names(&self) -> Vec<&str> {
+        self.stems.iter().map(|(n, _)| n.as_str()).collect()
+    }
+
+    /// Iterate over `(name, buffer)` pairs.
+    pub fn iter(&self) -> std::slice::Iter<'_, (String, AudioBuffer)> {
+        self.stems.iter()
+    }
 }
 
 /// A loaded MelBandRoformer separator bound to a device.
@@ -48,6 +133,36 @@ pub struct Separator {
     config: SeparatorConfig,
     inference: InferenceConfig,
     device: DeviceChoice,
+}
+
+
+
+fn default_stem_names(n: usize) -> Vec<String> {
+    match n {
+        1 => vec!["vocals".to_string()],
+        4 => vec!["drums", "bass", "other", "vocals"]
+            .iter()
+            .map(|s| s.to_string())
+            .collect(),
+        _ => (0..n).map(|i| format!("stem_{}", i)).collect(),
+    }
+}
+
+fn named_or_index(stems: &[(String, AudioBuffer)], name: &str, idx: usize) -> AudioBuffer {
+    if let Some((_, b)) = stems.iter().find(|(n, _)| n == name) {
+        return b.clone();
+    }
+    if let Some((_, b)) = stems.get(idx) {
+        return b.clone();
+    }
+    if let Some((_, b)) = stems.first() {
+        return b.clone();
+    }
+    AudioBuffer {
+        sample_rate: 44100,
+        channels: 1,
+        planar: Vec::new(),
+    }
 }
 
 impl Separator {
@@ -105,13 +220,20 @@ impl Separator {
     /// Separate an in-memory buffer. The input is resampled to the model's
     /// sample rate, processed in chunked overlap-add, then returned at the
     /// input's sample rate with the input's channel layout and exact length.
-    /// The instrumental is the input-waveform residual: `input - vocals`.
+    ///
+    /// The number of stems returned follows the loaded profile:
+    /// - `num_stems == 1`: residual mode — `vocals` is the model estimate and
+    ///   `instrumental` is the input residual `input - vocals`; `stems` holds
+    ///   `[("vocals", ..), ("instrumental", ..)]`.
+    /// - `num_stems > 1`: independent mode — every stem comes from the model
+    ///   and `stems` holds one named entry per `num_stems` (no residual).
     pub fn separate(&self, audio: &AudioBuffer) -> Result<Stems, Error> {
         audio.validate()?;
         let channels = audio.channels as usize;
         let input_sr = audio.sample_rate;
+        let n = audio.planar.len() / channels;
 
-        // mono is duplicated to stereo for the model; the vocal is downmixed back
+        // mono is duplicated to stereo for the model; stems are downmixed back
         let model_channels = if channels == 1 { 2 } else { channels };
         let model_input = if channels == 1 {
             let mut v = Vec::with_capacity(audio.planar.len() * 2);
@@ -124,49 +246,84 @@ impl Separator {
 
         let model_sr = self.config.sample_rate as u32;
         let resampled = resample::resample_planar(&model_input, model_channels, input_sr, model_sr);
-        let vocals_model = separate::separate_with_config(&self.model, &resampled, model_channels, &self.inference)?;
+        let stem_outputs = separate::separate_all_with_config(
+            &self.model,
+            &resampled,
+            model_channels,
+            &self.inference,
+        )?;
 
-        let vocals_orig_sr = if channels == 1 {
-            let n = vocals_model.len() / 2;
-            let mut mono = vec![0f32; n];
-            for i in 0..n {
-                mono[i] = (vocals_model[i] + vocals_model[n + i]) * 0.5;
-            }
-            mono
-        } else {
-            vocals_model
-        };
-
-        let vocals_resampled =
-            resample::resample_planar(&vocals_orig_sr, channels, model_sr, input_sr);
-
-        let n = audio.planar.len() / channels;
-        let vframes = vocals_resampled.len() / channels;
-        let mut vocals_final = vec![0f32; channels * n];
-        for ch in 0..channels {
-            for i in 0..n {
-                let src = ch * vframes + i;
-                if src < vocals_resampled.len() {
-                    vocals_final[ch * n + i] = vocals_resampled[src];
+        // Convert each model stem back to the input sample rate / channel layout.
+        let mut stem_audios: Vec<AudioBuffer> = Vec::with_capacity(stem_outputs.len());
+        for out in &stem_outputs {
+            let orig_sr = if channels == 1 {
+                let m = out.len() / 2;
+                let mut mono = vec![0f32; m];
+                for i in 0..m {
+                    mono[i] = (out[i] + out[m + i]) * 0.5;
+                }
+                mono
+            } else {
+                out.clone()
+            };
+            let resampled_back = resample::resample_planar(&orig_sr, channels, model_sr, input_sr);
+            let mut final_buf = vec![0f32; channels * n];
+            let vframes = resampled_back.len() / channels;
+            for ch in 0..channels {
+                for i in 0..n {
+                    let src = ch * vframes + i;
+                    if src < resampled_back.len() {
+                        final_buf[ch * n + i] = resampled_back[src];
+                    }
                 }
             }
-        }
-        let mut instr_final = vec![0f32; channels * n];
-        for i in 0..channels * n {
-            instr_final[i] = audio.planar[i] - vocals_final[i];
-        }
-
-        Ok(Stems {
-            vocals: AudioBuffer {
+            stem_audios.push(AudioBuffer {
                 sample_rate: input_sr,
                 channels: audio.channels,
-                planar: vocals_final,
-            },
-            instrumental: AudioBuffer {
+                planar: final_buf,
+            });
+        }
+
+        let residual_mode = self.model.num_stems <= 1;
+
+        let mut stems_vec: Vec<(String, AudioBuffer)> = Vec::new();
+        let (vocals, instrumental) = if residual_mode {
+            let vocals_audio = stem_audios
+                .into_iter()
+                .next()
+                .unwrap_or_else(|| AudioBuffer {
+                    sample_rate: input_sr,
+                    channels: audio.channels,
+                    planar: vec![0f32; channels * n],
+                });
+            let mut instr_final = vec![0f32; channels * n];
+            for i in 0..channels * n {
+                instr_final[i] = audio.planar[i] - vocals_audio.planar[i];
+            }
+            let instrumental_audio = AudioBuffer {
                 sample_rate: input_sr,
                 channels: audio.channels,
                 planar: instr_final,
-            },
+            };
+            stems_vec.push(("vocals".to_string(), vocals_audio.clone()));
+            stems_vec.push(("instrumental".to_string(), instrumental_audio.clone()));
+            (vocals_audio, instrumental_audio)
+        } else {
+            let names = default_stem_names(stem_audios.len());
+            for (name, audio_buf) in names.iter().zip(stem_audios.into_iter()) {
+                stems_vec.push((name.clone(), audio_buf));
+            }
+            // Two-stem convenience: prefer named stems, else fall back to
+            // the first / second stem.
+            let vocals_audio = named_or_index(&stems_vec, "vocals", 0);
+            let instrumental_audio = named_or_index(&stems_vec, "instrumental", 1);
+            (vocals_audio, instrumental_audio)
+        };
+
+        Ok(Stems {
+            vocals,
+            instrumental,
+            stems: stems_vec,
         })
     }
 }

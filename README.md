@@ -27,9 +27,19 @@ candle_roformer::wav::write_wav_f32("out/instrumental.wav", &stems.instrumental)
 - `Separator::load` validates the checkpoint against the profile (full key set,
   shapes) before allocating the model, so a mismatched pair fails loudly.
 - `Separator::separate` takes an `AudioBuffer` (planar f32 + sample rate +
-  channels) and returns `Stems { vocals, instrumental }` at the input's sample
-  rate, channel layout and exact length. The instrumental is the
-  input-waveform residual: `input - vocals`.
+  channels) and returns a [`Stems`] set at the input's sample rate, channel
+  layout and exact length. The set always carries the named stems under
+  `Stems::stems` (a `Vec<(String, AudioBuffer)>`) and keeps the two-stem
+  convenience fields `Stems::vocals` / `Stems::instrumental`.
+- **Residual vs. independent stems.** A single-stem profile (`num_stems == 1`,
+  e.g. MelBandRoformer vocals) runs in *residual* mode: `vocals` is the model
+  estimate and `instrumental = input - vocals`, so `vocals + instrumental ==
+  input`. A multi-stem profile (`num_stems > 1`, e.g. Demucs / MDX / VR)
+  runs in *independent* mode: every stem is an independent model estimate and
+  no stem is replaced by `input - stem`, so the sum need not equal the input.
+  The mode follows from `num_stems`; it is not a runtime flag.
+- A 4-stem profile returns four named `AudioBuffer`s through
+  `Stems::stems` / `Stems::get`.
 - `AudioBuffer::validate` rejects absurd rates, >2 channels, misaligned or
   non-finite buffers.
 - Reading and writing files is limited to [`wav`]: `read_audio` (m4a/mp3/flac/
