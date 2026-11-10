@@ -5,6 +5,12 @@
 /.pdca/*
 !/.pdca/status/
 !/.pdca/scripts/
+!/.pdca/issue-13/
+/.pdca/issue-13/*
+!/.pdca/issue-13/rv1/
+/.pdca/issue-13/rv1/*
+!/.pdca/issue-13/rv1/harness/
+!/.pdca/issue-13/rv1/rss/
 
 __pycache__/
 *.pyc

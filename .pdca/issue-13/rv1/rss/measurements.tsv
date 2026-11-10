@@ -1,0 +1,8 @@
+duration_s  vmhwm_kib  vmhwm_mib  wall_s   fixture_sha256
+10  17476  17.07  14.02  579705b6943e413bc873d46f6103fea9c5e69855fea0105b3a64ba38c9afc3ce
+30  17420  17.01  42.57  f68beaa492baf9d0be2629a0a4d0e4ea2a95d1569f32a7cccf0612e5f320911c
+60  18964  18.52  74.45  c96c1ce9212329292f7e4a464c1578f453d07fc3ad99c3a460120f9dc2309d28
+120 18820  18.38  150.30 3599d2e43ac8916941d1d58aee7bb86201673a424b2d6ffa18b8f59beb1c0329
+EOF
+echo "ratio_10_to_120 = 18820/17476 = $(python3 -c 'print(18820/17476)')" >> /home/alex/sources/candle-roformer/.pdca/issue-13/rv1/rss/measurements.tsv
+cat /home/alex/sources/candle-roformer/.pdca/issue-13/rv1/rss/measurements.tsv

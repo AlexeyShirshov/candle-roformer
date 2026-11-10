@@ -1,0 +1,5 @@
+measurements.tsv (raw) sha256: 11d03acc0e81625e37f2baac306e6e9926bf27e62b7e2163222cee249b8b2864
+measurements.clean.tsv sha256: 3c5b421dfbba8af55fc3fcf766618fbd91593882a102d438793aed41b82b3756
+Note: measurements.tsv contains stray appended lines 6-8 (ratio line + blank) from the
+earlier DO run; measurements.clean.tsv is the clean version with header, 4 data rows
+and a single ratio line. Raw file is retained unedited per instructions.

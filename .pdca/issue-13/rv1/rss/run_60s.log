@@ -1,0 +1,31 @@
+
+running 1 test
+test rss has been running for over 60 seconds
+MEASURE_RESULT DUR=60 CD=0.07256 HWM_KIB=18964 HWM_MIB=18.52 WALL_S=74.45 FIXTURE_SHA256=c96c1ce9212329292f7e4a464c1578f453d07fc3ad99c3a460120f9dc2309d28 MODEL=/tmp/opencode/tiny_model/tiny.safetensors EXIT=0
+test rss ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 74.52s
+
+	Command being timed: "env MODE=measure DUR=60 CD=0.07256 FIXTURE=/tmp/opencode/rss-fixtures/in_60s.wav /home/alex/sources/candle-roformer/target/release/deps/rss_measure-5d8413f241d3cce5 rss --nocapture"
+	User time (seconds): 85.24
+	System time (seconds): 71.41
+	Percent of CPU this job got: 210%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 1:14.52
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 18964
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 11611325
+	Voluntary context switches: 241959
+	Involuntary context switches: 522243
+	Swaps: 0
+	File system inputs: 24
+	File system outputs: 165424
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0

@@ -1,0 +1,22 @@
+HEAD: 1603333
+HEAD_FULL: 16033332c7c4f94f00575ed1e868651e9a270cda
+STATUS_PORCELAIN:
+ M README.md
+ M src/config.rs
+ M src/dsp.rs
+ M src/separate.rs
+ M src/separator.rs
+ M tests/library_api.rs
+ M tests/streaming_chunked.rs
+?? tests/rss_measure.rs
+DIFF_PATCH_SHA256: d2e147b6930fe871087f265076eabece1e2818d046563ab16f3f4fe27081bee3
+BINARY_SHA256: 1a5d5660ba4a69f87c7478e84700263e01a74dbcf05bb17c492456921b1e18ac
+
+=== pre-correction block (n=2/3, 13-D7) ===
+sha256  a59ed2fe73152e59710611d477a8576467dddad5405b956b24aa79898759efb6  src/config.rs
+sha256  255256ff9f4dce17a2da56d5b3bdd0fad0d448b27c93fdb5f02be3dd315d90db  src/dsp.rs
+sha256  e07968c723d4d577b55206600f83f5c5211efe75606e0eb8de2d9665d5dd6e4d  src/separate.rs
+sha256  af480069c96dd642426f4d4b29811664178e91b1f9567bad3401ede5ac0b7697  src/separator.rs
+sha256  bc5aa758e5d86e95d6f3cbf10bdd29209566051d37794bd858b60a327a4d0c0f  tests/library_api.rs
+sha256  f328c29eb91fec900d2decfb9b509313a23d5c2888c3b017c20c5d234db05f4d  tests/streaming_chunked.rs
+sha256  72f9801f438175fcf4c2a97533994375a58ef19a0b3e431447ebf0b3660bbe98  README.md
