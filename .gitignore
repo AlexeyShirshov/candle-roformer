@@ -1,4 +1,10 @@
 /target
-/.pdca/
+
+# PDCA: durable status records and helper scripts are tracked; evidence and
+# scratch artefacts stay local.
+/.pdca/*
+!/.pdca/status/
+!/.pdca/scripts/
+
 __pycache__/
 *.pyc
