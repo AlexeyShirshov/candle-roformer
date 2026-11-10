@@ -27,6 +27,8 @@ fn tiny_config() -> SeparatorConfig {
         stereo: true,
         num_stems: 1,
         num_bands: 4,
+        family: None,
+        freqs_per_bands: None,
         dim_head: 4,
         heads: 1,
         flash_attn: false,
@@ -131,7 +133,14 @@ fn strict_loader_missing_extra() {
     varmap.save(&path).unwrap();
 
     // A matching profile must still load from the saved checkpoint.
-    let vb2 = unsafe { VarBuilder::from_mmaped_safetensors(&[path.to_str().unwrap()], candle_core::DType::F32, &dev) }.unwrap();
+    let vb2 = unsafe {
+        VarBuilder::from_mmaped_safetensors(
+            &[path.to_str().unwrap()],
+            candle_core::DType::F32,
+            &dev,
+        )
+    }
+    .unwrap();
     let m = MelBandRoformer::new(&cfg, vb2).unwrap();
     let inp = candle_core::Tensor::zeros((1, 2, 64), candle_core::DType::F32, &dev).unwrap();
     let _ = m.forward(&inp).unwrap();
@@ -145,7 +154,11 @@ fn ola_identity() {
         let planar = input.clone();
         let out = separate::ola(&planar, 1, 800, &|chunk: &[f32]| Ok(chunk.to_vec())).unwrap();
         assert_eq!(out.len(), len);
-        let maxerr = input.iter().zip(out.iter()).map(|(a,b)|(a-b).abs()).fold(0.0f32, f32::max);
+        let maxerr = input
+            .iter()
+            .zip(out.iter())
+            .map(|(a, b)| (a - b).abs())
+            .fold(0.0f32, f32::max);
         assert!(maxerr < 1e-4, "len {} maxerr {}", len, maxerr);
     }
 }
@@ -164,7 +177,12 @@ fn wav_roundtrip_f32() {
     assert_eq!(read.sample_rate, 44100);
     assert_eq!(read.channels, 1);
     assert_eq!(read.planar.len(), buf.planar.len());
-    let maxerr = buf.planar.iter().zip(read.planar.iter()).map(|(a,b)|(a-b).abs()).fold(0.0f32,f32::max);
+    let maxerr = buf
+        .planar
+        .iter()
+        .zip(read.planar.iter())
+        .map(|(a, b)| (a - b).abs())
+        .fold(0.0f32, f32::max);
     assert!(maxerr < 1e-6);
 }
 
@@ -177,7 +195,11 @@ fn wav_roundtrip_stereo() {
             planar.push(((i as f32 * 0.01) + c as f32).sin());
         }
     }
-    let buf = AudioBuffer { sample_rate: 44100, channels: 2, planar };
+    let buf = AudioBuffer {
+        sample_rate: 44100,
+        channels: 2,
+        planar,
+    };
     let path = dir.join("st.wav");
     write_wav_f32(&path, &buf).unwrap();
     let read = read_audio(&path).unwrap();
@@ -190,7 +212,10 @@ fn wav_roundtrip_stereo() {
         .zip(read.planar.iter())
         .map(|(a, b)| (a - b).abs())
         .fold(0.0f32, f32::max);
-    assert!(maxerr < 1e-6, "stereo channel order/length mismatch: {maxerr}");
+    assert!(
+        maxerr < 1e-6,
+        "stereo channel order/length mismatch: {maxerr}"
+    );
 }
 
 #[test]
@@ -201,7 +226,11 @@ fn wav_errors() {
     fs::write(&p, b"").unwrap();
     assert!(read_audio(&p).is_err());
     // >2 channels not directly; test nonfinite write rejected
-    let buf = AudioBuffer { sample_rate: 44100, channels: 1, planar: vec![f32::NAN] };
+    let buf = AudioBuffer {
+        sample_rate: 44100,
+        channels: 1,
+        planar: vec![f32::NAN],
+    };
     let p2 = dir.join("nan.wav");
     assert!(write_wav_f32(&p2, &buf).is_err());
 }
@@ -211,9 +240,13 @@ fn residual_exact() {
     // synthetic small: vocals = half input
     let input: Vec<f32> = (0..256).map(|i| (i as f32 * 0.1).sin()).collect();
     let vocals: Vec<f32> = input.iter().map(|x| x * 0.5).collect();
-    let instr: Vec<f32> = input.iter().zip(vocals.iter()).map(|(a,b)| a-b).collect();
+    let instr: Vec<f32> = input
+        .iter()
+        .zip(vocals.iter())
+        .map(|(a, b)| a - b)
+        .collect();
     for i in 0..input.len() {
-        assert!((input[i] - (vocals[i]+instr[i])).abs() < 1e-6);
+        assert!((input[i] - (vocals[i] + instr[i])).abs() < 1e-6);
     }
 }
 
@@ -225,7 +258,7 @@ fn wav_read_pcm16_pcm24() {
     let mut data = Vec::new();
     // RIFF
     data.extend_from_slice(b"RIFF");
-    let size = 36 + samples.len()*2;
+    let size = 36 + samples.len() * 2;
     data.extend_from_slice(&(size as u32).to_le_bytes());
     data.extend_from_slice(b"WAVE");
     data.extend_from_slice(b"fmt ");
@@ -233,12 +266,14 @@ fn wav_read_pcm16_pcm24() {
     data.extend_from_slice(&1u16.to_le_bytes()); // PCM
     data.extend_from_slice(&1u16.to_le_bytes()); // channels
     data.extend_from_slice(&44100u32.to_le_bytes());
-    data.extend_from_slice(&(44100*2u32).to_le_bytes());
+    data.extend_from_slice(&(44100 * 2u32).to_le_bytes());
     data.extend_from_slice(&2u16.to_le_bytes());
     data.extend_from_slice(&16u16.to_le_bytes());
     data.extend_from_slice(b"data");
-    data.extend_from_slice(&((samples.len()*2) as u32).to_le_bytes());
-    for s in &samples { data.extend_from_slice(&s.to_le_bytes()); }
+    data.extend_from_slice(&((samples.len() * 2) as u32).to_le_bytes());
+    for s in &samples {
+        data.extend_from_slice(&s.to_le_bytes());
+    }
     let p16 = dir.join("p16.wav");
     fs::write(&p16, &data).unwrap();
     let r16 = read_audio(&p16).unwrap();
@@ -249,7 +284,7 @@ fn wav_read_pcm16_pcm24() {
     let samples24: Vec<i32> = (0..50).map(|i| i as i32 * 1000).collect();
     let mut data24 = Vec::new();
     data24.extend_from_slice(b"RIFF");
-    let size24 = 36 + samples24.len()*3;
+    let size24 = 36 + samples24.len() * 3;
     data24.extend_from_slice(&(size24 as u32).to_le_bytes());
     data24.extend_from_slice(b"WAVE");
     data24.extend_from_slice(b"fmt ");
@@ -257,11 +292,11 @@ fn wav_read_pcm16_pcm24() {
     data24.extend_from_slice(&1u16.to_le_bytes());
     data24.extend_from_slice(&1u16.to_le_bytes());
     data24.extend_from_slice(&44100u32.to_le_bytes());
-    data24.extend_from_slice(&(44100*3u32).to_le_bytes());
+    data24.extend_from_slice(&(44100 * 3u32).to_le_bytes());
     data24.extend_from_slice(&3u16.to_le_bytes());
     data24.extend_from_slice(&24u16.to_le_bytes());
     data24.extend_from_slice(b"data");
-    data24.extend_from_slice(&((samples24.len()*3) as u32).to_le_bytes());
+    data24.extend_from_slice(&((samples24.len() * 3) as u32).to_le_bytes());
     for s in &samples24 {
         let v = *s;
         data24.push((v & 0xff) as u8);
@@ -283,14 +318,28 @@ fn ola_pass_count_sweep() {
         let chunk = 800usize;
         let input = vec![0.0f32; n];
         let calls = Cell::new(0usize);
-        let out = separate::ola_with(&input, 1, chunk, step, (chunk / 10).max(1), &|c: &[f32]| {
-            calls.set(calls.get() + 1);
-            Ok(c.to_vec())
-        })
+        let out = separate::ola_with(
+            &input,
+            1,
+            chunk,
+            step,
+            (chunk / 10).max(1),
+            &|c: &[f32]| {
+                calls.set(calls.get() + 1);
+                Ok(c.to_vec())
+            },
+        )
         .unwrap();
         assert_eq!(out.len(), n);
         let expected = (n + step - 1) / step;
-        assert_eq!(calls.get(), expected, "step={} calls={} expected={}", step, calls.get(), expected);
+        assert_eq!(
+            calls.get(),
+            expected,
+            "step={} calls={} expected={}",
+            step,
+            calls.get(),
+            expected
+        );
     }
     // overlap series
     let mut prev_calls = 0usize;
@@ -306,7 +355,14 @@ fn ola_pass_count_sweep() {
         })
         .unwrap();
         let expected = (n + step - 1) / step;
-        assert_eq!(calls.get(), expected, "overlap={} calls={} expected={}", overlap, calls.get(), expected);
+        assert_eq!(
+            calls.get(),
+            expected,
+            "overlap={} calls={} expected={}",
+            overlap,
+            calls.get(),
+            expected
+        );
         let _ = prev_calls;
         prev_calls = calls.get();
     }
@@ -403,7 +459,11 @@ fn pitch_shift_changes_output() {
         .zip(out1.iter())
         .map(|(a, b)| (a - b).abs())
         .fold(0.0f32, f32::max);
-    assert!(maxdiff > 0.0, "pitch_shift must change output, got maxdiff {}", maxdiff);
+    assert!(
+        maxdiff > 0.0,
+        "pitch_shift must change output, got maxdiff {}",
+        maxdiff
+    );
     assert!(out1.iter().all(|x| x.is_finite()));
 }
 

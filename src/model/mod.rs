@@ -1,9 +1,13 @@
 use candle_core::{DType, Device, Module, Tensor, D};
 use candle_nn::{linear, linear_no_bias, Linear, VarBuilder};
 
-use crate::config::SeparatorConfig;
+use crate::config::{ModelFamily, SeparatorConfig};
 use crate::error::Error;
 use crate::mel::mel_bin_membership;
+
+pub mod bs_roformer;
+
+pub use bs_roformer::BSRoformer;
 
 // ---------- RMSNorm ----------
 
@@ -26,7 +30,8 @@ impl Module for RmsNorm {
         let sq = x.sqr()?.sum_keepdim(D::Minus1)?;
         let denom = (sq + 1e-12)?.sqrt()?;
         let normed = x.broadcast_div(&denom)?;
-        normed.broadcast_mul(&Tensor::new(self.scale as f32, x.device())?)?
+        normed
+            .broadcast_mul(&Tensor::new(self.scale as f32, x.device())?)?
             .broadcast_mul(&self.gamma)
     }
 }
@@ -74,7 +79,12 @@ fn rotate_half(x: &Tensor) -> candle_core::Result<Tensor> {
     let last = *dims.last().unwrap();
     let half = last / 2;
     let x = x.contiguous()?;
-    let new_dims: Vec<usize> = dims[..dims.len() - 1].iter().copied().chain(std::iter::once(half)).chain(std::iter::once(2)).collect();
+    let new_dims: Vec<usize> = dims[..dims.len() - 1]
+        .iter()
+        .copied()
+        .chain(std::iter::once(half))
+        .chain(std::iter::once(2))
+        .collect();
     let x = x.reshape(new_dims)?;
     let x1 = x.narrow(D::Minus1, 0, 1)?;
     let x2 = x.narrow(D::Minus1, 1, 1)?;
@@ -98,15 +108,42 @@ pub struct Attention {
 }
 
 impl Attention {
-    pub fn new(dim: usize, heads: usize, dim_head: usize, vb: VarBuilder) -> candle_core::Result<Self> {
+    pub fn new(
+        dim: usize,
+        heads: usize,
+        dim_head: usize,
+        vb: VarBuilder,
+    ) -> candle_core::Result<Self> {
+        let rotary = RotaryEmbedding::new(dim_head, vb.pp("rotary_embed"))?;
+        Self::new_with_rotary(dim, heads, dim_head, rotary, vb)
+    }
+
+    /// Build an attention block with an externally supplied rotary table. The
+    /// BS-RoFormer checkpoints store no rotary buffer, so the table is derived
+    /// from `dim_head`/`theta` instead of loaded.
+    pub fn new_with_rotary(
+        dim: usize,
+        heads: usize,
+        dim_head: usize,
+        rotary: RotaryEmbedding,
+        vb: VarBuilder,
+    ) -> candle_core::Result<Self> {
         let dim_inner = heads * dim_head;
         let norm = RmsNorm::new(dim, vb.pp("norm"))?;
         let to_qkv = linear_no_bias(dim, dim_inner * 3, vb.pp("to_qkv"))?;
         let to_gates = linear(dim, heads, vb.pp("to_gates"))?;
         let to_out = linear_no_bias(dim_inner, dim, vb.pp("to_out").pp("0"))?;
-        let rotary = RotaryEmbedding::new(dim_head, vb.pp("rotary_embed"))?;
         let scale = (dim_head as f64).powf(-0.5);
-        Ok(Self { heads, dim_head, scale, norm, to_qkv, to_gates, to_out, rotary })
+        Ok(Self {
+            heads,
+            dim_head,
+            scale,
+            norm,
+            to_qkv,
+            to_gates,
+            to_out,
+            rotary,
+        })
     }
 
     pub fn forward(&self, x: &Tensor) -> candle_core::Result<Tensor> {
@@ -163,21 +200,47 @@ pub struct FeedForward {
     net0: RmsNorm,
     net1: Linear,
     net4: Linear,
+    gelu_erf: bool,
 }
 
 impl FeedForward {
     pub fn new(dim: usize, mult: usize, vb: VarBuilder) -> candle_core::Result<Self> {
+        Self::new_with_gelu(dim, mult, false, vb)
+    }
+
+    /// Feed-forward with the exact `erf` GELU (`nn.GELU()` default in
+    /// PyTorch) instead of Candle's tanh approximation. The reference
+    /// BS-RoFormer uses `nn.GELU()`.
+    pub fn new_erf(dim: usize, mult: usize, vb: VarBuilder) -> candle_core::Result<Self> {
+        Self::new_with_gelu(dim, mult, true, vb)
+    }
+
+    fn new_with_gelu(
+        dim: usize,
+        mult: usize,
+        gelu_erf: bool,
+        vb: VarBuilder,
+    ) -> candle_core::Result<Self> {
         let dim_inner = dim * mult;
         let net0 = RmsNorm::new(dim, vb.pp("net").pp("0"))?;
         let net1 = linear(dim, dim_inner, vb.pp("net").pp("1"))?;
         let net4 = linear(dim_inner, dim, vb.pp("net").pp("4"))?;
-        Ok(Self { net0, net1, net4 })
+        Ok(Self {
+            net0,
+            net1,
+            net4,
+            gelu_erf,
+        })
     }
 
     pub fn forward(&self, x: &Tensor) -> candle_core::Result<Tensor> {
         let h = self.net0.forward(x)?;
         let h = self.net1.forward(&h)?;
-        let h = h.gelu()?;
+        let h = if self.gelu_erf {
+            h.gelu_erf()?
+        } else {
+            h.gelu()?
+        };
         self.net4.forward(&h)
     }
 }
@@ -279,7 +342,13 @@ pub struct Mlp {
 }
 
 impl Mlp {
-    pub fn new(dim_in: usize, dim_out: usize, dim_hidden: usize, depth: usize, vb: VarBuilder) -> candle_core::Result<Self> {
+    pub fn new(
+        dim_in: usize,
+        dim_out: usize,
+        dim_hidden: usize,
+        depth: usize,
+        vb: VarBuilder,
+    ) -> candle_core::Result<Self> {
         let mut dims = vec![dim_in];
         for _ in 0..depth {
             dims.push(dim_hidden);
@@ -317,7 +386,13 @@ pub struct MaskEstimator {
 }
 
 impl MaskEstimator {
-    pub fn new(dim: usize, dim_inputs: Vec<usize>, depth: usize, mlp_expansion_factor: usize, vb: VarBuilder) -> candle_core::Result<Self> {
+    pub fn new(
+        dim: usize,
+        dim_inputs: Vec<usize>,
+        depth: usize,
+        mlp_expansion_factor: usize,
+        vb: VarBuilder,
+    ) -> candle_core::Result<Self> {
         let dim_hidden = dim * mlp_expansion_factor;
         let mut to_freqs = Vec::with_capacity(dim_inputs.len());
         for (i, &dim_in) in dim_inputs.iter().enumerate() {
@@ -326,7 +401,10 @@ impl MaskEstimator {
             let mlp = Mlp::new(dim, dim_in * 2, dim_hidden, depth, vb_i.pp("0"))?;
             to_freqs.push(mlp);
         }
-        Ok(Self { to_freqs, dim_inputs })
+        Ok(Self {
+            to_freqs,
+            dim_inputs,
+        })
     }
 
     pub fn forward(&self, x: &Tensor) -> candle_core::Result<Tensor> {
@@ -338,7 +416,7 @@ impl MaskEstimator {
             let band_x = x.narrow(2, i, 1)?.squeeze(2)?; // (b,t,dim)
             let mlp = &self.to_freqs[i];
             let out = mlp.forward(&band_x)?; // (b,t,dim_in*2)
-            // GLU over last dim
+                                             // GLU over last dim
             let half = out.dim(D::Minus1)? / 2;
             let a = out.narrow(D::Minus1, 0, half)?;
             let b = out.narrow(D::Minus1, half, half)?;
@@ -385,6 +463,14 @@ pub struct MelBandRoformer {
 /// structure the builder uses. Lets the loader validate a checkpoint without
 /// materialising a dummy model (which would cost ~0.9 GB for a real profile).
 pub fn expected_key_shapes(cfg: &SeparatorConfig) -> Vec<(String, Vec<usize>)> {
+    match cfg.family() {
+        ModelFamily::MelBandRoformer => expected_key_shapes_melband(cfg),
+        ModelFamily::BSRoformer => bs_roformer::expected_key_shapes(cfg),
+    }
+}
+
+/// Expected key set of a MelBandRoformer profile (mel-band membership).
+pub fn expected_key_shapes_melband(cfg: &SeparatorConfig) -> Vec<(String, Vec<usize>)> {
     let dim = cfg.dim;
     let audio_channels = if cfg.stereo { 2 } else { 1 };
     let membership = mel_bin_membership(cfg.stft_n_fft, cfg.sample_rate, cfg.num_bands);
@@ -395,7 +481,10 @@ pub fn expected_key_shapes(cfg: &SeparatorConfig) -> Vec<(String, Vec<usize>)> {
     for (i, bins) in membership.iter().enumerate() {
         let dim_in = 2 * bins.len() * audio_channels;
         out.push((format!("band_split.to_features.{i}.0.gamma"), vec![dim_in]));
-        out.push((format!("band_split.to_features.{i}.1.weight"), vec![dim, dim_in]));
+        out.push((
+            format!("band_split.to_features.{i}.1.weight"),
+            vec![dim, dim_in],
+        ));
         out.push((format!("band_split.to_features.{i}.1.bias"), vec![dim]));
     }
 
@@ -420,8 +509,16 @@ pub fn expected_key_shapes(cfg: &SeparatorConfig) -> Vec<(String, Vec<usize>)> {
     };
 
     for li in 0..cfg.depth {
-        let time_idx = if cfg.linear_transformer_depth > 0 { 1 } else { 0 };
-        push_transformer(&mut out, &format!("layers.{li}.{time_idx}"), cfg.time_transformer_depth);
+        let time_idx = if cfg.linear_transformer_depth > 0 {
+            1
+        } else {
+            0
+        };
+        push_transformer(
+            &mut out,
+            &format!("layers.{li}.{time_idx}"),
+            cfg.time_transformer_depth,
+        );
         push_transformer(
             &mut out,
             &format!("layers.{li}.{}", time_idx + 1),
@@ -451,11 +548,15 @@ pub fn expected_key_shapes(cfg: &SeparatorConfig) -> Vec<(String, Vec<usize>)> {
 
 /// Bands processed together in the time transformer. The band axis is a pure
 /// batch axis, so grouping changes speed/memory only, not the result.
-const BAND_BLOCK: usize = 8;
+pub(crate) const BAND_BLOCK: usize = 8;
 /// Frames processed together in the frequency transformer (also a batch axis).
-const T_BLOCK: usize = 64;
+pub(crate) const T_BLOCK: usize = 64;
 
-fn run_time_transformer<F>(cur: &Tensor, block: usize, f: F) -> candle_core::Result<Tensor>
+pub(crate) fn run_time_transformer<F>(
+    cur: &Tensor,
+    block: usize,
+    f: F,
+) -> candle_core::Result<Tensor>
 where
     F: Fn(&Tensor) -> candle_core::Result<Tensor>,
 {
@@ -477,7 +578,11 @@ where
     cat.permute((0, 2, 1, 3))?.contiguous()
 }
 
-fn run_freq_transformer<F>(cur: &Tensor, block: usize, f: F) -> candle_core::Result<Tensor>
+pub(crate) fn run_freq_transformer<F>(
+    cur: &Tensor,
+    block: usize,
+    f: F,
+) -> candle_core::Result<Tensor>
 where
     F: Fn(&Tensor) -> candle_core::Result<Tensor>,
 {
@@ -498,7 +603,7 @@ where
     Tensor::cat(&outs, 0)
 }
 
-fn dump_tensor(name: &str, t: &Tensor) {
+pub(crate) fn dump_tensor(name: &str, t: &Tensor) {
     use std::sync::atomic::{AtomicUsize, Ordering};
     static SEQ: AtomicUsize = AtomicUsize::new(0);
     let Ok(dir) = std::env::var("CANDLE_ROFORMER_DUMP") else {
@@ -587,13 +692,37 @@ impl MelBandRoformer {
             let vb_layer = vb.pp("layers").pp(li.to_string());
             let mut tran_modules = Vec::new();
             if linear_depth > 0 {
-                let t = Transformer::new(dim, linear_depth, heads, dim_head, ff_mult, false, vb_layer.pp("0"))?;
+                let t = Transformer::new(
+                    dim,
+                    linear_depth,
+                    heads,
+                    dim_head,
+                    ff_mult,
+                    false,
+                    vb_layer.pp("0"),
+                )?;
                 tran_modules.push(t);
             }
             let time_vb_idx = if linear_depth > 0 { 1 } else { 0 };
             let freq_vb_idx = time_vb_idx + 1;
-            let time_tr = Transformer::new(dim, time_depth, heads, dim_head, ff_mult, norm_output, vb_layer.pp(time_vb_idx.to_string()))?;
-            let freq_tr = Transformer::new(dim, freq_depth, heads, dim_head, ff_mult, norm_output, vb_layer.pp(freq_vb_idx.to_string()))?;
+            let time_tr = Transformer::new(
+                dim,
+                time_depth,
+                heads,
+                dim_head,
+                ff_mult,
+                norm_output,
+                vb_layer.pp(time_vb_idx.to_string()),
+            )?;
+            let freq_tr = Transformer::new(
+                dim,
+                freq_depth,
+                heads,
+                dim_head,
+                ff_mult,
+                norm_output,
+                vb_layer.pp(freq_vb_idx.to_string()),
+            )?;
             tran_modules.push(time_tr);
             tran_modules.push(freq_tr);
             layers.push(tran_modules);
@@ -603,7 +732,13 @@ impl MelBandRoformer {
 
         let mut mask_estimators = Vec::with_capacity(num_stems);
         for si in 0..num_stems {
-            let me = MaskEstimator::new(dim, dim_inputs.clone(), cfg.mask_estimator_depth, ff_mult, vb.pp("mask_estimators").pp(si.to_string()))?;
+            let me = MaskEstimator::new(
+                dim,
+                dim_inputs.clone(),
+                cfg.mask_estimator_depth,
+                ff_mult,
+                vb.pp("mask_estimators").pp(si.to_string()),
+            )?;
             mask_estimators.push(me);
         }
 
@@ -647,7 +782,9 @@ impl MelBandRoformer {
             let sig = &raw_vec[off..off + samples_per];
             let res = crate::dsp::stft(sig, self.n_fft, self.hop, self.win)
                 .map_err(|e| candle_core::Error::Msg(e.to_string()))?;
-            if frames == 0 { frames = res.frames; }
+            if frames == 0 {
+                frames = res.frames;
+            }
             stft_results.push(res);
         }
         let freqs = self.freqs;
@@ -673,7 +810,10 @@ impl MelBandRoformer {
 
         dump_tensor("01_stft", &stft_repr);
         let fi_tensor = Tensor::from_vec(
-            self.freq_indices.iter().map(|&x| x as i64).collect::<Vec<_>>(),
+            self.freq_indices
+                .iter()
+                .map(|&x| x as i64)
+                .collect::<Vec<_>>(),
             self.freq_indices.len(),
             device,
         )?;
@@ -724,7 +864,7 @@ impl MelBandRoformer {
         }
         let masks = Tensor::cat(&stacked, 1)?; // (b, num_stems, frames, selected*2)
         let masks = masks.reshape((batch, self.mask_estimators.len(), frames, selected, 2))?; // wait need rearrange 'b n t (f c) -> b n f t c' with c=2. Let's do:
-        // masks currently (b, n, frames, selected*2). reshape to (b,n,frames,selected,2)
+                                                                                              // masks currently (b, n, frames, selected*2). reshape to (b,n,frames,selected,2)
         let masks = masks.reshape((batch, self.mask_estimators.len(), frames, selected, 2))?;
         // permute to (b, n, selected, frames, 2)
         let masks = masks.permute((0, 1, 3, 2, 4))?;
@@ -736,7 +876,8 @@ impl MelBandRoformer {
         // stft_repr: (b,1,F,frames,2); masks: (b,n,selected,frames,2)
         // scatter masks into full freq dim
         // scatter_indices: (b, n, selected, frames) indices into freq dim
-        let mut scatter_idx_vec = Vec::with_capacity(batch * self.mask_estimators.len() * selected * frames);
+        let mut scatter_idx_vec =
+            Vec::with_capacity(batch * self.mask_estimators.len() * selected * frames);
         for _b in 0..batch {
             for _n in 0..self.mask_estimators.len() {
                 for s in 0..selected {
@@ -748,12 +889,24 @@ impl MelBandRoformer {
             }
         }
         // Need shape (b,n,selected,frames)
-        let scatter_idx = Tensor::from_vec(scatter_idx_vec, (batch, self.mask_estimators.len(), selected, frames), device)?;
+        let scatter_idx = Tensor::from_vec(
+            scatter_idx_vec,
+            (batch, self.mask_estimators.len(), selected, frames),
+            device,
+        )?;
 
         // masks_summed: zeros (b, n, freqs*ch, frames, 2) complex real/imag
         let full_freqs = freqs * self.audio_channels;
-        let masks_summed_re = Tensor::zeros((batch, self.mask_estimators.len(), full_freqs, frames), DType::F32, device)?;
-        let masks_summed_im = Tensor::zeros((batch, self.mask_estimators.len(), full_freqs, frames), DType::F32, device)?;
+        let masks_summed_re = Tensor::zeros(
+            (batch, self.mask_estimators.len(), full_freqs, frames),
+            DType::F32,
+            device,
+        )?;
+        let masks_summed_im = Tensor::zeros(
+            (batch, self.mask_estimators.len(), full_freqs, frames),
+            DType::F32,
+            device,
+        )?;
 
         // masks components: (b,n,selected,frames,2)
         let mask_re = masks.narrow(4, 0, 1)?.squeeze(4)?;
@@ -784,8 +937,18 @@ impl MelBandRoformer {
         let sr_re = stft_repr.narrow(4, 0, 1)?.squeeze(4)?.squeeze(1)?;
         let sr_im = stft_repr.narrow(4, 1, 1)?.squeeze(4)?.squeeze(1)?;
         // expand stems: (b, n, full_freqs, frames)
-        let sr_re = sr_re.unsqueeze(1)?.broadcast_as((batch, self.mask_estimators.len(), full_freqs, frames))?;
-        let sr_im = sr_im.unsqueeze(1)?.broadcast_as((batch, self.mask_estimators.len(), full_freqs, frames))?;
+        let sr_re = sr_re.unsqueeze(1)?.broadcast_as((
+            batch,
+            self.mask_estimators.len(),
+            full_freqs,
+            frames,
+        ))?;
+        let sr_im = sr_im.unsqueeze(1)?.broadcast_as((
+            batch,
+            self.mask_estimators.len(),
+            full_freqs,
+            frames,
+        ))?;
 
         // complex multiply: (a+ib)*(c+id) = (ac-bd)+i(ad+bc)
         dump_tensor("05_mask_avg", &ms_re);
@@ -797,10 +960,18 @@ impl MelBandRoformer {
         // indices 0..audio_channels (f == 0, all channels).
         if self.zero_dc {
             let dc = self.audio_channels;
-            let zeros_re = Tensor::zeros((batch, self.mask_estimators.len(), dc, frames), DType::F32, device)?;
+            let zeros_re = Tensor::zeros(
+                (batch, self.mask_estimators.len(), dc, frames),
+                DType::F32,
+                device,
+            )?;
             let rest_re = out_re.narrow(2, dc, full_freqs - dc)?;
             let new_re = Tensor::cat(&[&zeros_re, &rest_re], 2)?;
-            let zeros_im = Tensor::zeros((batch, self.mask_estimators.len(), dc, frames), DType::F32, device)?;
+            let zeros_im = Tensor::zeros(
+                (batch, self.mask_estimators.len(), dc, frames),
+                DType::F32,
+                device,
+            )?;
             let rest_im = out_im.narrow(2, dc, full_freqs - dc)?;
             let new_im = Tensor::cat(&[&zeros_im, &rest_im], 2)?;
             let out_re_f = new_re;
@@ -823,7 +994,10 @@ impl MelBandRoformer {
                             let full_idx = f * self.audio_channels + c;
                             for fr in 0..frames {
                                 let src = ((b * nstems + n) * full_freqs + full_idx) * frames + fr;
-                                let dst = ((b * nstems + n) * self.audio_channels + c) * freqs * frames + fr * freqs + f;
+                                let dst =
+                                    ((b * nstems + n) * self.audio_channels + c) * freqs * frames
+                                        + fr * freqs
+                                        + f;
                                 istft_re[dst] = out_re_vec[src];
                                 istft_im[dst] = out_im_vec[src];
                             }
@@ -831,8 +1005,10 @@ impl MelBandRoformer {
                     }
                 }
             }
-            let spec_re = Tensor::from_vec(istft_re.clone(), (total_signals, frames, freqs), device)?;
-            let spec_im = Tensor::from_vec(istft_im.clone(), (total_signals, frames, freqs), device)?;
+            let spec_re =
+                Tensor::from_vec(istft_re.clone(), (total_signals, frames, freqs), device)?;
+            let spec_im =
+                Tensor::from_vec(istft_im.clone(), (total_signals, frames, freqs), device)?;
             dump_tensor("07_spec_re", &spec_re);
             dump_tensor("07_spec_im", &spec_im);
             // Now istft per (batch*nstems*channels)
@@ -852,7 +1028,8 @@ impl MelBandRoformer {
                 }
             }
             // rearrange recon (b, n, ch, samples) -> if num_stems==1 squeeze stem
-            let recon_t = Tensor::from_vec(recon, (batch, nstems, self.audio_channels, raw_len), device)?;
+            let recon_t =
+                Tensor::from_vec(recon, (batch, nstems, self.audio_channels, raw_len), device)?;
             dump_tensor("06_recon", &recon_t);
             if nstems == 1 {
                 let recon_t = recon_t.squeeze(1)?; // (b, ch, samples)
@@ -876,7 +1053,10 @@ impl MelBandRoformer {
                             let full_idx = f * self.audio_channels + c;
                             for fr in 0..frames {
                                 let src = ((b * nstems + n) * full_freqs + full_idx) * frames + fr;
-                                let dst = ((b * nstems + n) * self.audio_channels + c) * freqs * frames + fr * freqs + f;
+                                let dst =
+                                    ((b * nstems + n) * self.audio_channels + c) * freqs * frames
+                                        + fr * freqs
+                                        + f;
                                 istft_re[dst] = out_re_vec[src];
                                 istft_im[dst] = out_im_vec[src];
                             }
@@ -899,7 +1079,8 @@ impl MelBandRoformer {
                     recon[sig * raw_len + i] = y[i];
                 }
             }
-            let recon_t = Tensor::from_vec(recon, (batch, nstems, self.audio_channels, raw_len), device)?;
+            let recon_t =
+                Tensor::from_vec(recon, (batch, nstems, self.audio_channels, raw_len), device)?;
             dump_tensor("06_recon", &recon_t);
             if nstems == 1 {
                 let recon_t = recon_t.squeeze(1)?;
@@ -907,5 +1088,39 @@ impl MelBandRoformer {
             }
             Ok(recon_t)
         }
+    }
+}
+
+// ---------- Model family dispatch ----------
+
+/// The operations the separation pipeline needs from a loaded separation
+/// model, independent of the architecture family. Implemented by
+/// [`MelBandRoformer`] and [`BSRoformer`], so `separate::*` runs either.
+pub trait RoformerModel {
+    /// Forward pass over `(batch, channels, samples)` PCM, returning the model
+    /// output in the same layout (`(batch, channels, samples)` for single-stem
+    /// profiles, `(batch, stems, channels, samples)` otherwise).
+    fn forward(&self, raw_audio: &Tensor) -> candle_core::Result<Tensor>;
+    fn audio_channels(&self) -> usize;
+    fn num_stems(&self) -> usize;
+    fn hop(&self) -> usize;
+    fn device(&self) -> &Device;
+}
+
+impl RoformerModel for MelBandRoformer {
+    fn forward(&self, raw_audio: &Tensor) -> candle_core::Result<Tensor> {
+        MelBandRoformer::forward(self, raw_audio)
+    }
+    fn audio_channels(&self) -> usize {
+        self.audio_channels
+    }
+    fn num_stems(&self) -> usize {
+        self.num_stems
+    }
+    fn hop(&self) -> usize {
+        self.hop
+    }
+    fn device(&self) -> &Device {
+        &self.device
     }
 }

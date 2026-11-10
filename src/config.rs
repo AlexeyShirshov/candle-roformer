@@ -9,12 +9,28 @@ pub struct SeparatorConfig {
     pub depth: usize,
     pub stereo: bool,
     pub num_stems: usize,
+    /// Mel-band band count. MelBandRoformer only; BS-RoFormer configs carry
+    /// `freqs_per_bands` instead (default 0 = absent).
+    #[serde(default)]
     pub num_bands: usize,
+    /// Explicit family selector. When absent the family is inferred from the
+    /// config shape: `freqs_per_bands` present => BS-RoFormer, otherwise
+    /// MelBandRoformer.
+    #[serde(default)]
+    pub family: Option<ModelFamily>,
+    /// BS-RoFormer splits the STFT frequency axis into explicit consecutive
+    /// band widths, e.g. `(2, 2, ..., 128, 129)`. The widths must sum to
+    /// `dim_freqs_in`.
+    #[serde(default)]
+    pub freqs_per_bands: Option<Vec<usize>>,
     pub dim_head: usize,
     pub heads: usize,
     #[serde(default = "default_true")]
     pub flash_attn: bool,
     pub dim_freqs_in: usize,
+    /// Model sample rate. UVR profiles usually carry it in the `audio:` block;
+    /// it is resolved from there when the `model:` block omits it.
+    #[serde(default)]
     pub sample_rate: usize,
     pub stft_n_fft: usize,
     pub stft_hop_length: usize,
@@ -48,14 +64,33 @@ fn default_mlp_expansion() -> usize {
 
 impl SeparatorConfig {
     /// Parse a v7-style YAML profile (`model:` section).
+    ///
+    /// The upstream UVR model configs use `!!python/tuple` tags for the
+    /// `freqs_per_bands` sequence; the tag carries no information a YAML
+    /// sequence does not already have, so it is stripped before parsing.
     pub fn from_yaml_str(text: &str) -> Result<Self, ConfigError> {
+        #[derive(Deserialize)]
+        struct AudioSection {
+            #[serde(default)]
+            sample_rate: Option<usize>,
+        }
         #[derive(Deserialize)]
         struct Root {
             model: SeparatorConfig,
+            #[serde(default)]
+            audio: Option<AudioSection>,
         }
+        let text = text.replace("!!python/tuple", "");
         let root: Root =
-            serde_yaml::from_str(text).map_err(|e| ConfigError::Invalid(e.to_string()))?;
-        Ok(root.model)
+            serde_yaml::from_str(&text).map_err(|e| ConfigError::Invalid(e.to_string()))?;
+        let mut model = root.model;
+        // UVR profiles keep the sample rate in `audio:`; the reference loader
+        // copies it into the model profile. Default to 44.1 kHz (the only rate
+        // the published RoFormer profiles use).
+        if model.sample_rate == 0 {
+            model.sample_rate = root.audio.and_then(|a| a.sample_rate).unwrap_or(44_100);
+        }
+        Ok(model)
     }
 
     /// Read and parse a v7-style YAML profile from disk.
@@ -63,6 +98,16 @@ impl SeparatorConfig {
         let text = std::fs::read_to_string(path)
             .map_err(|e| ConfigError::Invalid(format!("cannot read config: {}", e)))?;
         Self::from_yaml_str(&text)
+    }
+
+    /// Resolve the model family: an explicit `family:` key wins; otherwise the
+    /// config shape decides (`freqs_per_bands` => BS-RoFormer, else MelBand).
+    pub fn family(&self) -> ModelFamily {
+        self.family.unwrap_or(if self.freqs_per_bands.is_some() {
+            ModelFamily::BSRoformer
+        } else {
+            ModelFamily::MelBandRoformer
+        })
     }
 
     /// The exact profile from `v7.yaml` (MelBandRoformer vocals).
@@ -73,6 +118,8 @@ impl SeparatorConfig {
             stereo: true,
             num_stems: 1,
             num_bands: 60,
+            family: None,
+            freqs_per_bands: None,
             dim_head: 64,
             heads: 8,
             flash_attn: true,
@@ -104,8 +151,36 @@ impl SeparatorConfig {
         if self.num_stems == 0 {
             return Err(ConfigError::Invalid("num_stems must be > 0".into()));
         }
-        if self.num_bands == 0 {
-            return Err(ConfigError::Invalid("num_bands must be > 0".into()));
+        match self.family() {
+            ModelFamily::MelBandRoformer => {
+                if self.num_bands == 0 {
+                    return Err(ConfigError::Invalid(
+                        "num_bands must be > 0 for mel_band_roformer".into(),
+                    ));
+                }
+            }
+            ModelFamily::BSRoformer => {
+                let freqs = self.freqs_per_bands.as_ref().ok_or_else(|| {
+                    ConfigError::Invalid("freqs_per_bands is required for bs_roformer".into())
+                })?;
+                if freqs.len() < 2 {
+                    return Err(ConfigError::Invalid(
+                        "freqs_per_bands must have at least 2 bands".into(),
+                    ));
+                }
+                if freqs.iter().any(|f| *f == 0) {
+                    return Err(ConfigError::Invalid(
+                        "freqs_per_bands entries must be > 0".into(),
+                    ));
+                }
+                let total: usize = freqs.iter().sum();
+                if total != self.dim_freqs_in {
+                    return Err(ConfigError::Invalid(format!(
+                        "freqs_per_bands sums to {} but dim_freqs_in is {}",
+                        total, self.dim_freqs_in
+                    )));
+                }
+            }
         }
         if self.dim_head == 0 || self.heads == 0 {
             return Err(ConfigError::Invalid(
@@ -147,9 +222,11 @@ impl SeparatorConfig {
 
 // ---------- Inference configuration (issue #9) ----------
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
 pub enum ModelFamily {
+    #[serde(rename = "mel_band_roformer", alias = "melband", alias = "mel_band")]
     MelBandRoformer,
+    #[serde(rename = "bs_roformer", alias = "bsroformer", alias = "bs-roformer")]
     BSRoformer,
 }
 
@@ -212,7 +289,13 @@ impl InferenceConfig {
     }
 
     pub fn bsroformer() -> Self {
-        Self::melband()
+        // Same streaming granularity as the MelBand profile: 800 STFT hops per
+        // chunk (352800 samples = 8 s at 44.1 kHz) and the reference's
+        // 4-way overlap for BS-RoFormer profiles.
+        Self {
+            num_overlap: 4,
+            ..Self::melband()
+        }
     }
 
     pub fn for_family(family: ModelFamily) -> Self {
@@ -264,15 +347,19 @@ impl InferenceConfig {
             return Err(ConfigError::Invalid("sample_rate must be > 0".into()));
         }
         if !self.normalization.is_finite() || self.normalization < 0.0 {
-            return Err(ConfigError::Invalid("normalization must be finite and >= 0".into()));
+            return Err(ConfigError::Invalid(
+                "normalization must be finite and >= 0".into(),
+            ));
         }
         if !self.amplification.is_finite() || self.amplification < 0.0 {
-            return Err(ConfigError::Invalid("amplification must be finite and >= 0".into()));
+            return Err(ConfigError::Invalid(
+                "amplification must be finite and >= 0".into(),
+            ));
         }
         Ok(())
     }
 
-    pub fn chunk_size(&self, model: &crate::model::MelBandRoformer) -> usize {
+    pub fn chunk_size(&self, model: &dyn crate::model::RoformerModel) -> usize {
         if let Some(c) = self.segment_size {
             c.max(1)
         } else {
@@ -281,7 +368,7 @@ impl InferenceConfig {
                 .and_then(|v| v.parse::<usize>().ok())
                 .filter(|v| *v > 0)
                 .unwrap_or(self.chunk_hops);
-            model.hop.max(1) * hops.max(1)
+            model.hop().max(1) * hops.max(1)
         }
     }
 

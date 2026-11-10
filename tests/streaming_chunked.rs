@@ -19,6 +19,8 @@ fn tiny_config() -> SeparatorConfig {
         stereo: true,
         num_stems: 1,
         num_bands: 4,
+        family: None,
+        freqs_per_bands: None,
         dim_head: 4,
         heads: 1,
         flash_attn: false,
@@ -40,7 +42,10 @@ fn tiny_config() -> SeparatorConfig {
     }
 }
 
-fn write_tiny_model(dir: &std::path::Path, cfg: &SeparatorConfig) -> (std::path::PathBuf, std::path::PathBuf) {
+fn write_tiny_model(
+    dir: &std::path::Path,
+    cfg: &SeparatorConfig,
+) -> (std::path::PathBuf, std::path::PathBuf) {
     use candle_core::{DType, Device};
     use candle_nn::{VarBuilder, VarMap};
     let dev = Device::Cpu;
@@ -66,7 +71,9 @@ fn chunked_length_and_residual() {
     let dir = tmpdir("len");
     let (model, config) = write_tiny_model(&dir, &cfg);
     let mut _y = fs::read_to_string(&config).unwrap();
-    _y.push_str("\ninference:\n  normalization: 0.0\n  amplification: 0.0\n  invert_spect: false\n");
+    _y.push_str(
+        "\ninference:\n  normalization: 0.0\n  amplification: 0.0\n  invert_spect: false\n",
+    );
     fs::write(&config, _y).unwrap();
     let assets = LocalSeparationAssets::new(&model, &config);
     let separator = Separator::load(&assets, DeviceChoice::Cpu).unwrap();
@@ -89,18 +96,34 @@ fn chunked_length_and_residual() {
     let vpath = dir.join("v.wav");
     let ipath = dir.join("i.wav");
     let cd = 3200.0 / 44100.0;
-    separator.separate_file(&input_path, &vpath, &ipath, cd).unwrap();
+    separator
+        .separate_file(&input_path, &vpath, &ipath, cd)
+        .unwrap();
 
     let v = read_audio(&vpath).unwrap();
     let iv = read_audio(&ipath).unwrap();
-    assert_eq!(v.frames(), frames, "vocals length mismatch: got {} expected {}", v.frames(), frames);
-    assert_eq!(iv.frames(), frames, "instrumental length mismatch: got {} expected {}", iv.frames(), frames);
+    assert_eq!(
+        v.frames(),
+        frames,
+        "vocals length mismatch: got {} expected {}",
+        v.frames(),
+        frames
+    );
+    assert_eq!(
+        iv.frames(),
+        frames,
+        "instrumental length mismatch: got {} expected {}",
+        iv.frames(),
+        frames
+    );
     for i in 0..(2 * frames) {
         let sum = v.planar[i] + iv.planar[i];
         assert!(
             (planar[i] - sum).abs() < 1e-5,
             "residual too large at {}: {} vs {}",
-            i, planar[i], sum
+            i,
+            planar[i],
+            sum
         );
     }
 }
@@ -111,13 +134,17 @@ fn chunked_boundary_parity() {
     let dir = tmpdir("parity");
     let (model, config) = write_tiny_model(&dir, &cfg);
     let mut _y = fs::read_to_string(&config).unwrap();
-    _y.push_str("\ninference:\n  normalization: 0.0\n  amplification: 0.0\n  invert_spect: false\n");
+    _y.push_str(
+        "\ninference:\n  normalization: 0.0\n  amplification: 0.0\n  invert_spect: false\n",
+    );
     fs::write(&config, _y).unwrap();
     let assets = LocalSeparationAssets::new(&model, &config);
     let separator = Separator::load(&assets, DeviceChoice::Cpu).unwrap();
 
     let frames = 6000usize;
-    let samples: Vec<f32> = (0..frames).map(|i| (i as f32 * 0.037).sin() * 0.3).collect();
+    let samples: Vec<f32> = (0..frames)
+        .map(|i| (i as f32 * 0.037).sin() * 0.3)
+        .collect();
     let mut planar = vec![0f32; 2 * frames];
     for i in 0..frames {
         planar[i] = samples[i];
@@ -138,7 +165,9 @@ fn chunked_boundary_parity() {
     let vpath = dir.join("v.wav");
     let ipath = dir.join("i.wav");
     let cd = 3200.0 / 44100.0;
-    separator.separate_file(&input_path, &vpath, &ipath, cd).unwrap();
+    separator
+        .separate_file(&input_path, &vpath, &ipath, cd)
+        .unwrap();
     let v = read_audio(&vpath).unwrap();
 
     let mut max_abs = 0f32;
@@ -146,7 +175,9 @@ fn chunked_boundary_parity() {
     let n = stems.vocals.planar.len();
     for i in 0..n {
         let d = (stems.vocals.planar[i] - v.planar[i]).abs();
-        if d > max_abs { max_abs = d; }
+        if d > max_abs {
+            max_abs = d;
+        }
         sq += (d as f64) * (d as f64);
     }
     let rmse = (sq / n as f64).sqrt();
@@ -161,7 +192,9 @@ fn chunked_mono() {
     let dir = tmpdir("mono");
     let (model, config) = write_tiny_model(&dir, &cfg);
     let mut _y = fs::read_to_string(&config).unwrap();
-    _y.push_str("\ninference:\n  normalization: 0.0\n  amplification: 0.0\n  invert_spect: false\n");
+    _y.push_str(
+        "\ninference:\n  normalization: 0.0\n  amplification: 0.0\n  invert_spect: false\n",
+    );
     fs::write(&config, _y).unwrap();
     let assets = LocalSeparationAssets::new(&model, &config);
     let separator = Separator::load(&assets, DeviceChoice::Cpu).unwrap();
@@ -179,7 +212,9 @@ fn chunked_mono() {
     let vpath = dir.join("v.wav");
     let ipath = dir.join("i.wav");
     let cd = 3200.0 / 44100.0;
-    separator.separate_file(&input_path, &vpath, &ipath, cd).unwrap();
+    separator
+        .separate_file(&input_path, &vpath, &ipath, cd)
+        .unwrap();
 
     let v = read_audio(&vpath).unwrap();
     let iv = read_audio(&ipath).unwrap();
@@ -213,7 +248,9 @@ fn stream_default_normalization_peaks() {
 
     let vpath = dir.join("v.wav");
     let ipath = dir.join("i.wav");
-    separator.separate_file(&input_path, &vpath, &ipath, 1.0).unwrap();
+    separator
+        .separate_file(&input_path, &vpath, &ipath, 1.0)
+        .unwrap();
 
     let v = read_audio(&vpath).unwrap();
     let iv = read_audio(&ipath).unwrap();
@@ -230,7 +267,9 @@ fn stream_amplification_positive() {
     let dir = tmpdir("stream_amp");
     let (model, config) = write_tiny_model(&dir, &cfg);
     let mut yaml = fs::read_to_string(&config).unwrap();
-    yaml.push_str("\ninference:\n  normalization: 0.0\n  amplification: 0.9\n  invert_spect: false\n");
+    yaml.push_str(
+        "\ninference:\n  normalization: 0.0\n  amplification: 0.9\n  invert_spect: false\n",
+    );
     fs::write(&config, yaml).unwrap();
 
     let assets = LocalSeparationAssets::new(&model, &config);
@@ -249,7 +288,9 @@ fn stream_amplification_positive() {
 
     let vpath = dir.join("v.wav");
     let ipath = dir.join("i.wav");
-    separator.separate_file(&input_path, &vpath, &ipath, 1.0).unwrap();
+    separator
+        .separate_file(&input_path, &vpath, &ipath, 1.0)
+        .unwrap();
 
     let v = read_audio(&vpath).unwrap();
     let iv = read_audio(&ipath).unwrap();
@@ -267,8 +308,15 @@ fn stream_amplification_positive() {
         "STREAM amplification before_peak={} after_peak={} maxerr={}",
         before_peak, after_peak, maxerr
     );
-    assert!(after_peak > before_peak * 2.0, "amplification did not raise level");
-    assert!(maxerr < 1e-5, "amplified residual reconstruction error too large: {}", maxerr);
+    assert!(
+        after_peak > before_peak * 2.0,
+        "amplification did not raise level"
+    );
+    assert!(
+        maxerr < 1e-5,
+        "amplified residual reconstruction error too large: {}",
+        maxerr
+    );
 }
 
 #[test]
@@ -277,7 +325,9 @@ fn stream_spectral_inversion_matches_independent_residual() {
     let dir = tmpdir("stream_specinv");
     let (model, config) = write_tiny_model(&dir, &cfg);
     let mut yaml = fs::read_to_string(&config).unwrap();
-    yaml.push_str("\ninference:\n  normalization: 0.0\n  amplification: 0.0\n  invert_spect: true\n");
+    yaml.push_str(
+        "\ninference:\n  normalization: 0.0\n  amplification: 0.0\n  invert_spect: true\n",
+    );
     fs::write(&config, yaml).unwrap();
 
     let assets = LocalSeparationAssets::new(&model, &config);
@@ -295,14 +345,20 @@ fn stream_spectral_inversion_matches_independent_residual() {
 
     let vpath = dir.join("v.wav");
     let ipath = dir.join("i.wav");
-    separator.separate_file(&input_path, &vpath, &ipath, 1.0).unwrap();
+    separator
+        .separate_file(&input_path, &vpath, &ipath, 1.0)
+        .unwrap();
 
     let iv = read_audio(&ipath).unwrap();
 
     // Independently compute expected spectral residual at model rate.
     let dev = candle_core::Device::Cpu;
     let vb = unsafe {
-        candle_nn::VarBuilder::from_mmaped_safetensors(&[model.to_str().unwrap()], candle_core::DType::F32, &dev)
+        candle_nn::VarBuilder::from_mmaped_safetensors(
+            &[model.to_str().unwrap()],
+            candle_core::DType::F32,
+            &dev,
+        )
     }
     .unwrap();
     let mdl = candle_roformer::model::MelBandRoformer::new(&cfg, vb).unwrap();
@@ -316,7 +372,13 @@ fn stream_spectral_inversion_matches_independent_residual() {
     icfg.normalization = 0.0;
     icfg.amplification = 0.0;
     icfg.invert_spect = false;
-    let outs = candle_roformer::separate::separate_all_with_config(&mdl, &model_input, model_channels, &icfg).unwrap();
+    let outs = candle_roformer::separate::separate_all_with_config(
+        &mdl,
+        &model_input,
+        model_channels,
+        &icfg,
+    )
+    .unwrap();
     let vocals_model = &outs[0];
     let mv_frames = vocals_model.len() / model_channels;
     let in_frames = model_input.len() / model_channels;
@@ -324,8 +386,12 @@ fn stream_spectral_inversion_matches_independent_residual() {
 
     let mut instr_model = vec![0.0f32; model_channels * frames_m];
     for ch in 0..model_channels {
-        let in_ch: Vec<f32> = (0..frames_m).map(|i| model_input[ch * in_frames + i]).collect();
-        let voc_ch: Vec<f32> = (0..frames_m).map(|i| vocals_model[ch * mv_frames + i]).collect();
+        let in_ch: Vec<f32> = (0..frames_m)
+            .map(|i| model_input[ch * in_frames + i])
+            .collect();
+        let voc_ch: Vec<f32> = (0..frames_m)
+            .map(|i| vocals_model[ch * mv_frames + i])
+            .collect();
         let spec_in = candle_roformer::dsp::stft(
             &in_ch,
             cfg.stft_n_fft,
@@ -376,7 +442,10 @@ fn stream_spectral_inversion_matches_independent_residual() {
             maxdiff = d;
         }
     }
-    eprintln!("STREAM spectral inversion maxdiff_vs_independent={}", maxdiff);
+    eprintln!(
+        "STREAM spectral inversion maxdiff_vs_independent={}",
+        maxdiff
+    );
     assert!(
         maxdiff < 1e-2,
         "spectral inversion output should match independent residual (maxdiff {})",
@@ -390,7 +459,9 @@ fn chunked_multiblock_stereo_residual() {
     let dir = tmpdir("multiblock");
     let (model, config) = write_tiny_model(&dir, &cfg);
     let mut _y = fs::read_to_string(&config).unwrap();
-    _y.push_str("\ninference:\n  normalization: 0.0\n  amplification: 0.0\n  invert_spect: false\n");
+    _y.push_str(
+        "\ninference:\n  normalization: 0.0\n  amplification: 0.0\n  invert_spect: false\n",
+    );
     fs::write(&config, _y).unwrap();
     let assets = LocalSeparationAssets::new(&model, &config);
     let separator = Separator::load(&assets, DeviceChoice::Cpu).unwrap();
@@ -417,7 +488,9 @@ fn chunked_multiblock_stereo_residual() {
     let vpath = dir.join("v.wav");
     let ipath = dir.join("i.wav");
     let cd = 3200.0 / 44100.0;
-    separator.separate_file(&input_path, &vpath, &ipath, cd).unwrap();
+    separator
+        .separate_file(&input_path, &vpath, &ipath, cd)
+        .unwrap();
     let v = read_audio(&vpath).unwrap();
     let iv = read_audio(&ipath).unwrap();
 
@@ -429,7 +502,9 @@ fn chunked_multiblock_stereo_residual() {
     for i in 0..(2 * frames) {
         let sum = v.planar[i] + iv.planar[i];
         let d = (planar[i] - sum).abs();
-        if d > maxres { maxres = d; }
+        if d > maxres {
+            maxres = d;
+        }
     }
     assert!(maxres < 1e-5, "multi-block residual too large: {}", maxres);
 
@@ -437,11 +512,19 @@ fn chunked_multiblock_stereo_residual() {
     let mut maxdiff = 0f32;
     for i in 0..stems.vocals.planar.len() {
         let d = (stems.vocals.planar[i] - v.planar[i]).abs();
-        if d > maxdiff { maxdiff = d; }
+        if d > maxdiff {
+            maxdiff = d;
+        }
         let d2 = (stems.instrumental.planar[i] - iv.planar[i]).abs();
-        if d2 > maxdiff { maxdiff = d2; }
+        if d2 > maxdiff {
+            maxdiff = d2;
+        }
     }
-    assert!(maxdiff < 1e-5, "multi-block file vs in-memory diff: {}", maxdiff);
+    assert!(
+        maxdiff < 1e-5,
+        "multi-block file vs in-memory diff: {}",
+        maxdiff
+    );
 }
 
 #[test]
@@ -454,7 +537,9 @@ fn chunked_normalized_parity() {
     let separator = Separator::load(&assets, DeviceChoice::Cpu).unwrap();
 
     let frames = 6000usize;
-    let samples: Vec<f32> = (0..frames).map(|i| (i as f32 * 0.037).sin() * 0.3).collect();
+    let samples: Vec<f32> = (0..frames)
+        .map(|i| (i as f32 * 0.037).sin() * 0.3)
+        .collect();
     let mut planar = vec![0f32; 2 * frames];
     for i in 0..frames {
         planar[i] = samples[i];
@@ -473,7 +558,9 @@ fn chunked_normalized_parity() {
     let vpath = dir.join("v.wav");
     let ipath = dir.join("i.wav");
     let cd = 3200.0 / 44100.0;
-    separator.separate_file(&input_path, &vpath, &ipath, cd).unwrap();
+    separator
+        .separate_file(&input_path, &vpath, &ipath, cd)
+        .unwrap();
     let v = read_audio(&vpath).unwrap();
     let iv = read_audio(&ipath).unwrap();
 
@@ -483,7 +570,10 @@ fn chunked_normalized_parity() {
         maxv = maxv.max((stems.vocals.planar[i] - v.planar[i]).abs());
         maxi = maxi.max((stems.instrumental.planar[i] - iv.planar[i]).abs());
     }
-    eprintln!("NORMALIZED PARITY max_abs vocals={} instrumental={}", maxv, maxi);
+    eprintln!(
+        "NORMALIZED PARITY max_abs vocals={} instrumental={}",
+        maxv, maxi
+    );
     assert!(maxv <= 1e-4, "vocals parity too large: {}", maxv);
     assert!(maxi <= 1e-4, "instrumental parity too large: {}", maxi);
 }

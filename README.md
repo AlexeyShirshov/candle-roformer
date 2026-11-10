@@ -124,11 +124,23 @@ downmixed back to mono; stereo stays stereo.
 
 ## Model files
 
-| Profile | Config | Weights |
-|---|---|---|
-| GaboxR67 `voc_fv7` | `configs/voc_fv7.yaml` | convert `voc_fv7.ckpt` with `tools/convert_voc_fv7.py` |
-| KimberleyJSN / Kijai mirror | `configs/kijai_melband_384.yaml` | `MelBandRoformer_fp32.safetensors` as published |
-| Whisper (tiny..large, `*.en` or multilingual) | `config.json` from the checkpoint | `model.safetensors` + `tokenizer.json` |
+| Family | Status | Config file(s) | Checkpoint expectation |
+|---|---|---|---|
+| MelBandRoformer | implemented | `configs/voc_fv7.yaml` (dim 256 / depth 12), `configs/kijai_melband_384.yaml` (384 / 6) | `voc_fv7.ckpt` converted with `tools/convert_voc_fv7.py`; `MelBandRoformer_fp32.safetensors` as published |
+| BS-RoFormer | implemented | `configs/bs_roformer_viperx_1297.yaml` (dim 512 / depth 12, 62 bands) | `model_bs_roformer_ep_317_sdr_12.9755.ckpt` converted with `tools/convert_bs_roformer.py` (pinned size/SHA-256) |
+| Whisper | implemented (transcription) | `config.json` from the checkpoint | `model.safetensors` + `tokenizer.json` |
+| MDX-Net (ONNX), VR/UVR, Demucs, MDX23C | not implemented | — | — |
+
+The family is selected from the profile: an explicit `family:` key (`mel_band_roformer` /
+`bs_roformer`), or, when absent, the config shape — `freqs_per_bands` selects BS-RoFormer,
+`num_bands` selects MelBandRoformer. `Separator::load` validates every tensor name and shape
+against that family before allocating the model, so a wrong architecture, a partial download or a
+stray tensor fails loudly instead of loading garbage.
+
+BS-RoFormer profiles may carry their sample rate in the `audio:` block (as the published UVR
+profiles do) and use the Python-only `!!python/tuple` tag for `freqs_per_bands`; both are accepted.
+The rotary tables are part of the checkpoint and are loaded, not recomputed. A published BS-RoFormer
+profile has no licence file alongside its weights; this repository asserts none.
 
 Whisper assets must be in the Candle-compatible layout (`config.json`,
 `tokenizer.json`, `model.safetensors`). f32 only; no GGUF/quantized path in v1.
@@ -136,9 +148,26 @@ The mel filter banks are numeric constants embedded at build time with
 provenance in `assets/whisper/README.md`.
 
 The original `.ckpt` is a PyTorch pickle and is **not** read by the runtime.
-`tools/convert_voc_fv7.py` performs the one-time offline conversion
-(`torch.load(weights_only=True)`, pinned SHA256, strict key/shape/dtype
-validation) and emits safetensors plus a manifest.
+`tools/convert_voc_fv7.py` and `tools/convert_bs_roformer.py` perform the one-time offline
+conversion (`torch.load(weights_only=True)`, pinned SHA256) and emit safetensors plus a manifest.
+The BS-RoFormer converter checks the key set and every tensor shape against the profile schema and
+then casts every tensor to float32; `tools/convert_voc_fv7.py` additionally checks dtypes.
+
+The strict check is reproducible against a real checkpoint: `tests/bs_roformer.rs` carries an
+`#[ignore]`d `real_checkpoint_passes_strict_validation` test that reads the converted file and its
+profile from `CANDLE_ROFORMER_BS_SAFETENSORS` / `CANDLE_ROFORMER_BS_CONFIG`, reports the
+missing / unexpected / shape-mismatch counts for the crate's own `expected_key_shapes` schema, and
+then loads the model through `Separator::load`:
+
+```sh
+CANDLE_ROFORMER_BS_SAFETENSORS=/models/model_bs_roformer_ep_317_sdr_12.9755.safetensors \
+CANDLE_ROFORMER_BS_CONFIG=/models/model_bs_roformer_ep_317_sdr_12.9755.yaml \
+  cargo test --release --test bs_roformer -- --ignored --nocapture \
+    real_checkpoint_passes_strict_validation
+```
+
+`bs_missing_key_is_rejected_by_the_loader` and `bs_extra_key_is_rejected_by_the_loader` cover the
+negative path on a tiny checkpoint.
 
 Weights are never downloaded, bundled, cached or redistributed by this project.
 You supply locally obtained, lawfully licensed weights.
@@ -166,9 +195,21 @@ Metal: `cargo build --release --features metal` (macOS).
   run. Measured with the original Candle git revision and re-checked against
   crates.io `candle-core 0.11.1`: both builds produce byte-identical stems.
   Hardware smoke tests (G2) remain open.
-- Supported architecture family: MelBandRoformer (`voc_fv7` 256/12 and
-  Kimberley 384/6). `audio-separator` also covers MDX-Net, VR/UVR, Demucs and
-  MDX23C — those are not ported yet.
+- Supported architecture families: MelBandRoformer (`voc_fv7` 256/12 and Kimberley 384/6) and
+  BS-RoFormer (`configs/bs_roformer_viperx_1297.yaml`, "Viperx 1297" 512/12, 62 bands).
+  `audio-separator` also covers MDX-Net, VR/UVR, Demucs and MDX23C — those are not ported yet.
+- BS-RoFormer parity: the published `model_bs_roformer_ep_317_sdr_12.9755.ckpt` (639,331,213 B,
+  SHA-256 `5b84f37e…115aa`) passes strict validation (699 tensors, zero missing / unexpected /
+  shape mismatches against the crate's own `expected_key_shapes` schema; see the opt-in test under
+  `## Model files`) and separates a frozen 8 s fixture at correlation 0.99999999999996 and max abs
+  error 4.8e-7 against audio-separator 0.48.0 + torch 2.15.0 (CPU, f32), with RMSE 3.8e-8 and SDR
+  130.3 dB — inside the same gate as the MelBand claim above. That comparison is a single 8 s
+  segment on both sides: the fixture equals one BS-RoFormer chunk (441 × 800 = 352800 samples), so
+  each side runs one window and the overlap-add envelope cancels. Multi-window blending is not part
+  of that measurement.
+- Chunk windows are tail-aligned: the last window ends at the end of the input instead of being a
+  short, zero-padded window. A partial tail window feeds the model a zero tail and contaminates the
+  tail output with the wrong context; the in-memory and streaming paths share this schedule.
 - Whisper transcription is implemented (80/128 mel bins, multilingual and
   English-only checkpoints, auto/explicit language, segment timestamps, 30 s
   windows) and was exercised with real `openai/whisper-tiny` and

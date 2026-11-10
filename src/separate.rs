@@ -1,13 +1,13 @@
 use crate::config::InferenceConfig;
 use crate::error::Error;
-use crate::model::MelBandRoformer;
+use crate::model::RoformerModel;
 use candle_core::Tensor;
 
 /// Upstream audio.chunk_size for the v7 profile (8 s at 44100 Hz).
 pub const CHUNK_SIZE: usize = 352800;
 /// Chunk size derived from the model's STFT hop: 800 hops per chunk.
 /// For the v7 profile (hop = 441) this is exactly 352800 samples.
-pub fn chunk_size_for(model: &MelBandRoformer) -> usize {
+pub fn chunk_size_for(model: &dyn RoformerModel) -> usize {
     // Upstream uses 8 s chunks (800 hops). CANDLE_ROFORMER_CHUNK_HOPS is a
     // debugging/tuning override; it changes overlap-add granularity only.
     let hops = std::env::var("CANDLE_ROFORMER_CHUNK_HOPS")
@@ -15,11 +15,11 @@ pub fn chunk_size_for(model: &MelBandRoformer) -> usize {
         .and_then(|v| v.parse::<usize>().ok())
         .filter(|v| *v > 0)
         .unwrap_or(800);
-    model.hop.max(1) * hops
+    model.hop().max(1) * hops
 }
 
 pub fn separate(
-    model: &MelBandRoformer,
+    model: &dyn RoformerModel,
     input: &[f32],
     channels: usize,
 ) -> Result<Vec<f32>, Error> {
@@ -32,7 +32,7 @@ pub fn separate(
 /// Used by the public multi-stem API; `separate_with_config` keeps the
 /// single-stem (first stem) convenience for callers that only want vocals.
 pub fn separate_all_with_config(
-    model: &MelBandRoformer,
+    model: &dyn RoformerModel,
     input: &[f32],
     channels: usize,
     cfg: &InferenceConfig,
@@ -44,11 +44,12 @@ pub fn separate_all_with_config(
             "empty input".into(),
         )));
     }
-    if channels != model.audio_channels {
+    if channels != model.audio_channels() {
         return Err(Error::Audio(crate::error::AudioError::UnsupportedFormat(
             format!(
                 "model expects {} channels, got {}",
-                model.audio_channels, channels
+                model.audio_channels(),
+                channels
             ),
         )));
     }
@@ -102,11 +103,12 @@ pub fn separate_all_with_config(
     let step = cfg.step_for(chunk);
     let fade = cfg.fade_for(chunk);
     let batch_size = cfg.batch_size;
-    let num_stems = model.num_stems.max(1);
-    let run = |pcm: &[f32]| -> Result<Vec<f32>, Error> {
-        infer_chunk(model, cfg, pcm, channels, chunk)
-    };
-    let mut outs = ola_all_with_batch(&input, channels, chunk, step, fade, batch_size, num_stems, &run)?;
+    let num_stems = model.num_stems().max(1);
+    let run =
+        |pcm: &[f32]| -> Result<Vec<f32>, Error> { infer_chunk(model, cfg, pcm, channels, chunk) };
+    let mut outs = ola_all_with_batch(
+        &input, channels, chunk, step, fade, batch_size, num_stems, &run,
+    )?;
     if cfg.normalization > 0.0 {
         for stem in outs.iter_mut() {
             crate::dsp::normalize_peak(stem, cfg.normalization);
@@ -116,7 +118,7 @@ pub fn separate_all_with_config(
 }
 
 pub fn separate_with_config(
-    model: &MelBandRoformer,
+    model: &dyn RoformerModel,
     input: &[f32],
     channels: usize,
     cfg: &InferenceConfig,
@@ -125,22 +127,24 @@ pub fn separate_with_config(
     Ok(all.into_iter().next().unwrap_or_default())
 }
 
-pub fn chunk_size_for_config(model: &MelBandRoformer, cfg: &InferenceConfig) -> usize {
+pub fn chunk_size_for_config(model: &dyn RoformerModel, cfg: &InferenceConfig) -> usize {
     cfg.chunk_size(model)
 }
 
 /// Weighted overlap-add over chunks. `model_fn` receives a chunk padded to
 /// `chunk` frames (planar, `channels` x `chunk`) and must return the same shape.
-pub fn ola<F>(
-    input: &[f32],
-    channels: usize,
-    chunk: usize,
-    model_fn: &F,
-) -> Result<Vec<f32>, Error>
+pub fn ola<F>(input: &[f32], channels: usize, chunk: usize, model_fn: &F) -> Result<Vec<f32>, Error>
 where
     F: Fn(&[f32]) -> Result<Vec<f32>, Error>,
 {
-    ola_with(input, channels, chunk, (chunk / 2).max(1), (chunk / 10).max(1), model_fn)
+    ola_with(
+        input,
+        channels,
+        chunk,
+        (chunk / 2).max(1),
+        (chunk / 10).max(1),
+        model_fn,
+    )
 }
 
 pub fn ola_with<F>(
@@ -266,9 +270,38 @@ where
     Ok(out_acc)
 }
 
+/// Chunk start offsets for model inference, aligned with the reference
+/// `audio-separator` RoFormer schedule (`_roformer_chunk_starts`): march by
+/// `step`, and when the next window would run past the end, place the final
+/// window so that it *ends* at the input end instead of emitting a trailing
+/// partial window. Every window therefore has full `chunk` samples of context
+/// (zeros only past the end of the input), which is what the model was trained
+/// for; a partial window would feed it a zero tail and contaminate the output
+/// with its own padded context. `n <= chunk` yields a single window.
+pub(crate) fn chunk_starts(n: usize, chunk: usize, step: usize) -> Vec<usize> {
+    let mut starts = Vec::new();
+    let step = step.max(1);
+    let mut offset = 0usize;
+    while offset < n {
+        if offset + chunk >= n {
+            let tail_start = n.saturating_sub(chunk);
+            if starts.last() != Some(&tail_start) {
+                starts.push(tail_start);
+            }
+            break;
+        }
+        starts.push(offset);
+        offset += step;
+    }
+    starts
+}
+
 /// Multi-stem overlap-add: `model_fn` returns `num_stems * channels * chunk *
 /// batch` samples (all stems flattened) and this accumulates each stem into its
 /// own output buffer, sharing one weight envelope.
+///
+/// Window placement follows [`chunk_starts`], so the tail is covered by a full
+/// window that ends at the input end.
 pub fn ola_all_with_batch<F>(
     input: &[f32],
     channels: usize,
@@ -295,11 +328,9 @@ where
     if n == 0 {
         return Ok((0..num_stems).map(|_| Vec::new()).collect());
     }
-    let mut out_accs: Vec<Vec<f32>> = (0..num_stems)
-        .map(|_| vec![0f32; channels * n])
-        .collect();
+    let mut out_accs: Vec<Vec<f32>> = (0..num_stems).map(|_| vec![0f32; channels * n]).collect();
     let mut weight_acc = vec![0f32; n];
-    let num_chunks = (n + step - 1) / step;
+    let starts = chunk_starts(n, chunk, step);
 
     let mut fade_w = vec![1f32; chunk];
     for (t, w) in fade_w.iter_mut().enumerate() {
@@ -315,25 +346,12 @@ where
     }
 
     let mut ci = 0usize;
-    while ci < num_chunks {
-        let mut indices: Vec<usize> = Vec::new();
-        let mut b = 0usize;
-        while b < batch_size && ci + b < num_chunks {
-            let start = (ci + b) * step;
-            if start >= n {
-                break;
-            }
-            indices.push(ci + b);
-            b += 1;
-        }
-        if indices.is_empty() {
-            break;
-        }
-        let actual = indices.len();
+    while ci < starts.len() {
+        let actual = batch_size.min(starts.len() - ci);
+        let batch_starts = &starts[ci..ci + actual];
         let mut pcm_batch = vec![0f32; channels * chunk * actual];
         let mut seg_lens = vec![0usize; actual];
-        for (bi, &chunk_idx) in indices.iter().enumerate() {
-            let start = chunk_idx * step;
+        for (bi, &start) in batch_starts.iter().enumerate() {
             let seg_len = (n - start).min(chunk);
             seg_lens[bi] = seg_len;
             for ch in 0..channels {
@@ -352,8 +370,7 @@ where
                 ),
             )));
         }
-        for (bi, &chunk_idx) in indices.iter().enumerate() {
-            let start = chunk_idx * step;
+        for (bi, &start) in batch_starts.iter().enumerate() {
             let seg_len = seg_lens[bi];
             for s in 0..num_stems {
                 let stem_base = (bi * num_stems + s) * channels * chunk;
@@ -403,97 +420,48 @@ where
 }
 
 pub fn infer_chunk(
-    model: &MelBandRoformer,
+    model: &dyn RoformerModel,
     cfg: &InferenceConfig,
     pcm: &[f32],
     channels: usize,
     chunk: usize,
 ) -> Result<Vec<f32>, Error> {
     cfg.validate().map_err(Error::Config)?;
-    let device = model.device.clone();
+    let device = model.device().clone();
     let denoise = cfg.denoise;
     let tta = cfg.tta;
-        let b = pcm.len() / (channels * chunk).max(1);
-        let b = b.max(1);
-        let num_stems = model.num_stems.max(1);
-        if denoise {
-            let t = Tensor::from_vec(pcm.to_vec(), (b, channels, chunk), &device)
-                .map_err(Error::Candle)?;
-            let out_pos = model.forward(&t).map_err(Error::Candle)?;
-            let vpos: Vec<f32> = out_pos.flatten_all().map_err(Error::Candle)?.to_vec1().map_err(Error::Candle)?;
-            let neg: Vec<f32> = pcm.iter().map(|x| -x).collect();
-            let t2 = Tensor::from_vec(neg, (b, channels, chunk), &device).map_err(Error::Candle)?;
-            let out_neg = model.forward(&t2).map_err(Error::Candle)?;
-            let vneg: Vec<f32> = out_neg.flatten_all().map_err(Error::Candle)?.to_vec1().map_err(Error::Candle)?;
-            let v: Vec<f32> = vpos.iter().zip(vneg.iter()).map(|(a, b)| (a - b) * 0.5).collect();
-            Ok(v)
-        } else if tta {
-            let total = b * num_stems * channels * chunk;
-            let mut acc = vec![0f32; total];
-            let mut ncount = 0usize;
-            // identity
-            {
-                let t = Tensor::from_vec(pcm.to_vec(), (b, channels, chunk), &device).map_err(Error::Candle)?;
-                let out = model.forward(&t).map_err(Error::Candle)?;
-                let v: Vec<f32> = out.flatten_all().map_err(Error::Candle)?.to_vec1().map_err(Error::Candle)?;
-                if v.len() != total {
-                    return Err(Error::Audio(crate::error::AudioError::UnsupportedFormat(format!(
-                        "model returned {} samples, expected {}", v.len(), total
-                    ))));
-                }
-                for i in 0..acc.len() { acc[i] += v[i]; }
-                ncount += 1;
-            }
-            // phase inversion
-            {
-                let neg: Vec<f32> = pcm.iter().map(|x| -x).collect();
-                let t = Tensor::from_vec(neg, (b, channels, chunk), &device).map_err(Error::Candle)?;
-                let out = model.forward(&t).map_err(Error::Candle)?;
-                let v: Vec<f32> = out.flatten_all().map_err(Error::Candle)?.to_vec1().map_err(Error::Candle)?;
-                if v.len() != total {
-                    return Err(Error::Audio(crate::error::AudioError::UnsupportedFormat(format!(
-                        "model returned {} samples, expected {}", v.len(), total
-                    ))));
-                }
-                for i in 0..acc.len() { acc[i] -= v[i]; }
-                ncount += 1;
-            }
-            // channel swap (if stereo+)
-            if channels >= 2 {
-                let mut swapped = vec![0f32; b * channels * chunk];
-                for bi in 0..b {
-                    for ch in 0..channels {
-                        for i in 0..chunk {
-                            swapped[bi * channels * chunk + ch * chunk + i] =
-                                pcm[bi * channels * chunk + (channels - 1 - ch) * chunk + i];
-                        }
-                    }
-                }
-                let t = Tensor::from_vec(swapped, (b, channels, chunk), &device).map_err(Error::Candle)?;
-                let out = model.forward(&t).map_err(Error::Candle)?;
-                let v: Vec<f32> = out.flatten_all().map_err(Error::Candle)?.to_vec1().map_err(Error::Candle)?;
-                if v.len() != total {
-                    return Err(Error::Audio(crate::error::AudioError::UnsupportedFormat(format!(
-                        "model returned {} samples, expected {}", v.len(), total
-                    ))));
-                }
-                let mut unswapped = vec![0f32; total];
-                for bi in 0..b {
-                    for s in 0..num_stems {
-                        for ch in 0..channels {
-                            for i in 0..chunk {
-                                unswapped[bi * num_stems * channels * chunk + s * channels * chunk + ch * chunk + i] =
-                                    v[bi * num_stems * channels * chunk + s * channels * chunk + (channels - 1 - ch) * chunk + i];
-                            }
-                        }
-                    }
-                }
-                for i in 0..acc.len() { acc[i] += unswapped[i]; }
-                ncount += 1;
-            }
-            for x in &mut acc { *x /= ncount as f32; }
-            Ok(acc)
-        } else {
+    let b = pcm.len() / (channels * chunk).max(1);
+    let b = b.max(1);
+    let num_stems = model.num_stems().max(1);
+    if denoise {
+        let t =
+            Tensor::from_vec(pcm.to_vec(), (b, channels, chunk), &device).map_err(Error::Candle)?;
+        let out_pos = model.forward(&t).map_err(Error::Candle)?;
+        let vpos: Vec<f32> = out_pos
+            .flatten_all()
+            .map_err(Error::Candle)?
+            .to_vec1()
+            .map_err(Error::Candle)?;
+        let neg: Vec<f32> = pcm.iter().map(|x| -x).collect();
+        let t2 = Tensor::from_vec(neg, (b, channels, chunk), &device).map_err(Error::Candle)?;
+        let out_neg = model.forward(&t2).map_err(Error::Candle)?;
+        let vneg: Vec<f32> = out_neg
+            .flatten_all()
+            .map_err(Error::Candle)?
+            .to_vec1()
+            .map_err(Error::Candle)?;
+        let v: Vec<f32> = vpos
+            .iter()
+            .zip(vneg.iter())
+            .map(|(a, b)| (a - b) * 0.5)
+            .collect();
+        Ok(v)
+    } else if tta {
+        let total = b * num_stems * channels * chunk;
+        let mut acc = vec![0f32; total];
+        let mut ncount = 0usize;
+        // identity
+        {
             let t = Tensor::from_vec(pcm.to_vec(), (b, channels, chunk), &device)
                 .map_err(Error::Candle)?;
             let out = model.forward(&t).map_err(Error::Candle)?;
@@ -502,8 +470,96 @@ pub fn infer_chunk(
                 .map_err(Error::Candle)?
                 .to_vec1()
                 .map_err(Error::Candle)?;
-            Ok(v)
+            if v.len() != total {
+                return Err(Error::Audio(crate::error::AudioError::UnsupportedFormat(
+                    format!("model returned {} samples, expected {}", v.len(), total),
+                )));
+            }
+            for i in 0..acc.len() {
+                acc[i] += v[i];
+            }
+            ncount += 1;
         }
+        // phase inversion
+        {
+            let neg: Vec<f32> = pcm.iter().map(|x| -x).collect();
+            let t = Tensor::from_vec(neg, (b, channels, chunk), &device).map_err(Error::Candle)?;
+            let out = model.forward(&t).map_err(Error::Candle)?;
+            let v: Vec<f32> = out
+                .flatten_all()
+                .map_err(Error::Candle)?
+                .to_vec1()
+                .map_err(Error::Candle)?;
+            if v.len() != total {
+                return Err(Error::Audio(crate::error::AudioError::UnsupportedFormat(
+                    format!("model returned {} samples, expected {}", v.len(), total),
+                )));
+            }
+            for i in 0..acc.len() {
+                acc[i] -= v[i];
+            }
+            ncount += 1;
+        }
+        // channel swap (if stereo+)
+        if channels >= 2 {
+            let mut swapped = vec![0f32; b * channels * chunk];
+            for bi in 0..b {
+                for ch in 0..channels {
+                    for i in 0..chunk {
+                        swapped[bi * channels * chunk + ch * chunk + i] =
+                            pcm[bi * channels * chunk + (channels - 1 - ch) * chunk + i];
+                    }
+                }
+            }
+            let t =
+                Tensor::from_vec(swapped, (b, channels, chunk), &device).map_err(Error::Candle)?;
+            let out = model.forward(&t).map_err(Error::Candle)?;
+            let v: Vec<f32> = out
+                .flatten_all()
+                .map_err(Error::Candle)?
+                .to_vec1()
+                .map_err(Error::Candle)?;
+            if v.len() != total {
+                return Err(Error::Audio(crate::error::AudioError::UnsupportedFormat(
+                    format!("model returned {} samples, expected {}", v.len(), total),
+                )));
+            }
+            let mut unswapped = vec![0f32; total];
+            for bi in 0..b {
+                for s in 0..num_stems {
+                    for ch in 0..channels {
+                        for i in 0..chunk {
+                            unswapped[bi * num_stems * channels * chunk
+                                + s * channels * chunk
+                                + ch * chunk
+                                + i] = v[bi * num_stems * channels * chunk
+                                + s * channels * chunk
+                                + (channels - 1 - ch) * chunk
+                                + i];
+                        }
+                    }
+                }
+            }
+            for i in 0..acc.len() {
+                acc[i] += unswapped[i];
+            }
+            ncount += 1;
+        }
+        for x in &mut acc {
+            *x /= ncount as f32;
+        }
+        Ok(acc)
+    } else {
+        let t =
+            Tensor::from_vec(pcm.to_vec(), (b, channels, chunk), &device).map_err(Error::Candle)?;
+        let out = model.forward(&t).map_err(Error::Candle)?;
+        let v: Vec<f32> = out
+            .flatten_all()
+            .map_err(Error::Candle)?
+            .to_vec1()
+            .map_err(Error::Candle)?;
+        Ok(v)
+    }
 }
 
 #[cfg(test)]

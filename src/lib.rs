@@ -1,7 +1,6 @@
 //! Offline vocal/instrumental separation in Rust on top of Candle.
 //!
-//! The crate is the product: [`Separator`] loads a local MelBandRoformer
-//! checkpoint once and separates in-memory audio buffers. Encoding and decoding
+//! The crate is the product: [`Separator`] loads a local RoFormer checkpoint (MelBand or BS-RoFormer) once and separates in-memory audio buffers. Encoding and decoding
 //! live in [`wav`]; command-line front ends (output naming, sidecars, batches)
 //! are not part of this crate — see the separate `karaoke-cli` project.
 
@@ -27,7 +26,7 @@ pub use error::{
     DspError, Error, WavError,
 };
 pub use mel::mel_bin_membership;
-pub use model::MelBandRoformer;
+pub use model::{BSRoformer, MelBandRoformer, RoformerModel};
 pub use separator::{Separator, Stems};
 pub use tensor_ops::{average_by_counts, gather_1d, scatter_add_1d};
 pub use wav::{AudioBuffer, AudioStreamReader, StreamingWavWriter};

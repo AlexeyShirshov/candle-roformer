@@ -24,6 +24,8 @@ fn tiny_config() -> SeparatorConfig {
         stereo: true,
         num_stems: 1,
         num_bands: 4,
+        family: None,
+        freqs_per_bands: None,
         dim_head: 4,
         heads: 1,
         flash_attn: false,
@@ -45,7 +47,10 @@ fn tiny_config() -> SeparatorConfig {
     }
 }
 
-fn write_tiny_model(dir: &std::path::Path, cfg: &SeparatorConfig) -> (std::path::PathBuf, std::path::PathBuf) {
+fn write_tiny_model(
+    dir: &std::path::Path,
+    cfg: &SeparatorConfig,
+) -> (std::path::PathBuf, std::path::PathBuf) {
     let dev = Device::Cpu;
     let varmap = VarMap::new();
     let vb = VarBuilder::from_varmap(&varmap, DType::F32, &dev);
@@ -77,7 +82,9 @@ fn separator_loads_and_separates_in_memory_exact_residual() {
     let (model, config) = write_tiny_model(&dir, &cfg);
     // Exact residual mode: level processing disabled.
     let mut yaml = fs::read_to_string(&config).unwrap();
-    yaml.push_str("\ninference:\n  normalization: 0.0\n  amplification: 0.0\n  invert_spect: false\n");
+    yaml.push_str(
+        "\ninference:\n  normalization: 0.0\n  amplification: 0.0\n  invert_spect: false\n",
+    );
     fs::write(&config, yaml).unwrap();
 
     let assets = LocalSeparationAssets::new(&model, &config);
@@ -132,7 +139,10 @@ fn separator_loads_and_separates_in_memory_normalized() {
         let sum = stems.vocals.planar[i] + stems.instrumental.planar[i];
         maxdiff = maxdiff.max((samples[i] - sum).abs());
     }
-    assert!(maxdiff > 1e-3, "normalized mode should break exact residual identity");
+    assert!(
+        maxdiff > 1e-3,
+        "normalized mode should break exact residual identity"
+    );
 }
 
 #[test]
@@ -148,7 +158,9 @@ fn separator_rejects_checkpoint_mismatch() {
         ..cfg.clone()
     };
     let other_config = dir.join("other.yaml");
-    let yaml = fs::read_to_string(&config).unwrap().replace("num_bands: 4", "num_bands: 5");
+    let yaml = fs::read_to_string(&config)
+        .unwrap()
+        .replace("num_bands: 4", "num_bands: 5");
     fs::write(&other_config, yaml).unwrap();
     let _ = other;
 
@@ -159,19 +171,39 @@ fn separator_rejects_checkpoint_mismatch() {
 
 #[test]
 fn audio_buffer_validation() {
-    let ok = AudioBuffer { sample_rate: 44100, channels: 2, planar: vec![0.0; 100] };
+    let ok = AudioBuffer {
+        sample_rate: 44100,
+        channels: 2,
+        planar: vec![0.0; 100],
+    };
     assert!(ok.validate().is_ok());
 
-    let bad_rate = AudioBuffer { sample_rate: 0, channels: 1, planar: vec![0.0; 10] };
+    let bad_rate = AudioBuffer {
+        sample_rate: 0,
+        channels: 1,
+        planar: vec![0.0; 10],
+    };
     assert!(bad_rate.validate().is_err());
 
-    let bad_channels = AudioBuffer { sample_rate: 44100, channels: 3, planar: vec![0.0; 30] };
+    let bad_channels = AudioBuffer {
+        sample_rate: 44100,
+        channels: 3,
+        planar: vec![0.0; 30],
+    };
     assert!(bad_channels.validate().is_err());
 
-    let bad_len = AudioBuffer { sample_rate: 44100, channels: 2, planar: vec![0.0; 31] };
+    let bad_len = AudioBuffer {
+        sample_rate: 44100,
+        channels: 2,
+        planar: vec![0.0; 31],
+    };
     assert!(bad_len.validate().is_err());
 
-    let non_finite = AudioBuffer { sample_rate: 44100, channels: 1, planar: vec![f32::NAN] };
+    let non_finite = AudioBuffer {
+        sample_rate: 44100,
+        channels: 1,
+        planar: vec![f32::NAN],
+    };
     assert!(non_finite.validate().is_err());
 }
 
@@ -181,7 +213,10 @@ fn tiny_config_n(num_stems: usize) -> SeparatorConfig {
     cfg
 }
 
-fn write_model(dir: &std::path::Path, cfg: &SeparatorConfig) -> (std::path::PathBuf, std::path::PathBuf) {
+fn write_model(
+    dir: &std::path::Path,
+    cfg: &SeparatorConfig,
+) -> (std::path::PathBuf, std::path::PathBuf) {
     let dev = Device::Cpu;
     let varmap = VarMap::new();
     let vb = VarBuilder::from_varmap(&varmap, DType::F32, &dev);
@@ -251,7 +286,9 @@ fn residual_and_independent_modes_are_distinct() {
     let dir1 = tmpdir("resid");
     let (m1, c1) = write_model(&dir1, &cfg1);
     let mut y1 = fs::read_to_string(&c1).unwrap();
-    y1.push_str("\ninference:\n  normalization: 0.0\n  amplification: 0.0\n  invert_spect: false\n");
+    y1.push_str(
+        "\ninference:\n  normalization: 0.0\n  amplification: 0.0\n  invert_spect: false\n",
+    );
     fs::write(&c1, y1).unwrap();
     let sep1 = Separator::load(&LocalSeparationAssets::new(&m1, &c1), DeviceChoice::Cpu).unwrap();
     let s1 = sep1.separate(&audio).unwrap();
@@ -305,14 +342,23 @@ fn four_stem_buffers_are_independent_not_residual_substitutions() {
     let dir = tmpdir("indep_proof");
     let (model_path, config) = write_model(&dir, &cfg);
     let mut cfg_yaml = fs::read_to_string(&config).unwrap();
-    cfg_yaml.push_str("\ninference:\n  normalization: 0.0\n  amplification: 0.0\n  invert_spect: false\n");
+    cfg_yaml.push_str(
+        "\ninference:\n  normalization: 0.0\n  amplification: 0.0\n  invert_spect: false\n",
+    );
     fs::write(&config, cfg_yaml).unwrap();
 
     // Load the model independently (same path as Separator::load) to verify the
     // model-output layout that the overlap-add relies on: num_stems * channels *
     // chunk samples, batch-major then stem-major.
     let dev = candle_core::Device::Cpu;
-    let vb = unsafe { candle_nn::VarBuilder::from_mmaped_safetensors(&[model_path.to_str().unwrap()], candle_core::DType::F32, &dev) }.unwrap();
+    let vb = unsafe {
+        candle_nn::VarBuilder::from_mmaped_safetensors(
+            &[model_path.to_str().unwrap()],
+            candle_core::DType::F32,
+            &dev,
+        )
+    }
+    .unwrap();
     let mdl = candle_roformer::model::MelBandRoformer::new(&cfg, vb).unwrap();
     let chunk = candle_roformer::separate::chunk_size_for(&mdl);
     // Non-degenerate padded input for the independent-output proof: distinct
@@ -326,17 +372,34 @@ fn four_stem_buffers_are_independent_not_residual_substitutions() {
     let t = candle_core::Tensor::from_vec(padded.clone(), (1usize, 2usize, chunk), &dev).unwrap();
     let out = mdl.forward(&t).unwrap();
     let independent: Vec<f32> = out.flatten_all().unwrap().to_vec1().unwrap();
-    assert_eq!(independent.len(), 4 * 2 * chunk, "independent model output must be 4 stems flattened");
+    assert_eq!(
+        independent.len(),
+        4 * 2 * chunk,
+        "independent model output must be 4 stems flattened"
+    );
     // infer_chunk (non-TTA) must reproduce the independently computed model
     // output exactly. Kills: "infer_chunk returns zeros/cached/wrong layout".
-    let raw = candle_roformer::separate::infer_chunk(&mdl, &candle_roformer::config::InferenceConfig::default(), &padded, 2, chunk)
-        .expect("infer_chunk");
+    let raw = candle_roformer::separate::infer_chunk(
+        &mdl,
+        &candle_roformer::config::InferenceConfig::default(),
+        &padded,
+        2,
+        chunk,
+    )
+    .expect("infer_chunk");
     assert_eq!(raw.len(), independent.len());
     for (a, b) in raw.iter().zip(independent.iter()) {
-        assert!((a - b).abs() < 1e-6, "infer_chunk must equal independent model output");
+        assert!(
+            (a - b).abs() < 1e-6,
+            "infer_chunk must equal independent model output"
+        );
     }
 
-    let sep = Separator::load(&LocalSeparationAssets::new(&model_path, &config), DeviceChoice::Cpu).unwrap();
+    let sep = Separator::load(
+        &LocalSeparationAssets::new(&model_path, &config),
+        DeviceChoice::Cpu,
+    )
+    .unwrap();
     let audio = AudioBuffer {
         sample_rate: 44100,
         channels: 1,
@@ -379,7 +442,10 @@ fn four_stem_buffers_are_independent_not_residual_substitutions() {
             assert!(
                 (buf.planar[i] - expected).abs() < 1e-3,
                 "{} frame {} does not match independent model output ({} vs {})",
-                name, i, buf.planar[i], expected
+                name,
+                i,
+                buf.planar[i],
+                expected
             );
         }
     }
@@ -439,10 +505,7 @@ fn four_stem_buffers_are_independent_not_residual_substitutions() {
         // sum-of-others residual candidate
         let residual: Vec<f32> = (0..frames)
             .map(|k| {
-                let others: f32 = (0..4)
-                    .filter(|&s| s != i)
-                    .map(|s| bufs[s].planar[k])
-                    .sum();
+                let others: f32 = (0..4).filter(|&s| s != i).map(|s| bufs[s].planar[k]).sum();
                 samples[k] - others
             })
             .collect();
@@ -474,7 +537,10 @@ fn four_stem_tta_path_returns_four_named_buffers() {
 
     let assets = LocalSeparationAssets::new(&model, &config);
     let separator = Separator::load(&assets, DeviceChoice::Cpu).unwrap();
-    assert!(separator.inference_config().tta, "TTA must be enabled via config");
+    assert!(
+        separator.inference_config().tta,
+        "TTA must be enabled via config"
+    );
 
     let frames = 128usize;
     let samples: Vec<f32> = (0..frames).map(|i| (i as f32 * 0.05).sin() * 0.5).collect();
@@ -498,7 +564,11 @@ fn four_stem_tta_path_returns_four_named_buffers() {
     // Stem-expanded output length through infer_chunk with TTA enabled.
     let dev = candle_core::Device::Cpu;
     let vb = unsafe {
-        candle_nn::VarBuilder::from_mmaped_safetensors(&[model.to_str().unwrap()], candle_core::DType::F32, &dev)
+        candle_nn::VarBuilder::from_mmaped_safetensors(
+            &[model.to_str().unwrap()],
+            candle_core::DType::F32,
+            &dev,
+        )
     }
     .unwrap();
     let mdl = candle_roformer::model::MelBandRoformer::new(&cfg, vb).unwrap();
@@ -510,9 +580,12 @@ fn four_stem_tta_path_returns_four_named_buffers() {
         .collect();
     let raw = candle_roformer::separate::infer_chunk(&mdl, &icfg, &padded, 2, chunk)
         .expect("infer_chunk tta");
-    assert_eq!(raw.len(), 4 * 2 * chunk, "TTA must return stem-expanded output");
+    assert_eq!(
+        raw.len(),
+        4 * 2 * chunk,
+        "TTA must return stem-expanded output"
+    );
 }
-
 
 #[test]
 fn level_exact_residual_reconstruction_error() {
@@ -520,7 +593,9 @@ fn level_exact_residual_reconstruction_error() {
     let dir = tmpdir("lvl_exact_err");
     let (model, config) = write_tiny_model(&dir, &cfg);
     let mut yaml = fs::read_to_string(&config).unwrap();
-    yaml.push_str("\ninference:\n  normalization: 0.0\n  amplification: 0.0\n  invert_spect: false\n");
+    yaml.push_str(
+        "\ninference:\n  normalization: 0.0\n  amplification: 0.0\n  invert_spect: false\n",
+    );
     fs::write(&config, yaml).unwrap();
 
     let assets = LocalSeparationAssets::new(&model, &config);
@@ -541,7 +616,11 @@ fn level_exact_residual_reconstruction_error() {
         maxerr = maxerr.max((samples[i] - sum).abs());
     }
     eprintln!("LEVEL exact residual max_abs_error={}", maxerr);
-    assert!(maxerr < 1e-5, "exact residual reconstruction error too large: {}", maxerr);
+    assert!(
+        maxerr < 1e-5,
+        "exact residual reconstruction error too large: {}",
+        maxerr
+    );
 }
 
 #[test]
@@ -586,7 +665,9 @@ fn level_amplification_positive() {
     let dir = tmpdir("lvl_amp");
     let (model, config) = write_tiny_model(&dir, &cfg);
     let mut yaml = fs::read_to_string(&config).unwrap();
-    yaml.push_str("\ninference:\n  normalization: 0.0\n  amplification: 0.9\n  invert_spect: false\n");
+    yaml.push_str(
+        "\ninference:\n  normalization: 0.0\n  amplification: 0.9\n  invert_spect: false\n",
+    );
     fs::write(&config, yaml).unwrap();
 
     let assets = LocalSeparationAssets::new(&model, &config);
@@ -618,8 +699,15 @@ fn level_amplification_positive() {
         "LEVEL amplification before_peak={} after_peak={} sum_peak={} maxerr={}",
         before_peak, after_peak, sum_peak, maxerr
     );
-    assert!(after_peak > before_peak * 2.0, "amplification did not raise level");
-    assert!(maxerr < 1e-5, "amplified residual reconstruction error too large: {}", maxerr);
+    assert!(
+        after_peak > before_peak * 2.0,
+        "amplification did not raise level"
+    );
+    assert!(
+        maxerr < 1e-5,
+        "amplified residual reconstruction error too large: {}",
+        maxerr
+    );
 }
 
 #[test]
@@ -628,7 +716,9 @@ fn level_spectral_inversion_matches_independent_residual() {
     let dir = tmpdir("lvl_specinv");
     let (model, config) = write_tiny_model(&dir, &cfg);
     let mut yaml = fs::read_to_string(&config).unwrap();
-    yaml.push_str("\ninference:\n  normalization: 0.0\n  amplification: 0.0\n  invert_spect: true\n");
+    yaml.push_str(
+        "\ninference:\n  normalization: 0.0\n  amplification: 0.0\n  invert_spect: true\n",
+    );
     fs::write(&config, yaml).unwrap();
 
     let assets = LocalSeparationAssets::new(&model, &config);
@@ -647,7 +737,11 @@ fn level_spectral_inversion_matches_independent_residual() {
     // Independently compute the expected spectral residual at model rate.
     let dev = candle_core::Device::Cpu;
     let vb = unsafe {
-        candle_nn::VarBuilder::from_mmaped_safetensors(&[model.to_str().unwrap()], candle_core::DType::F32, &dev)
+        candle_nn::VarBuilder::from_mmaped_safetensors(
+            &[model.to_str().unwrap()],
+            candle_core::DType::F32,
+            &dev,
+        )
     }
     .unwrap();
     let mdl = candle_roformer::model::MelBandRoformer::new(&cfg, vb).unwrap();
@@ -661,7 +755,13 @@ fn level_spectral_inversion_matches_independent_residual() {
     icfg.normalization = 0.0;
     icfg.amplification = 0.0;
     icfg.invert_spect = false;
-    let outs = candle_roformer::separate::separate_all_with_config(&mdl, &model_input, model_channels, &icfg).unwrap();
+    let outs = candle_roformer::separate::separate_all_with_config(
+        &mdl,
+        &model_input,
+        model_channels,
+        &icfg,
+    )
+    .unwrap();
     let vocals_model = &outs[0];
     let mv_frames = vocals_model.len() / model_channels;
     let in_frames = model_input.len() / model_channels;
@@ -669,8 +769,12 @@ fn level_spectral_inversion_matches_independent_residual() {
 
     let mut instr_model = vec![0.0f32; model_channels * frames_m];
     for ch in 0..model_channels {
-        let in_ch: Vec<f32> = (0..frames_m).map(|i| model_input[ch * in_frames + i]).collect();
-        let voc_ch: Vec<f32> = (0..frames_m).map(|i| vocals_model[ch * mv_frames + i]).collect();
+        let in_ch: Vec<f32> = (0..frames_m)
+            .map(|i| model_input[ch * in_frames + i])
+            .collect();
+        let voc_ch: Vec<f32> = (0..frames_m)
+            .map(|i| vocals_model[ch * mv_frames + i])
+            .collect();
         // Independent computation (not via invert_spect/spectral_invert alias):
         // STFT both signals, subtract in the complex domain, iSTFT.
         let spec_in = candle_roformer::dsp::stft(
@@ -724,7 +828,10 @@ fn level_spectral_inversion_matches_independent_residual() {
             maxdiff = d;
         }
     }
-    eprintln!("LEVEL spectral inversion maxdiff_vs_independent={}", maxdiff);
+    eprintln!(
+        "LEVEL spectral inversion maxdiff_vs_independent={}",
+        maxdiff
+    );
     assert!(
         maxdiff < 1e-2,
         "spectral inversion output should match independent residual (maxdiff {})",
