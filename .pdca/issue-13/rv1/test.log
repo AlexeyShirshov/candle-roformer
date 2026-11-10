@@ -1,0 +1,230 @@
+warning: unused import: `Device`
+ --> src/model/mod.rs:1:26
+  |
+1 | use candle_core::{DType, Device, Module, Tensor, D};
+  |                          ^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `crate::error::Error`
+ --> src/model/mod.rs:5:5
+  |
+5 | use crate::error::Error;
+  |     ^^^^^^^^^^^^^^^^^^^
+
+warning: unused variable: `bands`
+   --> src/model/mod.rs:484:16
+    |
+484 |     let (b, t, bands, d) = cur.dims4()?;
+    |                ^^^^^ help: if this is intentional, prefix it with an underscore: `_bands`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `d`
+   --> src/model/mod.rs:484:23
+    |
+484 |     let (b, t, bands, d) = cur.dims4()?;
+    |                       ^ help: if this is intentional, prefix it with an underscore: `_d`
+
+warning: variable does not need to be mutable
+   --> src/model/mod.rs:842:21
+    |
+842 |                 let mut spec = crate::dsp::StftResult {
+    |                     ----^^^^
+    |                     |
+    |                     help: remove this `mut`
+    |
+    = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+warning: variable does not need to be mutable
+   --> src/model/mod.rs:890:21
+    |
+890 |                 let mut spec = crate::dsp::StftResult {
+    |                     ----^^^^
+    |                     |
+    |                     help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> src/separate.rs:124:9
+    |
+124 |     let mut all = separate_all_with_config(model, input, channels, cfg)?;
+    |         ----^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> src/separator.rs:418:21
+    |
+418 |                 let mut model_vocals = vocals_src;
+    |                     ----^^^^^^^^^^^^
+    |                     |
+    |                     help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> src/separator.rs:456:21
+    |
+456 |                 let mut mono_model: Vec<f32> = if channels == 1 {
+    |                     ----^^^^^^^^^^
+    |                     |
+    |                     help: remove this `mut`
+
+warning: value assigned to `frontier` is never read
+   --> src/separator.rs:934:21
+    |
+934 |                     frontier = up_to;
+    |                     ^^^^^^^^^^^^^^^^
+    |
+    = help: maybe it is overwritten before being read?
+    = note: `#[warn(unused_assignments)]` (part of `#[warn(unused)]`) on by default
+
+warning: variable does not need to be mutable
+   --> src/wav.rs:477:13
+    |
+477 |         let mut format = symphonia::default::get_probe()
+    |             ----^^^^^^
+    |             |
+    |             help: remove this `mut`
+
+warning: field `dim_inputs` is never read
+   --> src/model/mod.rs:316:5
+    |
+314 | pub struct MaskEstimator {
+    |            ------------- field in this struct
+315 |     to_freqs: Vec<Mlp>,
+316 |     dim_inputs: Vec<usize>,
+    |     ^^^^^^^^^^
+    |
+    = note: `MaskEstimator` has derived impls for the traits `Clone` and `Debug`, but these are intentionally ignored during dead code analysis
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `super::*`
+   --> src/separate.rs:511:9
+    |
+511 |     use super::*;
+    |         ^^^^^^^^
+
+warning: `candle-roformer` (lib) generated 12 warnings (run `cargo fix --lib -p candle-roformer` to apply 10 suggestions)
+warning: `candle-roformer` (lib test) generated 13 warnings (12 duplicates) (run `cargo fix --lib -p candle-roformer --tests` to apply 1 suggestion)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.29s
+     Running unittests src/lib.rs (target/debug/deps/candle_roformer-d3e5d4dba0a61de4)
+
+running 22 tests
+test dsp::level_tests::amplify_quiet_noop_when_loud_or_disabled ... ok
+test dsp::level_tests::amplify_quiet_scales_quiet_input ... ok
+test dsp::level_tests::normalize_peak_disabled_thresholds ... ok
+test dsp::level_tests::normalize_peak_scales_to_threshold ... ok
+test dsp::level_tests::normalize_peak_zero_peak_no_nan ... ok
+test dsp::level_tests::peak_abs_basic ... ok
+test dsp::level_tests::peak_abs_empty_and_zero ... ok
+test dsp::level_tests::spectral_invert_empty_input ... ok
+test dsp::level_tests::invert_spect_alias_works ... ok
+test separate::debug_tests::det ... ok
+test whisper::tests::downmix_averages_channels ... ok
+test whisper::tests::sampler_respects_the_distribution ... ok
+test whisper::tokens::tests::assembles_pairs_of_timestamps ... ok
+test whisper::tokens::tests::propagates_decode_errors ... ok
+test whisper::tokens::tests::applies_window_offset_and_clamps ... ok
+test dsp::level_tests::spectral_invert_length_and_finite ... ok
+test whisper::tokens::tests::skips_special_tokens_and_empty_text ... ok
+test whisper::tokens::tests::timestamp_tokens_are_20ms_steps ... ok
+test whisper::tokens::tests::trailing_text_ends_at_window_end ... ok
+test whisper::tokens::tests::drops_segments_without_audio_support ... ok
+test whisper::tests::compression_ratio_flags_repetition ... ok
+test whisper::tests::mel_filters_have_whisper_shape ... ok
+
+test result: ok. 22 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/core_tests.rs (target/debug/deps/core_tests-18ad497ca48afb4b)
+
+running 22 tests
+test inference_config_invalid_batch ... ok
+test inference_config_invalid_fade_range ... ok
+test inference_config_invalid_overlap ... ok
+test inference_config_yaml_absent_defaults ... ok
+test defaults_reproduce_current_numbers ... ok
+test inference_config_yaml_defaults ... ok
+test inference_config_yaml_malformed_errors ... ok
+test batch_size_changes_model_invocations ... ok
+test resample_identity ... ok
+test residual_exact ... ok
+test resample_planar_keeps_channels_separate ... ok
+test expected_keys_match_known_checkpoints ... ok
+test model_tiny_forward ... ok
+test wav_read_pcm16_pcm24 ... ok
+test strict_loader_missing_extra ... ok
+test wav_roundtrip_f32 ... ok
+test wav_errors ... ok
+test wav_roundtrip_stereo ... ok
+test resample_roundtrip_lengths ... ok
+test ola_identity ... ok
+test ola_pass_count_sweep ... ok
+test pitch_shift_changes_output ... ok
+
+test result: ok. 22 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.88s
+
+     Running tests/library_api.rs (target/debug/deps/library_api-ae76ee3ae1cbd46e)
+
+running 12 tests
+test audio_buffer_validation ... ok
+test four_stem_path_returns_four_named_buffers ... ok
+test residual_and_independent_modes_are_distinct ... ok
+test level_normalized_output_peaks ... ok
+test separator_rejects_checkpoint_mismatch ... ok
+test level_amplification_positive ... ok
+test level_exact_residual_reconstruction_error ... ok
+test four_stem_buffers_are_independent_not_residual_substitutions ... ok
+test separator_loads_and_separates_in_memory_exact_residual ... ok
+test level_spectral_inversion_matches_independent_residual ... ok
+test separator_loads_and_separates_in_memory_normalized ... ok
+test four_stem_tta_path_returns_four_named_buffers ... ok
+
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 5.42s
+
+     Running tests/s1_spikes.rs (target/debug/deps/s1_spikes-0ccb4dd67e669480)
+
+running 11 tests
+test device_choice_cuda_no_fallback ... ok
+test device_choice_cpu_resolves ... ok
+test device_choice_metal_no_fallback ... ok
+test gather_scatter_add_matches_reference ... ok
+test mel_orphan_bin_is_hard_error - should panic ... ok
+test separator_config_v7_validates ... ok
+test stft_short_inputs_defined ... ok
+test mel_orphan_bin_positive_twin_full_coverage ... ok
+test mel_membership_covers_all_bins_and_bands ... ok
+test stft_boundary_lengths_reconstruct ... ok
+test stft_istft_roundtrip ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running tests/streaming_chunked.rs (target/debug/deps/streaming_chunked-601362dec399751d)
+
+running 8 tests
+test chunked_mono ... ok
+test chunked_length_and_residual ... ok
+test stream_spectral_inversion_matches_independent_residual ... ok
+test chunked_normalized_parity ... ok
+test chunked_boundary_parity ... ok
+test stream_amplification_positive ... ok
+test stream_default_normalization_peaks ... ok
+test chunked_multiblock_stereo_residual has been running for over 60 seconds
+test chunked_multiblock_stereo_residual ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 63.75s
+
+     Running tests/whisper_tests.rs (target/debug/deps/whisper_tests-0565415d5e9b28dd)
+
+running 3 tests
+test transcriber_rejects_missing_assets ... ok
+test transcript_serializes_with_stable_field_names ... ok
+test transcriber_loads_and_runs_end_to_end ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.09s
+
+   Doc-tests candle_roformer
+
+running 1 test
+test src/separator.rs - separator (line 4) - compile ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.06s
+

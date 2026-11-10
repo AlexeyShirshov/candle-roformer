@@ -1,0 +1,1754 @@
+diff --git a/README.md b/README.md
+index 31422e9..5c0f01d 100644
+--- a/README.md
++++ b/README.md
+@@ -33,13 +33,35 @@ candle_roformer::wav::write_wav_f32("out/instrumental.wav", &stems.instrumental)
+   convenience fields `Stems::vocals` / `Stems::instrumental`.
+ - **Residual vs. independent stems.** A single-stem profile (`num_stems == 1`,
+   e.g. MelBandRoformer vocals) runs in *residual* mode: `vocals` is the model
+-  estimate and `instrumental = input - vocals`, so `vocals + instrumental ==
+-  input`. A multi-stem profile (`num_stems > 1`, e.g. Demucs / MDX / VR)
+-  runs in *independent* mode: every stem is an independent model estimate and
+-  no stem is replaced by `input - stem`, so the sum need not equal the input.
+-  The mode follows from `num_stems`; it is not a runtime flag.
++  estimate and `instrumental` is the input residual. The pointwise identity
++  `vocals + instrumental == input` holds exactly only in exact residual mode
++  (level processing disabled: `normalization = 0.0`, `amplification = 0.0`,
++  `invert_spect = false`); see "Level processing" below. A multi-stem profile
++  (`num_stems > 1`, e.g. Demucs / MDX / VR) runs in *independent* mode:
++  every stem is an independent model estimate and no stem is replaced by
++  `input - stem`, so the sum need not equal the input. The mode follows from
++  `num_stems`; it is not a runtime flag.
+ - A 4-stem profile returns four named `AudioBuffer`s through
+   `Stems::stems` / `Stems::get`.
++
++- **Level processing** (reference `audio-separator` defaults). Controlled by
++  `InferenceConfig` (`normalization`, `amplification`, `invert_spect`):
++  - `normalization` (default `0.9`): peak-normalize the input mix and every
++    output stem to the threshold (`x *= threshold / peak(x)` for `peak > 0`;
++    silent buffers are untouched, no `NaN`/`Inf`). Set to `0.0` to disable;
++    negative or non-finite values are rejected by `InferenceConfig::validate`.
++  - `amplification` (default `0.0` = off): scale a quiet input up to the
++    threshold when `0 < peak < threshold`.
++  - `invert_spect` (default `false`): in residual mode compute the secondary
++    stem by spectral subtraction (STFT/iSTFT) instead of the waveform
++    residual.
++  - **Exact residual mode** (`normalization = 0.0`, `amplification = 0.0`,
++    `invert_spect = false`): `instrumental = input - vocals`, so
++    `vocals + instrumental == input` pointwise (within `f32` round-off).
++  - **Normalized mode** (default `normalization = 0.9`): the input and each
++    stem are peak-normalized independently, so the pointwise identity above no
++    longer holds in the original input scale; with `invert_spect = true` the
++    secondary stem is a spectral residual.
+ - `AudioBuffer::validate` rejects absurd rates, >2 channels, misaligned or
+   non-finite buffers.
+ - Reading and writing files is limited to [`wav`]: `read_audio` (m4a/mp3/flac/
+@@ -167,54 +189,68 @@ Metal: `cargo build --release --features metal` (macOS).
+   [docs/superpowers/specs/2026-11-07-candle-roformer-design.md](https://github.com/AlexeyShirshov/candle-roformer/blob/main/docs/superpowers/specs/2026-11-07-candle-roformer-design.md).
+ 
+ 
+-## Bounded-memory chunked separation (`--chunk_duration`)
++## File-based separation (`separate_file` / `separate_streaming`)
++
++`Separator::separate_file` / `separate_streaming` separate an audio file on disk
++and write the resulting stems to WAV files. Two code paths are used:
+ 
+-`Separator::separate_file` / `separate_streaming` (and the `separate` example)
+-process a file in bounded memory: decode chunk N → separate (overlap-add) →
+-write stems → drop chunk N. The OLA window size is derived from
+-`chunk_duration` (seconds): `chunk = round(chunk_duration * sample_rate)` model
+-frames, `step = chunk / num_overlap`, `fade = chunk / 10`, reusing the same
+-overlap-add weights as the in-memory `Separator::separate`. Only the current
+-input chunk, the stem overlap tail and the ready step buffer are held in memory;
+-finalised frames are written to the output WAVs through `StreamingWavWriter`
+-and freed, so peak RSS depends on `chunk_duration`, not on input length.
++- **Bounded streaming path** (input sample rate == model sample rate, residual
++  profile, `invert_spect == false`): the input is decoded in `chunk_duration`-
++  sized windows and processed with overlap-add (OLA), so peak RSS stays
++  `O(chunk)` and does not grow with the input length. `chunk_duration` drives
++  the OLA chunk size and therefore the separation granularity. Amplification
++  and input normalization are computed from a streaming global peak pre-pass;
++  output peaks are normalized in a second pass over the (disk-backed) raw stem
++  buffers, so `normalization` still applies. The secondary stem is the waveform
++  residual `input - vocals` (exact in exact residual mode).
++- **In-memory fallback** (input sample rate != model sample rate, multi-stem
++  profiles, or `invert_spect == true`): the whole input is decoded into memory
++  and processed by `Separator::separate`, then written with `write_wav_f32`.
++  Correct but not bounded-memory. `invert_spect` requires full-signal STFT and
++  therefore uses this path.
+ 
+-### Boundary quality
++Both paths share the same level-processing semantics (`normalization`,
++`amplification`, `invert_spect`) and residual semantics (exact residual vs.
++normalized mode); only memory behavior and `chunk_duration` relevance differ.
+ 
+-Joints are artefact-free by construction: every output sample is the
+-overlap-add (with the same triangular fade window) of the chunks that cover it,
+-normalised by the accumulated weight, identical to the monolithic path. Measured
+-on a 6000-frame stereo signal at 44.1 kHz with `chunk_duration = 3200/44100`
+-(OLA chunk = 3200 frames, step = 1600, fade = 320):
++### Bounded memory (streaming path)
+ 
+-- `E_boundary` (max abs) = 0.0 (bit-identical)
+-- `E_boundary` (RMSE) = 0.0
++The bounded streaming path keeps peak RSS `O(chunk_duration)` and does not grow
++with input length. Measured on the synthetic tiny model (CPU, `chunk_duration =
++0.07256 s`, stereo, 44100 Hz, input read from a pre-generated file, each
++duration in a separate process, `VmHWM` from `/proc/self/status`):
+ 
+-Test: `cargo test --test streaming_chunked chunked_boundary_parity`.
++| input length | VmHWM (KiB) | VmHWM (MiB) |
++|---|---|---|
++| 10 s  | 17476 | 17.07 |
++| 30 s  | 17420 | 17.01 |
++| 60 s  | 18964 | 18.52 |
++| 120 s | 18820 | 18.38 |
++
++Relative growth 10 s → 120 s: **18820 / 17476 = 1.077** (≤ 1.15 threshold
++from plan M1). The small non-monotonic spread is allocator/page noise, not an
++input-length dependence.
++
++The in-memory fallback (non-matching sample rate, multi-stem profiles, or
++`invert_spect == true`) decodes the whole input and is **not** bounded-memory;
++`invert_spect` requires a full-signal STFT and therefore uses that path.
++
++**Scale caveat.** Only short-scale measurements (10–120 s, tiny model,
++`chunk_duration = 0.07256 s`) are performed and claimed. Hour-scale runs
++(e.g. 7200 s) are **not** performed and are **not** claimed; the
++`O(chunk)` bound is an algorithmic statement about the streaming path, not a
++measured result at hour scale. A real-weights series on long inputs is likewise
++not measured here.
+ 
+ ### Invariants
+ 
+ - Output length equals input length exactly (0-sample deviation) for every stem.
+-- `sum(stems) + residual = input` with `max |...| <= 1e-5` (f32 WAV precision).
++- In exact residual mode (level processing disabled) `vocals + instrumental ==
++  input` with `max |...| <= 1e-5` (f32 WAV precision); in normalized mode the
++  pointwise identity does not hold (see "Level processing").
+ - No NaN/Inf in outputs.
+ 
+-Tests: `cargo test --test streaming_chunked chunked_length_and_residual`,
+-`chunked_mono`.
+-
+-### Peak RSS evidence (tiny model, CPU, `chunk_duration = 0.07256 s`)
+-
+-| input length | VmHWM (MiB) | wall time |
+-|---|---|---|
+-| 10 s  | 16.0 | 13 s |
+-| 60 s  | 17.5 | 1:08 |
+-| 300 s | 16.5 | 8:29 |
+-
+-Relative growth 10 s → 300 s: +3 %. These are short-scale measurements only
+-(10–300 s, tiny model, `chunk_duration = 0.07256 s`); the 2 h (7200 s) scale
+-and a 4 s `chunk_duration` are NOT measured (see
+-`.pdca/issues-milestone-1.0/rv1/item10/SCALE-CAVEAT.md`). A real-weights
+-series could not be run: the available v7 profile does not match the
+-`MelBandRoformer_fp32.safetensors` checkpoint key set (see residual gap).
++Tests: `cargo test --test streaming_chunked`.
+ 
+ 
+ ## License and attribution
+diff --git a/src/config.rs b/src/config.rs
+index f50de31..1c2480f 100644
+--- a/src/config.rs
++++ b/src/config.rs
+@@ -167,6 +167,22 @@ pub struct InferenceConfig {
+     pub denoise: bool,
+     pub tta: bool,
+     pub sample_rate: usize,
++    #[serde(default = "default_normalization")]
++    pub normalization: f32,
++    #[serde(default = "default_amplification")]
++    pub amplification: f32,
++    #[serde(default = "default_invert_spect")]
++    pub invert_spect: bool,
++}
++
++fn default_normalization() -> f32 {
++    0.9
++}
++fn default_amplification() -> f32 {
++    0.0
++}
++fn default_invert_spect() -> bool {
++    false
+ }
+ 
+ impl Default for InferenceConfig {
+@@ -189,6 +205,9 @@ impl InferenceConfig {
+             denoise: false,
+             tta: false,
+             sample_rate: 44100,
++            normalization: 0.9,
++            amplification: 0.0,
++            invert_spect: false,
+         }
+     }
+ 
+@@ -244,6 +263,12 @@ impl InferenceConfig {
+         if self.sample_rate == 0 {
+             return Err(ConfigError::Invalid("sample_rate must be > 0".into()));
+         }
++        if !self.normalization.is_finite() || self.normalization < 0.0 {
++            return Err(ConfigError::Invalid("normalization must be finite and >= 0".into()));
++        }
++        if !self.amplification.is_finite() || self.amplification < 0.0 {
++            return Err(ConfigError::Invalid("amplification must be finite and >= 0".into()));
++        }
+         Ok(())
+     }
+ 
+diff --git a/src/dsp.rs b/src/dsp.rs
+index 9ddc044..6733455 100644
+--- a/src/dsp.rs
++++ b/src/dsp.rs
+@@ -220,3 +220,207 @@ pub fn istft(
+     }
+     Ok(result)
+ }
++
++// ---------- Level processing helpers (issue #13) ----------
++
++/// Peak absolute amplitude of a buffer.
++pub fn peak_abs(samples: &[f32]) -> f32 {
++    samples.iter().map(|x| x.abs()).fold(0.0f32, f32::max)
++}
++
++/// Peak-normalize a buffer in place to `threshold`. A threshold <= 0 disables
++/// scaling; a zero/NaN-free? zero peak leaves the buffer untouched (no divide
++/// by zero, no NaN/Inf).
++pub fn normalize_peak(samples: &mut [f32], threshold: f32) {
++    if !threshold.is_finite() || threshold <= 0.0 {
++        return;
++    }
++    let peak = peak_abs(samples);
++    if peak > 0.0 && peak.is_finite() {
++        let scale = threshold / peak;
++        if scale.is_finite() {
++            for x in samples.iter_mut() {
++                *x *= scale;
++            }
++        }
++    }
++}
++
++/// Amplify a quiet input in place: if `0 < peak < threshold`, scale up to the
++/// threshold. Threshold <= 0 disables. Zero peak is left untouched.
++pub fn amplify_quiet(samples: &mut [f32], threshold: f32) {
++    if !threshold.is_finite() || threshold <= 0.0 {
++        return;
++    }
++    let peak = peak_abs(samples);
++    if peak > 0.0 && peak < threshold && peak.is_finite() {
++        let scale = threshold / peak;
++        if scale.is_finite() {
++            for x in samples.iter_mut() {
++                *x *= scale;
++            }
++        }
++    }
++}
++
++/// Spectral inversion of the secondary stem: `secondary = input - primary` in
++/// the complex STFT domain, followed by iSTFT. Operates on a single channel.
++/// Returns the residual signal trimmed/padded to `input.len()`.
++pub fn spectral_invert(
++    primary: &[f32],
++    input: &[f32],
++    n_fft: usize,
++    hop: usize,
++    win_length: usize,
++) -> Result<Vec<f32>, DspError> {
++    if input.is_empty() {
++        return Ok(Vec::new());
++    }
++    let n = input.len().min(primary.len());
++    let input = &input[..n];
++    let primary = &primary[..n];
++    // Pad short inputs so STFT reflect-padding is valid.
++    let pad = n_fft / 2;
++    let mut in_buf = input.to_vec();
++    let mut pr_buf = primary.to_vec();
++    if in_buf.len() <= pad {
++        let need = pad + 1 - in_buf.len();
++        in_buf.resize(in_buf.len() + need, 0.0);
++        pr_buf.resize(pr_buf.len() + need, 0.0);
++    }
++    let spec_in = stft(&in_buf, n_fft, hop, win_length)?;
++    let spec_v = stft(&pr_buf, n_fft, hop, win_length)?;
++    if spec_in.frames != spec_v.frames || spec_in.bins != spec_v.bins {
++        return Err(DspError::ShapeMismatch("stft frame mismatch".into()));
++    }
++    let mut re = spec_in.re.clone();
++    let mut im = spec_in.im.clone();
++    for i in 0..re.len() {
++        re[i] -= spec_v.re[i];
++        im[i] -= spec_v.im[i];
++    }
++    let spec = StftResult {
++        re,
++        im,
++        frames: spec_in.frames,
++        bins: spec_in.bins,
++    };
++    let mut out = istft(&spec, n_fft, hop, win_length, in_buf.len())?;
++    out.truncate(n);
++    if out.len() < n {
++        out.resize(n, 0.0);
++    }
++    Ok(out)
++}
++
++/// Alias expected by some callers.
++pub fn invert_spect(
++    primary: &[f32],
++    input: &[f32],
++    n_fft: usize,
++    hop: usize,
++    win_length: usize,
++) -> Result<Vec<f32>, DspError> {
++    spectral_invert(primary, input, n_fft, hop, win_length)
++}
++
++/// Alias for amplification helper (reference name).
++pub fn amplify(samples: &mut [f32], threshold: f32) {
++    amplify_quiet(samples, threshold)
++}
++
++/// Alias for peak normalization helper (reference name).
++pub fn normalize(samples: &mut [f32], threshold: f32) {
++    normalize_peak(samples, threshold)
++}
++
++
++#[cfg(test)]
++mod level_tests {
++    use super::*;
++
++    #[test]
++    fn peak_abs_empty_and_zero() {
++        assert_eq!(peak_abs(&[]), 0.0);
++        assert_eq!(peak_abs(&[0.0, 0.0]), 0.0);
++    }
++
++    #[test]
++    fn peak_abs_basic() {
++        assert!((peak_abs(&[0.5, -0.25, 0.1]) - 0.5).abs() < 1e-6);
++    }
++
++    #[test]
++    fn normalize_peak_scales_to_threshold() {
++        let mut v = vec![0.5f32, -0.25, 0.1];
++        normalize_peak(&mut v, 0.9);
++        assert!((peak_abs(&v) - 0.9).abs() < 1e-5);
++    }
++
++    #[test]
++    fn normalize_peak_disabled_thresholds() {
++        let orig = vec![0.5f32, -0.25];
++        for thr in [0.0f32, -1.0, f32::NAN, f32::INFINITY] {
++            let mut v = orig.clone();
++            normalize_peak(&mut v, thr);
++            assert_eq!(v, orig);
++        }
++    }
++
++    #[test]
++    fn normalize_peak_zero_peak_no_nan() {
++        let mut v = vec![0.0f32; 4];
++        normalize_peak(&mut v, 0.9);
++        assert!(v.iter().all(|x| *x == 0.0));
++    }
++
++    #[test]
++    fn amplify_quiet_scales_quiet_input() {
++        let mut v = vec![0.1f32, -0.05];
++        amplify_quiet(&mut v, 0.5);
++        assert!((peak_abs(&v) - 0.5).abs() < 1e-5);
++    }
++
++    #[test]
++    fn amplify_quiet_noop_when_loud_or_disabled() {
++        let orig = vec![0.8f32, -0.4];
++        // peak >= threshold -> no change
++        let mut v = orig.clone();
++        amplify_quiet(&mut v, 0.5);
++        assert_eq!(v, orig);
++        // threshold 0 disables
++        let mut v2 = vec![0.1f32];
++        amplify_quiet(&mut v2, 0.0);
++        assert_eq!(v2[0], 0.1);
++        // zero peak untouched
++        let mut z = vec![0.0f32; 3];
++        amplify_quiet(&mut z, 0.5);
++        assert!(z.iter().all(|x| *x == 0.0));
++    }
++
++    #[test]
++    fn spectral_invert_length_and_finite() {
++        let n = 128usize;
++        let input: Vec<f32> = (0..n).map(|i| (i as f32 * 0.1).sin()).collect();
++        let vocals: Vec<f32> = input.iter().map(|x| x * 0.5).collect();
++        let res = spectral_invert(&vocals, &input, 64, 16, 64).unwrap();
++        assert_eq!(res.len(), n);
++        assert!(res.iter().all(|x| x.is_finite()));
++    }
++
++    #[test]
++    fn spectral_invert_empty_input() {
++        let res = spectral_invert(&[], &[], 64, 16, 64).unwrap();
++        assert!(res.is_empty());
++    }
++
++    #[test]
++    fn invert_spect_alias_works() {
++        let n = 64usize;
++        let input: Vec<f32> = (0..n).map(|i| (i as f32 * 0.2).sin()).collect();
++        let vocals: Vec<f32> = input.iter().map(|x| x * 0.3).collect();
++        let a = spectral_invert(&vocals, &input, 32, 8, 32).unwrap();
++        let b = invert_spect(&vocals, &input, 32, 8, 32).unwrap();
++        assert_eq!(a, b);
++    }
++}
+diff --git a/src/separate.rs b/src/separate.rs
+index 8395e23..4f18c9d 100644
+--- a/src/separate.rs
++++ b/src/separate.rs
+@@ -55,13 +55,29 @@ pub fn separate_all_with_config(
+ 
+     let sr = cfg.sample_rate as u32;
+ 
++    // Apply input-level processing (amplification then normalization) up front.
++    // Pitch shift path handles its own (recursive) processing on the shifted
++    // signal.
++    let input = if cfg.pitch_shift.abs() <= 1e-9 {
++        let mut v = input.to_vec();
++        if cfg.amplification > 0.0 {
++            crate::dsp::amplify_quiet(&mut v, cfg.amplification);
++        }
++        if cfg.normalization > 0.0 {
++            crate::dsp::normalize_peak(&mut v, cfg.normalization);
++        }
++        v
++    } else {
++        input.to_vec()
++    };
++
+     // Pitch shift: shift the input to a shifted sample rate, run inference on
+     // that shifted-rate signal, then map every stem back to the original
+     // length/rate. A default of 0.0 skips entirely (bit-identical).
+     if cfg.pitch_shift.abs() > 1e-9 {
+         let factor = 2f64.powf(cfg.pitch_shift as f64 / 12.0);
+         let shifted_sr = ((sr as f64) * factor).round().max(1.0) as u32;
+-        let shifted_input = crate::resample::resample_planar(input, channels, sr, shifted_sr);
++        let shifted_input = crate::resample::resample_planar(&input, channels, sr, shifted_sr);
+         let mut inner_cfg = cfg.clone();
+         inner_cfg.pitch_shift = 0.0;
+         let shifted_outs = separate_all_with_config(model, &shifted_input, channels, &inner_cfg)?;
+@@ -74,6 +90,9 @@ pub fn separate_all_with_config(
+             } else {
+                 back.resize(target, 0.0);
+             }
++            if cfg.normalization > 0.0 {
++                crate::dsp::normalize_peak(&mut back, cfg.normalization);
++            }
+             backs.push(back);
+         }
+         return Ok(backs);
+@@ -87,7 +106,13 @@ pub fn separate_all_with_config(
+     let run = |pcm: &[f32]| -> Result<Vec<f32>, Error> {
+         infer_chunk(model, cfg, pcm, channels, chunk)
+     };
+-    ola_all_with_batch(&input, channels, chunk, step, fade, batch_size, num_stems, &run)
++    let mut outs = ola_all_with_batch(&input, channels, chunk, step, fade, batch_size, num_stems, &run)?;
++    if cfg.normalization > 0.0 {
++        for stem in outs.iter_mut() {
++            crate::dsp::normalize_peak(stem, cfg.normalization);
++        }
++    }
++    Ok(outs)
+ }
+ 
+ pub fn separate_with_config(
+diff --git a/src/separator.rs b/src/separator.rs
+index 06292bc..99e8814 100644
+--- a/src/separator.rs
++++ b/src/separator.rs
+@@ -55,9 +55,13 @@ use crate::wav::AudioBuffer;
+ /// * **Residual mode ("rest of the mix").** Used when the model estimates a
+ ///   single target stem (`num_stems == 1`, e.g. a MelBandRoformer vocals
+ ///   model). The model produces the target (`vocals`); the secondary stem
+-///   (`instrumental`) is computed as the input-waveform residual
+-///   `input - vocals`. Therefore `vocals + instrumental == input` exactly
+-///   (within f32 round-off) and the two buffers are complementary.
++///   (`instrumental`) is the input residual. In **exact residual mode**
++///   (level processing disabled: `normalization = 0.0`, `amplification = 0.0`,
++///   `invert_spect = false`) this is the exact waveform residual
++///   `input - vocals`, so `vocals + instrumental == input` pointwise (within
++///   `f32` round-off). With normalization, amplification or `invert_spect`
++///   enabled the identity no longer holds in the original input scale (see
++///   "Level processing" / "Residual exactness" below).
+ /// * **Independent multi-stem mode.** Used when the model estimates several
+ ///   stems (`num_stems > 1`, e.g. Demucs / MDX / VR karaoke 4-stem models).
+ ///   Every stem is an independent estimate taken straight from the model's own
+@@ -68,6 +72,45 @@ use crate::wav::AudioBuffer;
+ /// Which mode applies is determined by `num_stems` of the loaded profile, not
+ /// by a runtime flag: a single-stem profile is residual, a multi-stem profile
+ /// is independent.
++
++/// # Level processing
++///
++/// The separator also applies the reference `audio-separator` level processing
++/// controlled by [`InferenceConfig`] (`normalization`, `amplification`,
++/// `invert_spect`):
++///
++/// * **Peak normalization** (`normalization`, default `0.9`). Each non-silent
++///   buffer (input mix and every output stem) is scaled so its peak absolute
++///   amplitude equals the threshold: `x *= threshold / peak(x)` when
++///   `peak(x) > 0`. A threshold of `0.0` disables scaling; negative or
++///   non-finite thresholds are rejected by [`InferenceConfig::validate`]
++///   before reaching this point. A silent buffer (`peak == 0`) is left
++///   untouched and never produces `NaN`/`Inf`.
++/// * **Amplification** (`amplification`, default `0.0` = off). If the input
++///   peak is strictly below the threshold (`0 < peak < threshold`), the input
++///   is scaled up to that threshold before separation. A threshold of `0.0`
++///   disables amplification.
++/// * **Spectral inversion** (`invert_spect`, default `false`). In residual
++///   mode the secondary stem is normally the waveform residual
++///   `input - vocals`. With `invert_spect = true` it is instead computed by
++///   subtracting the primary stem's complex STFT from the input's STFT and
++///   inverting (`iSTFT`), which keeps the operation in the spectral domain.
++///
++/// ## Residual exactness (two modes, not interchangeable)
++///
++/// * **Exact residual mode** — disable level processing (`normalization = 0.0`,
++///   `amplification = 0.0`, `invert_spect = false`). The secondary stem is the
++///   exact waveform residual `input - vocals`, so `vocals + instrumental ==
++///   input` holds pointwise (within `f32` round-off). Use this mode when an
++///   exact, lossless reconstruction of the input from the two stems is
++///   required.
++/// * **Normalized mode** (reference default, `normalization = 0.9`) — the
++///   input mix and each output stem are peak-normalized independently. The
++///   pointwise identity `vocals + instrumental == input` no longer holds in the
++///   original input scale (each stem is rescaled to its own peak), and with
++///   `invert_spect = true` the secondary stem is a spectral residual rather
++///   than a waveform one. Use this mode to match `audio-separator` output
++///   levels.
+ #[derive(Debug, Clone)]
+ pub struct Stems {
+     /// Two-stem convenience: the vocal (target) stem. In residual mode this
+@@ -75,9 +118,10 @@ pub struct Stems {
+     /// `"vocals"` if present, otherwise the first stem.
+     pub vocals: AudioBuffer,
+     /// Two-stem convenience: the instrumental stem. In residual mode this is
+-    /// the exact input residual `input - vocals`; in independent mode it is
+-    /// the stem named `"instrumental"` if present, otherwise the second stem
+-    /// (or the first when only one exists).
++    /// the input residual (exact `input - vocals` only in exact residual mode,
++    /// i.e. level processing disabled; see "Residual exactness"); in
++    /// independent mode it is the stem named `"instrumental"` if present,
++    /// otherwise the second stem (or the first when only one exists).
+     pub instrumental: AudioBuffer,
+     /// All stems returned by the model, in model order, as `(name, buffer)`
+     /// pairs. In residual mode this is `[("vocals", ..), ("instrumental", ..)]`;
+@@ -223,7 +267,8 @@ impl Separator {
+     ///
+     /// The number of stems returned follows the loaded profile:
+     /// - `num_stems == 1`: residual mode — `vocals` is the model estimate and
+-    ///   `instrumental` is the input residual `input - vocals`; `stems` holds
++    ///   `instrumental` is the input residual (`input - vocals` exactly only in
++    ///   exact residual mode; see "Residual exactness"); `stems` holds
+     ///   `[("vocals", ..), ("instrumental", ..)]`.
+     /// - `num_stems > 1`: independent mode — every stem comes from the model
+     ///   and `stems` holds one named entry per `num_stems` (no residual).
+@@ -246,6 +291,15 @@ impl Separator {
+ 
+         let model_sr = self.config.sample_rate as u32;
+         let resampled = resample::resample_planar(&model_input, model_channels, input_sr, model_sr);
++        // Processed (amplified/normalized) model-rate input, mirroring what
++        // separate_all_with_config does internally, for spectral inversion.
++        let mut processed_model_input = resampled.clone();
++        if self.inference.amplification > 0.0 {
++            crate::dsp::amplify_quiet(&mut processed_model_input, self.inference.amplification);
++        }
++        if self.inference.normalization > 0.0 {
++            crate::dsp::normalize_peak(&mut processed_model_input, self.inference.normalization);
++        }
+         let stem_outputs = separate::separate_all_with_config(
+             &self.model,
+             &resampled,
+@@ -286,9 +340,51 @@ impl Separator {
+ 
+         let residual_mode = self.model.num_stems <= 1;
+ 
++        // Unnormalized (raw) primary stem in model rate and input rate, used for
++        // the unified secondary-stem formula N(p - y): the secondary stem is
++        // computed from the pre-scaled input p and the *unnormalized* primary
++        // output y, then both stems are peak-normalized independently.
++        let mut raw_model_vocals: Vec<f32> = Vec::new();
++        let mut raw_vocals_input: Vec<f32> = vec![0f32; channels * n];
++        if residual_mode {
++            let mut cfg_raw = self.inference.clone();
++            cfg_raw.normalization = 0.0;
++            cfg_raw.amplification = 0.0;
++            if let Ok(outs) =
++                separate::separate_all_with_config(&self.model, &processed_model_input, model_channels, &cfg_raw)
++            {
++                if let Some(first) = outs.into_iter().next() {
++                    raw_model_vocals = first;
++                }
++            }
++            if !raw_model_vocals.is_empty() {
++                let orig_sr_buf: Vec<f32> = if channels == 1 {
++                    let m = raw_model_vocals.len() / 2;
++                    let mut mono = vec![0f32; m];
++                    for i in 0..m {
++                        mono[i] = (raw_model_vocals[i] + raw_model_vocals[m + i]) * 0.5;
++                    }
++                    mono
++                } else {
++                    raw_model_vocals.clone()
++                };
++                let resampled_back =
++                    resample::resample_planar(&orig_sr_buf, channels, model_sr, input_sr);
++                let vframes = resampled_back.len() / channels.max(1);
++                for ch in 0..channels {
++                    for i in 0..n {
++                        let src = ch * vframes + i;
++                        if src < resampled_back.len() {
++                            raw_vocals_input[ch * n + i] = resampled_back[src];
++                        }
++                    }
++                }
++            }
++        }
++
+         let mut stems_vec: Vec<(String, AudioBuffer)> = Vec::new();
+         let (vocals, instrumental) = if residual_mode {
+-            let vocals_audio = stem_audios
++            let mut vocals_audio = stem_audios
+                 .into_iter()
+                 .next()
+                 .unwrap_or_else(|| AudioBuffer {
+@@ -296,21 +392,115 @@ impl Separator {
+                     channels: audio.channels,
+                     planar: vec![0f32; channels * n],
+                 });
+-            let mut instr_final = vec![0f32; channels * n];
+-            for i in 0..channels * n {
+-                instr_final[i] = audio.planar[i] - vocals_audio.planar[i];
++            if self.inference.normalization > 0.0 {
++                crate::dsp::normalize_peak(&mut vocals_audio.planar, self.inference.normalization);
++            }
++            // Reference input for the residual, possibly level-processed.
++            let mut input_ref = audio.planar.clone();
++            if self.inference.amplification > 0.0 {
++                crate::dsp::amplify_quiet(&mut input_ref, self.inference.amplification);
++            }
++            if self.inference.normalization > 0.0 {
++                crate::dsp::normalize_peak(&mut input_ref, self.inference.normalization);
+             }
++
++            let instrumental_planar = if self.inference.invert_spect {
++                // Spectral inversion: secondary stem via STFT subtraction.
++                // Work in model-rate domain then resample.
++                // Fallback: compute per-channel on input-rate buffers using
++                // model STFT params is not sample-rate aligned; instead compute
++                // at model rate from processed_model_input and the model vocals.
++                let vocals_src = if raw_model_vocals.is_empty() {
++                    stem_outputs.first().cloned().unwrap_or_default()
++                } else {
++                    raw_model_vocals.clone()
++                };
++                let mut model_vocals = vocals_src;
++                // model vocals already normalized by separate_all; ensure length
++                let mv_frames = model_vocals.len() / model_channels;
++                let in_frames = processed_model_input.len() / model_channels;
++                let frames = mv_frames.min(in_frames);
++                let mut instr_model = vec![0f32; model_channels * frames];
++                // We'll resample vocals_model? It is model-rate; keep.
++                for ch in 0..model_channels {
++                    let in_ch: Vec<f32> = (0..frames)
++                        .map(|i| processed_model_input[ch * in_frames + i])
++                        .collect();
++                    let voc_ch: Vec<f32> = (0..frames)
++                        .map(|i| model_vocals[ch * mv_frames + i])
++                        .collect();
++                    let res = crate::dsp::spectral_invert(
++                        &voc_ch,
++                        &in_ch,
++                        self.config.stft_n_fft,
++                        self.config.stft_hop_length,
++                        self.config.stft_win_length,
++                    )
++                    .unwrap_or_else(|_| {
++                        in_ch
++                            .iter()
++                            .zip(voc_ch.iter())
++                            .map(|(a, b)| a - b)
++                            .collect()
++                    });
++                    for i in 0..frames {
++                        instr_model[ch * frames + i] = res[i];
++                    }
++                }
++                // resample model-rate instrumental to input rate / channel layout
++                let mut out_final = vec![0f32; channels * n];
++                // Rebuild instr_model full length frames
++                let mut full = vec![0f32; model_channels * frames];
++                full.copy_from_slice(&instr_model);
++                // downmix to channels
++                let mut mono_model: Vec<f32> = if channels == 1 {
++                    let mut v = vec![0f32; frames];
++                    for i in 0..frames {
++                        v[i] = (full[i] + full[frames + i]) * 0.5;
++                    }
++                    v
++                } else {
++                    full.clone()
++                };
++                // resample to input sr
++                let rs = resample::resample_planar(&mono_model, channels, model_sr, input_sr);
++                let vframes = rs.len() / channels;
++                for ch in 0..channels {
++                    for i in 0..n {
++                        let src = ch * vframes + i;
++                        if src < rs.len() {
++                            out_final[ch * n + i] = rs[src];
++                        }
++                    }
++                }
++                if self.inference.normalization > 0.0 {
++                    crate::dsp::normalize_peak(&mut out_final, self.inference.normalization);
++                }
++                out_final
++            } else {
++                let mut instr_final = vec![0f32; channels * n];
++                for i in 0..channels * n {
++                    instr_final[i] = input_ref[i] - raw_vocals_input[i];
++                }
++                if self.inference.normalization > 0.0 {
++                    crate::dsp::normalize_peak(&mut instr_final, self.inference.normalization);
++                }
++                instr_final
++            };
+             let instrumental_audio = AudioBuffer {
+                 sample_rate: input_sr,
+                 channels: audio.channels,
+-                planar: instr_final,
++                planar: instrumental_planar,
+             };
+             stems_vec.push(("vocals".to_string(), vocals_audio.clone()));
+             stems_vec.push(("instrumental".to_string(), instrumental_audio.clone()));
+             (vocals_audio, instrumental_audio)
+         } else {
+             let names = default_stem_names(stem_audios.len());
+-            for (name, audio_buf) in names.iter().zip(stem_audios.into_iter()) {
++            for (name, mut audio_buf) in names.iter().zip(stem_audios.into_iter()) {
++                if self.inference.normalization > 0.0 {
++                    crate::dsp::normalize_peak(&mut audio_buf.planar, self.inference.normalization);
++                }
+                 stems_vec.push((name.clone(), audio_buf));
+             }
+             // Two-stem convenience: prefer named stems, else fall back to
+@@ -367,6 +557,7 @@ fn strict_check(model_path: &str, cfg: &SeparatorConfig, dev: &Device) -> Result
+     Ok(())
+ }
+ 
++
+ struct FrameBuf {
+     channels: usize,
+     data: Vec<f32>,
+@@ -440,39 +631,40 @@ impl Separator {
+         instrumental_path: impl AsRef<std::path::Path>,
+         chunk_duration: f64,
+     ) -> Result<(), crate::error::Error> {
+-        use crate::wav::{AudioStreamReader, StreamingWavWriter};
++        use std::fs::File;
++        use std::io::{Read, Write};
++
++        let input_path = input_path.as_ref();
++        let vocals_path = vocals_path.as_ref();
++        let instrumental_path = instrumental_path.as_ref();
+ 
+-        let mut reader = AudioStreamReader::open(input_path.as_ref())?;
++        let mut reader = crate::wav::AudioStreamReader::open(input_path)?;
+         let input_sr = reader.sample_rate();
+         let channels = reader.channels() as usize;
+         let model_sr = self.config.sample_rate as u32;
++        let residual_mode = self.model.num_stems <= 1;
+ 
+-        // Fallback for non-matching sample rates: decode whole input, use the
+-        // in-memory path, write outputs. Correct but not bounded.
+-        if input_sr != model_sr {
+-            let mut all = Vec::new();
+-            loop {
+-                let c = reader.read_frames(65536)?;
+-                if c.is_empty() {
+-                    break;
+-                }
+-                all.extend(c);
+-            }
+-            let audio = crate::wav::AudioBuffer {
+-                sample_rate: input_sr,
+-                channels: channels as u16,
+-                planar: all,
+-            };
++        // Fallback for non-matching sample rates, non-residual (multi-stem)
++        // profiles, or spectral inversion: decode the whole input correctly and
++        // run the in-memory separator. Correct but not bounded-memory; the
++        // bounded streaming path below requires input_sr == model_sr, a residual
++        // profile, and waveform (non-spectral) residual.
++        if input_sr != model_sr || !residual_mode || self.inference.invert_spect {
++            let audio = crate::wav::read_audio(input_path)?;
+             let stems = self.separate(&audio)?;
+             crate::wav::write_wav_f32(vocals_path, &stems.vocals)?;
+             crate::wav::write_wav_f32(instrumental_path, &stems.instrumental)?;
+             return Ok(());
+         }
+ 
++        let inference = &self.inference;
++        let norm_thr = inference.normalization;
++        let amp_thr = inference.amplification;
++
+         let model_channels = if channels == 1 { 2 } else { channels };
+         let chunk = ((chunk_duration * model_sr as f64).round() as usize).max(1);
+-        let step = self.inference.step_for(chunk).max(1);
+-        let fade = self.inference.fade_for(chunk).max(1).min(chunk);
++        let step = inference.step_for(chunk).max(1);
++        let fade = inference.fade_for(chunk).max(1).min(chunk);
+ 
+         let mut fade_w = vec![1f32; chunk];
+         for (t, w) in fade_w.iter_mut().enumerate() {
+@@ -487,9 +679,56 @@ impl Separator {
+             *w = fi.min(fo).max(1.0 / fade as f32);
+         }
+ 
+-        let mut vw = StreamingWavWriter::create(vocals_path.as_ref(), input_sr, channels as u16)?;
+-        let mut iw = StreamingWavWriter::create(instrumental_path.as_ref(), input_sr, channels as u16)?;
++        // --- Pass 0: global input peak (bounded, streaming) ---
++        let mut peak0 = 0f32;
++        let mut total_frames: usize = 0;
++        loop {
++            let block = reader.read_frames(65536)?;
++            if block.is_empty() {
++                break;
++            }
++            for &s in &block {
++                if s.abs() > peak0 {
++                    peak0 = s.abs();
++                }
++            }
++            total_frames += block.len() / channels;
++        }
++        if total_frames == 0 {
++            return Err(crate::error::Error::Audio(crate::error::AudioError::EmptyInput(
++                "empty input".into(),
++            )));
++        }
+ 
++        let mut amp_scale = 1f32;
++        if amp_thr > 0.0 && peak0 > 0.0 && peak0 < amp_thr {
++            amp_scale = amp_thr / peak0;
++        }
++        let peak_after_amp = peak0 * amp_scale;
++        let mut norm_scale = 1f32;
++        if norm_thr > 0.0 && peak_after_amp > 0.0 {
++            norm_scale = norm_thr / peak_after_amp;
++        }
++        let total_scale = amp_scale * norm_scale;
++
++        // Temp files for raw (scaled-space) stem outputs, frame-major interleaved.
++        let tmpdir = std::env::temp_dir();
++        use std::sync::atomic::{AtomicU64, Ordering};
++        static CTR: AtomicU64 = AtomicU64::new(0);
++        let uid = CTR.fetch_add(1, Ordering::Relaxed);
++        let vraw_path = tmpdir.join(format!("cr_vraw_{}_{}.bin", std::process::id(), uid));
++        let iraw_path = tmpdir.join(format!("cr_iraw_{}_{}.bin", std::process::id(), uid));
++
++        let mut vraw_file = File::create(&vraw_path)
++            .map_err(|e| crate::error::Error::Audio(crate::error::AudioError::Io(e.to_string())))?;
++        let mut iraw_file = File::create(&iraw_path)
++            .map_err(|e| crate::error::Error::Audio(crate::error::AudioError::Io(e.to_string())))?;
++
++        let mut peak_v: f32 = 0.0;
++        let mut peak_i: f32 = 0.0;
++
++        // --- Pass 1: streaming OLA inference ---
++        let mut reader = crate::wav::AudioStreamReader::open(input_path)?;
+         let capacity = chunk + step + 4;
+         let mut acc_v = vec![0f32; model_channels * capacity];
+         let mut acc_w = vec![0f32; capacity];
+@@ -497,23 +736,13 @@ impl Separator {
+         let mut current_max: usize = 0;
+         let mut idx: usize = 0;
+         let mut eof = false;
+-        let mut total_frames: usize = 0;
+ 
+-        let mut orig_buf = FrameBuf {
+-            channels,
+-            data: Vec::new(),
+-            base: 0,
+-        };
+-        let mut model_buf = FrameBuf {
+-            channels: model_channels,
+-            data: Vec::new(),
+-            base: 0,
+-        };
++        let mut orig_buf = FrameBuf { channels, data: Vec::new(), base: 0 };
++        let mut model_buf = FrameBuf { channels: model_channels, data: Vec::new(), base: 0 };
+ 
+         loop {
+             let start = idx * step;
+ 
+-            // Ensure enough decoded frames for this chunk (or hit EOF).
+             while !eof && model_buf.available() < start + chunk {
+                 let need = (start + chunk).saturating_sub(model_buf.available()).max(1);
+                 let block = reader.read_frames(need.min(65536))?;
+@@ -526,21 +755,22 @@ impl Separator {
+                     eof = true;
+                     break;
+                 }
+-                orig_buf.append(&block);
++                // scale input block
++                let mut scaled = block.clone();
++                for s in &mut scaled {
++                    *s *= total_scale;
++                }
++                orig_buf.append(&scaled);
+                 let mut model_block = vec![0f32; model_channels * frames];
+                 for mc in 0..model_channels {
+                     let oc = if channels == 1 { 0 } else { mc };
+                     for f in 0..frames {
+-                        model_block[mc * frames + f] = block[oc * frames + f];
++                        model_block[mc * frames + f] = scaled[oc * frames + f];
+                     }
+                 }
+                 model_buf.append(&model_block);
+             }
+ 
+-            if eof && total_frames == 0 {
+-                total_frames = model_buf.available();
+-            }
+-
+             if model_buf.available() <= start {
+                 break;
+             }
+@@ -550,10 +780,8 @@ impl Separator {
+                 break;
+             }
+ 
+-            // Build padded chunk for model inference.
+             let mut pcm = vec![0f32; model_channels * chunk];
+             let seg = model_buf.slice(start, seg_len);
+-
+             for mc in 0..model_channels {
+                 for i in 0..seg_len {
+                     pcm[mc * chunk + i] = seg[mc * seg_len + i];
+@@ -565,7 +793,6 @@ impl Separator {
+                 let t = start + i;
+                 let local = t % capacity;
+                 if local >= capacity {
+-                    // Should not happen; guard.
+                     continue;
+                 }
+                 for mc in 0..model_channels {
+@@ -575,7 +802,6 @@ impl Separator {
+             }
+             current_max = current_max.max(start + seg_len);
+ 
+-            // Finalize up to start+step.
+             let mut up_to = start + step;
+             if eof {
+                 up_to = up_to.min(total_frames);
+@@ -606,10 +832,31 @@ impl Separator {
+                     let orig_frame = orig_buf.slice(t, 1);
+                     let mut instr_orig = vec![0f32; channels];
+                     for c in 0..channels {
+-                        instr_orig[c] = orig_frame[c] - vocals_orig[c];
++                        instr_orig[c] = orig_frame[c * 1 + 0] - vocals_orig[c];
++                    }
++                    // update peaks
++                    for c in 0..channels {
++                        if vocals_orig[c].abs() > peak_v { peak_v = vocals_orig[c].abs(); }
++                        if instr_orig[c].abs() > peak_i { peak_i = instr_orig[c].abs(); }
++                    }
++                    // write raw frame-major interleaved to temp files
++                    let mut vb = Vec::with_capacity(channels);
++                    let mut ib = Vec::with_capacity(channels);
++                    for c in 0..channels {
++                        vb.push(vocals_orig[c]);
++                        ib.push(instr_orig[c]);
++                    }
++                    // write channels values (frame-major: all channels of this frame)
++                    let mut vbytes = Vec::with_capacity(channels * 4);
++                    let mut ibytes = Vec::with_capacity(channels * 4);
++                    for c in 0..channels {
++                        vbytes.extend_from_slice(&vb[c].to_le_bytes());
++                        ibytes.extend_from_slice(&ib[c].to_le_bytes());
+                     }
+-                    vw.write_planar(&vocals_orig)?;
+-                    iw.write_planar(&instr_orig)?;
++                    vraw_file.write_all(&vbytes)
++                        .map_err(|e| crate::error::Error::Audio(crate::error::AudioError::Io(e.to_string())))?;
++                    iraw_file.write_all(&ibytes)
++                        .map_err(|e| crate::error::Error::Audio(crate::error::AudioError::Io(e.to_string())))?;
+                 }
+                 for t in frontier..up_to {
+                     let local = t % capacity;
+@@ -627,7 +874,6 @@ impl Separator {
+             idx += 1;
+ 
+             if eof && start + step >= total_frames {
+-                // finalize remaining up to total_frames
+                 let mut up_to = total_frames;
+                 if up_to > current_max {
+                     up_to = current_max;
+@@ -655,12 +901,29 @@ impl Separator {
+                         let orig_frame = orig_buf.slice(t, 1);
+                         let mut instr_orig = vec![0f32; channels];
+                         for c in 0..channels {
+-                            instr_orig[c] = orig_frame[c] - vocals_orig[c];
++                            instr_orig[c] = orig_frame[c * 1 + 0] - vocals_orig[c];
+                         }
+-                        vw.write_planar(&vocals_orig)?;
+-                        iw.write_planar(&instr_orig)?;
++                        for c in 0..channels {
++                            if vocals_orig[c].abs() > peak_v { peak_v = vocals_orig[c].abs(); }
++                            if instr_orig[c].abs() > peak_i { peak_i = instr_orig[c].abs(); }
++                        }
++                        let mut vb = Vec::with_capacity(channels);
++                        let mut ib = Vec::with_capacity(channels);
++                        for c in 0..channels {
++                            vb.push(vocals_orig[c]);
++                            ib.push(instr_orig[c]);
++                        }
++                        let mut vbytes = Vec::with_capacity(channels * 4);
++                        let mut ibytes = Vec::with_capacity(channels * 4);
++                        for c in 0..channels {
++                            vbytes.extend_from_slice(&vb[c].to_le_bytes());
++                            ibytes.extend_from_slice(&ib[c].to_le_bytes());
++                        }
++                        vraw_file.write_all(&vbytes)
++                            .map_err(|e| crate::error::Error::Audio(crate::error::AudioError::Io(e.to_string())))?;
++                        iraw_file.write_all(&ibytes)
++                            .map_err(|e| crate::error::Error::Audio(crate::error::AudioError::Io(e.to_string())))?;
+                     }
+-                    // zero finalized
+                     for t in frontier..up_to {
+                         let local = t % capacity;
+                         for mc in 0..model_channels {
+@@ -674,8 +937,72 @@ impl Separator {
+             }
+         }
+ 
+-        vw.finalize()?;
+-        iw.finalize()?;
++        // finalize temp files
++        vraw_file.flush().map_err(|e| crate::error::Error::Audio(crate::error::AudioError::Io(e.to_string())))?;
++        iraw_file.flush().map_err(|e| crate::error::Error::Audio(crate::error::AudioError::Io(e.to_string())))?;
++        drop(vraw_file);
++        drop(iraw_file);
++
++        // --- Pass 2: normalize (if needed) and write destination WAVs ---
++        let scale_v = if norm_thr > 0.0 && peak_v > 0.0 { norm_thr / peak_v } else { 1.0f32 };
++        let scale_i = if norm_thr > 0.0 && peak_i > 0.0 { norm_thr / peak_i } else { 1.0f32 };
++
++        let mut vw = crate::wav::StreamingWavWriter::create(vocals_path, input_sr, channels as u16)?;
++        let mut iw = crate::wav::StreamingWavWriter::create(instrumental_path, input_sr, channels as u16)?;
++
++        let mut vf = File::open(&vraw_path)
++            .map_err(|e| crate::error::Error::Audio(crate::error::AudioError::Io(e.to_string())))?;
++        let mut inf = File::open(&iraw_path)
++            .map_err(|e| crate::error::Error::Audio(crate::error::AudioError::Io(e.to_string())))?;
++
++        let chunk_frames = 4096usize;
++        let mut frame_idx = 0usize;
++        while frame_idx < total_frames {
++            let take = chunk_frames.min(total_frames - frame_idx);
++            // read take frames (frame-major interleaved) for vocals
++            let mut vbuf = vec![0f32; take * channels];
++            let mut ibuf = vec![0f32; take * channels];
++            // read exact bytes
++            let mut vbytes = vec![0u8; take * channels * 4];
++            let mut ibytes = vec![0u8; take * channels * 4];
++            vf.read_exact(&mut vbytes)
++                .map_err(|e| crate::error::Error::Audio(crate::error::AudioError::Io(e.to_string())))?;
++            inf.read_exact(&mut ibytes)
++                .map_err(|e| crate::error::Error::Audio(crate::error::AudioError::Io(e.to_string())))?;
++            for k in 0..(take * channels) {
++                vbuf[k] = f32::from_le_bytes(vbytes[k*4..(k+1)*4].try_into().unwrap());
++                ibuf[k] = f32::from_le_bytes(ibytes[k*4..(k+1)*4].try_into().unwrap());
++            }
++            // normalize
++            for k in 0..(take * channels) {
++                vbuf[k] *= scale_v;
++                ibuf[k] *= scale_i;
++            }
++            // convert frame-major -> planar
++            let mut vplanar = vec![0f32; channels * take];
++            let mut iplanar = vec![0f32; channels * take];
++            for fr in 0..take {
++                for c in 0..channels {
++                    vplanar[c * take + fr] = vbuf[fr * channels + c];
++                    iplanar[c * take + fr] = ibuf[fr * channels + c];
++                }
++            }
++            vw.write_planar(&vplanar)
++                .map_err(|e| crate::error::Error::Audio(crate::error::AudioError::Io(e.to_string())))?;
++            iw.write_planar(&iplanar)
++                .map_err(|e| crate::error::Error::Audio(crate::error::AudioError::Io(e.to_string())))?;
++            frame_idx += take;
++        }
++
++        vw.finalize()
++            .map_err(|e| crate::error::Error::Audio(crate::error::AudioError::Io(e.to_string())))?;
++        iw.finalize()
++            .map_err(|e| crate::error::Error::Audio(crate::error::AudioError::Io(e.to_string())))?;
++
++        // cleanup temp files (best effort)
++        let _ = std::fs::remove_file(&vraw_path);
++        let _ = std::fs::remove_file(&iraw_path);
++
+         Ok(())
+     }
+ 
+diff --git a/tests/library_api.rs b/tests/library_api.rs
+index 9a98d03..04f1918 100644
+--- a/tests/library_api.rs
++++ b/tests/library_api.rs
+@@ -71,10 +71,14 @@ fn write_tiny_model(dir: &std::path::Path, cfg: &SeparatorConfig) -> (std::path:
+ }
+ 
+ #[test]
+-fn separator_loads_and_separates_in_memory() {
++fn separator_loads_and_separates_in_memory_exact_residual() {
+     let cfg = tiny_config();
+-    let dir = tmpdir("stems");
++    let dir = tmpdir("stems_exact");
+     let (model, config) = write_tiny_model(&dir, &cfg);
++    // Exact residual mode: level processing disabled.
++    let mut yaml = fs::read_to_string(&config).unwrap();
++    yaml.push_str("\ninference:\n  normalization: 0.0\n  amplification: 0.0\n  invert_spect: false\n");
++    fs::write(&config, yaml).unwrap();
+ 
+     let assets = LocalSeparationAssets::new(&model, &config);
+     let separator = Separator::load(&assets, DeviceChoice::Cpu).unwrap();
+@@ -99,6 +103,38 @@ fn separator_loads_and_separates_in_memory() {
+     }
+ }
+ 
++#[test]
++fn separator_loads_and_separates_in_memory_normalized() {
++    let cfg = tiny_config();
++    let dir = tmpdir("stems_norm");
++    let (model, config) = write_tiny_model(&dir, &cfg);
++    // Default normalized mode (normalization = 0.9).
++
++    let assets = LocalSeparationAssets::new(&model, &config);
++    let separator = Separator::load(&assets, DeviceChoice::Cpu).unwrap();
++
++    let frames = 2000usize;
++    let samples: Vec<f32> = (0..frames).map(|i| (i as f32 * 0.05).sin() * 0.5).collect();
++    let audio = AudioBuffer {
++        sample_rate: 44100,
++        channels: 1,
++        planar: samples.clone(),
++    };
++
++    let stems = separator.separate(&audio).unwrap();
++    assert_eq!(stems.vocals.sample_rate, 44100);
++    assert_eq!(stems.vocals.channels, 1);
++    assert_eq!(stems.vocals.frames(), frames);
++    assert_eq!(stems.instrumental.frames(), frames);
++    // Normalized mode: the pointwise identity need not hold.
++    let mut maxdiff = 0.0f32;
++    for i in 0..frames {
++        let sum = stems.vocals.planar[i] + stems.instrumental.planar[i];
++        maxdiff = maxdiff.max((samples[i] - sum).abs());
++    }
++    assert!(maxdiff > 1e-3, "normalized mode should break exact residual identity");
++}
++
+ #[test]
+ fn separator_rejects_checkpoint_mismatch() {
+     let cfg = tiny_config();
+@@ -214,6 +250,9 @@ fn residual_and_independent_modes_are_distinct() {
+     let cfg1 = tiny_config();
+     let dir1 = tmpdir("resid");
+     let (m1, c1) = write_model(&dir1, &cfg1);
++    let mut y1 = fs::read_to_string(&c1).unwrap();
++    y1.push_str("\ninference:\n  normalization: 0.0\n  amplification: 0.0\n  invert_spect: false\n");
++    fs::write(&c1, y1).unwrap();
+     let sep1 = Separator::load(&LocalSeparationAssets::new(&m1, &c1), DeviceChoice::Cpu).unwrap();
+     let s1 = sep1.separate(&audio).unwrap();
+     assert_eq!(s1.len(), 2);
+@@ -265,6 +304,9 @@ fn four_stem_buffers_are_independent_not_residual_substitutions() {
+     let cfg = tiny_config_n(4);
+     let dir = tmpdir("indep_proof");
+     let (model_path, config) = write_model(&dir, &cfg);
++    let mut cfg_yaml = fs::read_to_string(&config).unwrap();
++    cfg_yaml.push_str("\ninference:\n  normalization: 0.0\n  amplification: 0.0\n  invert_spect: false\n");
++    fs::write(&config, cfg_yaml).unwrap();
+ 
+     // Load the model independently (same path as Separator::load) to verify the
+     // model-output layout that the overlap-add relies on: num_stems * channels *
+@@ -470,3 +512,222 @@ fn four_stem_tta_path_returns_four_named_buffers() {
+         .expect("infer_chunk tta");
+     assert_eq!(raw.len(), 4 * 2 * chunk, "TTA must return stem-expanded output");
+ }
++
++
++#[test]
++fn level_exact_residual_reconstruction_error() {
++    let cfg = tiny_config();
++    let dir = tmpdir("lvl_exact_err");
++    let (model, config) = write_tiny_model(&dir, &cfg);
++    let mut yaml = fs::read_to_string(&config).unwrap();
++    yaml.push_str("\ninference:\n  normalization: 0.0\n  amplification: 0.0\n  invert_spect: false\n");
++    fs::write(&config, yaml).unwrap();
++
++    let assets = LocalSeparationAssets::new(&model, &config);
++    let separator = Separator::load(&assets, DeviceChoice::Cpu).unwrap();
++
++    let frames = 2000usize;
++    let samples: Vec<f32> = (0..frames).map(|i| (i as f32 * 0.05).sin() * 0.5).collect();
++    let audio = AudioBuffer {
++        sample_rate: 44100,
++        channels: 1,
++        planar: samples.clone(),
++    };
++
++    let stems = separator.separate(&audio).unwrap();
++    let mut maxerr = 0.0f32;
++    for i in 0..frames {
++        let sum = stems.vocals.planar[i] + stems.instrumental.planar[i];
++        maxerr = maxerr.max((samples[i] - sum).abs());
++    }
++    eprintln!("LEVEL exact residual max_abs_error={}", maxerr);
++    assert!(maxerr < 1e-5, "exact residual reconstruction error too large: {}", maxerr);
++}
++
++#[test]
++fn level_normalized_output_peaks() {
++    let cfg = tiny_config();
++    let dir = tmpdir("lvl_norm_peaks");
++    let (model, config) = write_tiny_model(&dir, &cfg);
++    // Default normalized mode (normalization = 0.9).
++
++    let assets = LocalSeparationAssets::new(&model, &config);
++    let separator = Separator::load(&assets, DeviceChoice::Cpu).unwrap();
++
++    let frames = 2000usize;
++    let samples: Vec<f32> = (0..frames).map(|i| (i as f32 * 0.05).sin() * 0.5).collect();
++    let audio = AudioBuffer {
++        sample_rate: 44100,
++        channels: 1,
++        planar: samples.clone(),
++    };
++
++    let stems = separator.separate(&audio).unwrap();
++    let pv = stems
++        .vocals
++        .planar
++        .iter()
++        .map(|x| x.abs())
++        .fold(0.0f32, f32::max);
++    let pi = stems
++        .instrumental
++        .planar
++        .iter()
++        .map(|x| x.abs())
++        .fold(0.0f32, f32::max);
++    eprintln!("LEVEL normalized peaks vocals={} instrumental={}", pv, pi);
++    assert!((pv - 0.9).abs() < 1e-3, "vocals peak {} not ~0.9", pv);
++    assert!((pi - 0.9).abs() < 1e-3, "instrumental peak {} not ~0.9", pi);
++}
++
++#[test]
++fn level_amplification_positive() {
++    let cfg = tiny_config();
++    let dir = tmpdir("lvl_amp");
++    let (model, config) = write_tiny_model(&dir, &cfg);
++    let mut yaml = fs::read_to_string(&config).unwrap();
++    yaml.push_str("\ninference:\n  normalization: 0.0\n  amplification: 0.9\n  invert_spect: false\n");
++    fs::write(&config, yaml).unwrap();
++
++    let assets = LocalSeparationAssets::new(&model, &config);
++    let separator = Separator::load(&assets, DeviceChoice::Cpu).unwrap();
++
++    let frames = 2000usize;
++    let samples: Vec<f32> = (0..frames).map(|i| (i as f32 * 0.05).sin() * 0.1).collect();
++    let before_peak = samples.iter().map(|x| x.abs()).fold(0.0f32, f32::max);
++    let audio = AudioBuffer {
++        sample_rate: 44100,
++        channels: 1,
++        planar: samples.clone(),
++    };
++
++    let stems = separator.separate(&audio).unwrap();
++    // independently compute the amplified input reference
++    let mut amp_input = samples.clone();
++    candle_roformer::dsp::amplify_quiet(&mut amp_input, 0.9);
++    let after_peak = amp_input.iter().map(|x| x.abs()).fold(0.0f32, f32::max);
++
++    let mut maxerr = 0.0f32;
++    let mut sum_peak = 0.0f32;
++    for i in 0..frames {
++        let sum = stems.vocals.planar[i] + stems.instrumental.planar[i];
++        sum_peak = sum_peak.max(sum.abs());
++        maxerr = maxerr.max((amp_input[i] - sum).abs());
++    }
++    eprintln!(
++        "LEVEL amplification before_peak={} after_peak={} sum_peak={} maxerr={}",
++        before_peak, after_peak, sum_peak, maxerr
++    );
++    assert!(after_peak > before_peak * 2.0, "amplification did not raise level");
++    assert!(maxerr < 1e-5, "amplified residual reconstruction error too large: {}", maxerr);
++}
++
++#[test]
++fn level_spectral_inversion_matches_independent_residual() {
++    let cfg = tiny_config();
++    let dir = tmpdir("lvl_specinv");
++    let (model, config) = write_tiny_model(&dir, &cfg);
++    let mut yaml = fs::read_to_string(&config).unwrap();
++    yaml.push_str("\ninference:\n  normalization: 0.0\n  amplification: 0.0\n  invert_spect: true\n");
++    fs::write(&config, yaml).unwrap();
++
++    let assets = LocalSeparationAssets::new(&model, &config);
++    let separator = Separator::load(&assets, DeviceChoice::Cpu).unwrap();
++
++    let frames = 2000usize;
++    let samples: Vec<f32> = (0..frames).map(|i| (i as f32 * 0.05).sin() * 0.5).collect();
++    let audio = AudioBuffer {
++        sample_rate: 44100,
++        channels: 1,
++        planar: samples.clone(),
++    };
++
++    let stems = separator.separate(&audio).unwrap();
++
++    // Independently compute the expected spectral residual at model rate.
++    let dev = candle_core::Device::Cpu;
++    let vb = unsafe {
++        candle_nn::VarBuilder::from_mmaped_safetensors(&[model.to_str().unwrap()], candle_core::DType::F32, &dev)
++    }
++    .unwrap();
++    let mdl = candle_roformer::model::MelBandRoformer::new(&cfg, vb).unwrap();
++    let model_channels = 2usize;
++    let mut model_input = vec![0.0f32; samples.len() * model_channels];
++    for i in 0..samples.len() {
++        model_input[i] = samples[i];
++        model_input[samples.len() + i] = samples[i];
++    }
++    let mut icfg = candle_roformer::config::InferenceConfig::default();
++    icfg.normalization = 0.0;
++    icfg.amplification = 0.0;
++    icfg.invert_spect = false;
++    let outs = candle_roformer::separate::separate_all_with_config(&mdl, &model_input, model_channels, &icfg).unwrap();
++    let vocals_model = &outs[0];
++    let mv_frames = vocals_model.len() / model_channels;
++    let in_frames = model_input.len() / model_channels;
++    let frames_m = mv_frames.min(in_frames);
++
++    let mut instr_model = vec![0.0f32; model_channels * frames_m];
++    for ch in 0..model_channels {
++        let in_ch: Vec<f32> = (0..frames_m).map(|i| model_input[ch * in_frames + i]).collect();
++        let voc_ch: Vec<f32> = (0..frames_m).map(|i| vocals_model[ch * mv_frames + i]).collect();
++        // Independent computation (not via invert_spect/spectral_invert alias):
++        // STFT both signals, subtract in the complex domain, iSTFT.
++        let spec_in = candle_roformer::dsp::stft(
++            &in_ch,
++            cfg.stft_n_fft,
++            cfg.stft_hop_length,
++            cfg.stft_win_length,
++        )
++        .unwrap();
++        let spec_v = candle_roformer::dsp::stft(
++            &voc_ch,
++            cfg.stft_n_fft,
++            cfg.stft_hop_length,
++            cfg.stft_win_length,
++        )
++        .unwrap();
++        let mut re = spec_in.re.clone();
++        let mut im = spec_in.im.clone();
++        for i in 0..re.len() {
++            re[i] -= spec_v.re[i];
++            im[i] -= spec_v.im[i];
++        }
++        let spec = candle_roformer::dsp::StftResult {
++            re,
++            im,
++            frames: spec_in.frames,
++            bins: spec_in.bins,
++        };
++        let res = candle_roformer::dsp::istft(
++            &spec,
++            cfg.stft_n_fft,
++            cfg.stft_hop_length,
++            cfg.stft_win_length,
++            in_ch.len(),
++        )
++        .unwrap();
++        for i in 0..frames_m {
++            instr_model[ch * frames_m + i] = res[i];
++        }
++    }
++    // downmix to mono
++    let mut mono_model = vec![0.0f32; frames_m];
++    for i in 0..frames_m {
++        mono_model[i] = (instr_model[i] + instr_model[frames_m + i]) * 0.5;
++    }
++
++    let mut maxdiff = 0.0f32;
++    for i in 0..frames.min(frames_m) {
++        let d = (stems.instrumental.planar[i] - mono_model[i]).abs();
++        if d > maxdiff {
++            maxdiff = d;
++        }
++    }
++    eprintln!("LEVEL spectral inversion maxdiff_vs_independent={}", maxdiff);
++    assert!(
++        maxdiff < 1e-2,
++        "spectral inversion output should match independent residual (maxdiff {})",
++        maxdiff
++    );
++}
+diff --git a/tests/streaming_chunked.rs b/tests/streaming_chunked.rs
+index 76efa93..c4de355 100644
+--- a/tests/streaming_chunked.rs
++++ b/tests/streaming_chunked.rs
+@@ -65,6 +65,9 @@ fn chunked_length_and_residual() {
+     let cfg = tiny_config();
+     let dir = tmpdir("len");
+     let (model, config) = write_tiny_model(&dir, &cfg);
++    let mut _y = fs::read_to_string(&config).unwrap();
++    _y.push_str("\ninference:\n  normalization: 0.0\n  amplification: 0.0\n  invert_spect: false\n");
++    fs::write(&config, _y).unwrap();
+     let assets = LocalSeparationAssets::new(&model, &config);
+     let separator = Separator::load(&assets, DeviceChoice::Cpu).unwrap();
+ 
+@@ -107,6 +110,9 @@ fn chunked_boundary_parity() {
+     let cfg = tiny_config();
+     let dir = tmpdir("parity");
+     let (model, config) = write_tiny_model(&dir, &cfg);
++    let mut _y = fs::read_to_string(&config).unwrap();
++    _y.push_str("\ninference:\n  normalization: 0.0\n  amplification: 0.0\n  invert_spect: false\n");
++    fs::write(&config, _y).unwrap();
+     let assets = LocalSeparationAssets::new(&model, &config);
+     let separator = Separator::load(&assets, DeviceChoice::Cpu).unwrap();
+ 
+@@ -154,6 +160,9 @@ fn chunked_mono() {
+     let cfg = tiny_config();
+     let dir = tmpdir("mono");
+     let (model, config) = write_tiny_model(&dir, &cfg);
++    let mut _y = fs::read_to_string(&config).unwrap();
++    _y.push_str("\ninference:\n  normalization: 0.0\n  amplification: 0.0\n  invert_spect: false\n");
++    fs::write(&config, _y).unwrap();
+     let assets = LocalSeparationAssets::new(&model, &config);
+     let separator = Separator::load(&assets, DeviceChoice::Cpu).unwrap();
+ 
+@@ -181,3 +190,300 @@ fn chunked_mono() {
+         assert!((samples[i] - sum).abs() < 1e-5);
+     }
+ }
++
++#[test]
++fn stream_default_normalization_peaks() {
++    let cfg = tiny_config();
++    let dir = tmpdir("stream_norm_peaks");
++    let (model, config) = write_tiny_model(&dir, &cfg);
++    // Default normalized mode (normalization = 0.9).
++
++    let assets = LocalSeparationAssets::new(&model, &config);
++    let separator = Separator::load(&assets, DeviceChoice::Cpu).unwrap();
++
++    let frames = 2000usize;
++    let samples: Vec<f32> = (0..frames).map(|i| (i as f32 * 0.05).sin() * 0.5).collect();
++    let audio = AudioBuffer {
++        sample_rate: 44100,
++        channels: 1,
++        planar: samples.clone(),
++    };
++    let input_path = dir.join("in.wav");
++    write_wav_f32(&input_path, &audio).unwrap();
++
++    let vpath = dir.join("v.wav");
++    let ipath = dir.join("i.wav");
++    separator.separate_file(&input_path, &vpath, &ipath, 1.0).unwrap();
++
++    let v = read_audio(&vpath).unwrap();
++    let iv = read_audio(&ipath).unwrap();
++    let pv = v.planar.iter().map(|x| x.abs()).fold(0.0f32, f32::max);
++    let pi = iv.planar.iter().map(|x| x.abs()).fold(0.0f32, f32::max);
++    eprintln!("STREAM normalized peaks vocals={} instrumental={}", pv, pi);
++    assert!((pv - 0.9).abs() < 1e-3, "vocals peak {} not ~0.9", pv);
++    assert!((pi - 0.9).abs() < 1e-3, "instrumental peak {} not ~0.9", pi);
++}
++
++#[test]
++fn stream_amplification_positive() {
++    let cfg = tiny_config();
++    let dir = tmpdir("stream_amp");
++    let (model, config) = write_tiny_model(&dir, &cfg);
++    let mut yaml = fs::read_to_string(&config).unwrap();
++    yaml.push_str("\ninference:\n  normalization: 0.0\n  amplification: 0.9\n  invert_spect: false\n");
++    fs::write(&config, yaml).unwrap();
++
++    let assets = LocalSeparationAssets::new(&model, &config);
++    let separator = Separator::load(&assets, DeviceChoice::Cpu).unwrap();
++
++    let frames = 2000usize;
++    let samples: Vec<f32> = (0..frames).map(|i| (i as f32 * 0.05).sin() * 0.1).collect();
++    let before_peak = samples.iter().map(|x| x.abs()).fold(0.0f32, f32::max);
++    let audio = AudioBuffer {
++        sample_rate: 44100,
++        channels: 1,
++        planar: samples.clone(),
++    };
++    let input_path = dir.join("in.wav");
++    write_wav_f32(&input_path, &audio).unwrap();
++
++    let vpath = dir.join("v.wav");
++    let ipath = dir.join("i.wav");
++    separator.separate_file(&input_path, &vpath, &ipath, 1.0).unwrap();
++
++    let v = read_audio(&vpath).unwrap();
++    let iv = read_audio(&ipath).unwrap();
++
++    let mut amp_input = samples.clone();
++    candle_roformer::dsp::amplify_quiet(&mut amp_input, 0.9);
++    let after_peak = amp_input.iter().map(|x| x.abs()).fold(0.0f32, f32::max);
++
++    let mut maxerr = 0.0f32;
++    for i in 0..frames {
++        let sum = v.planar[i] + iv.planar[i];
++        maxerr = maxerr.max((amp_input[i] - sum).abs());
++    }
++    eprintln!(
++        "STREAM amplification before_peak={} after_peak={} maxerr={}",
++        before_peak, after_peak, maxerr
++    );
++    assert!(after_peak > before_peak * 2.0, "amplification did not raise level");
++    assert!(maxerr < 1e-5, "amplified residual reconstruction error too large: {}", maxerr);
++}
++
++#[test]
++fn stream_spectral_inversion_matches_independent_residual() {
++    let cfg = tiny_config();
++    let dir = tmpdir("stream_specinv");
++    let (model, config) = write_tiny_model(&dir, &cfg);
++    let mut yaml = fs::read_to_string(&config).unwrap();
++    yaml.push_str("\ninference:\n  normalization: 0.0\n  amplification: 0.0\n  invert_spect: true\n");
++    fs::write(&config, yaml).unwrap();
++
++    let assets = LocalSeparationAssets::new(&model, &config);
++    let separator = Separator::load(&assets, DeviceChoice::Cpu).unwrap();
++
++    let frames = 2000usize;
++    let samples: Vec<f32> = (0..frames).map(|i| (i as f32 * 0.05).sin() * 0.5).collect();
++    let audio = AudioBuffer {
++        sample_rate: 44100,
++        channels: 1,
++        planar: samples.clone(),
++    };
++    let input_path = dir.join("in.wav");
++    write_wav_f32(&input_path, &audio).unwrap();
++
++    let vpath = dir.join("v.wav");
++    let ipath = dir.join("i.wav");
++    separator.separate_file(&input_path, &vpath, &ipath, 1.0).unwrap();
++
++    let iv = read_audio(&ipath).unwrap();
++
++    // Independently compute expected spectral residual at model rate.
++    let dev = candle_core::Device::Cpu;
++    let vb = unsafe {
++        candle_nn::VarBuilder::from_mmaped_safetensors(&[model.to_str().unwrap()], candle_core::DType::F32, &dev)
++    }
++    .unwrap();
++    let mdl = candle_roformer::model::MelBandRoformer::new(&cfg, vb).unwrap();
++    let model_channels = 2usize;
++    let mut model_input = vec![0.0f32; samples.len() * model_channels];
++    for i in 0..samples.len() {
++        model_input[i] = samples[i];
++        model_input[samples.len() + i] = samples[i];
++    }
++    let mut icfg = candle_roformer::config::InferenceConfig::default();
++    icfg.normalization = 0.0;
++    icfg.amplification = 0.0;
++    icfg.invert_spect = false;
++    let outs = candle_roformer::separate::separate_all_with_config(&mdl, &model_input, model_channels, &icfg).unwrap();
++    let vocals_model = &outs[0];
++    let mv_frames = vocals_model.len() / model_channels;
++    let in_frames = model_input.len() / model_channels;
++    let frames_m = mv_frames.min(in_frames);
++
++    let mut instr_model = vec![0.0f32; model_channels * frames_m];
++    for ch in 0..model_channels {
++        let in_ch: Vec<f32> = (0..frames_m).map(|i| model_input[ch * in_frames + i]).collect();
++        let voc_ch: Vec<f32> = (0..frames_m).map(|i| vocals_model[ch * mv_frames + i]).collect();
++        let spec_in = candle_roformer::dsp::stft(
++            &in_ch,
++            cfg.stft_n_fft,
++            cfg.stft_hop_length,
++            cfg.stft_win_length,
++        )
++        .unwrap();
++        let spec_v = candle_roformer::dsp::stft(
++            &voc_ch,
++            cfg.stft_n_fft,
++            cfg.stft_hop_length,
++            cfg.stft_win_length,
++        )
++        .unwrap();
++        let mut re = spec_in.re.clone();
++        let mut im = spec_in.im.clone();
++        for i in 0..re.len() {
++            re[i] -= spec_v.re[i];
++            im[i] -= spec_v.im[i];
++        }
++        let spec = candle_roformer::dsp::StftResult {
++            re,
++            im,
++            frames: spec_in.frames,
++            bins: spec_in.bins,
++        };
++        let res = candle_roformer::dsp::istft(
++            &spec,
++            cfg.stft_n_fft,
++            cfg.stft_hop_length,
++            cfg.stft_win_length,
++            in_ch.len(),
++        )
++        .unwrap();
++        for i in 0..frames_m {
++            instr_model[ch * frames_m + i] = res[i];
++        }
++    }
++    let mut mono_model = vec![0.0f32; frames_m];
++    for i in 0..frames_m {
++        mono_model[i] = (instr_model[i] + instr_model[frames_m + i]) * 0.5;
++    }
++
++    let mut maxdiff = 0.0f32;
++    for i in 0..frames.min(frames_m) {
++        let d = (iv.planar[i] - mono_model[i]).abs();
++        if d > maxdiff {
++            maxdiff = d;
++        }
++    }
++    eprintln!("STREAM spectral inversion maxdiff_vs_independent={}", maxdiff);
++    assert!(
++        maxdiff < 1e-2,
++        "spectral inversion output should match independent residual (maxdiff {})",
++        maxdiff
++    );
++}
++
++#[test]
++fn chunked_multiblock_stereo_residual() {
++    let cfg = tiny_config();
++    let dir = tmpdir("multiblock");
++    let (model, config) = write_tiny_model(&dir, &cfg);
++    let mut _y = fs::read_to_string(&config).unwrap();
++    _y.push_str("\ninference:\n  normalization: 0.0\n  amplification: 0.0\n  invert_spect: false\n");
++    fs::write(&config, _y).unwrap();
++    let assets = LocalSeparationAssets::new(&model, &config);
++    let separator = Separator::load(&assets, DeviceChoice::Cpu).unwrap();
++
++    // >= 65537 frames, distinct L/R content, input sr == model sr.
++    let frames = 65537usize;
++    let mut planar = vec![0f32; 2 * frames];
++    for i in 0..frames {
++        planar[i] = (i as f32 * 0.013).sin() * 0.4;
++        planar[frames + i] = (i as f32 * 0.021).cos() * 0.25;
++    }
++    let audio = AudioBuffer {
++        sample_rate: 44100,
++        channels: 2,
++        planar: planar.clone(),
++    };
++    let input_path = dir.join("in.wav");
++    write_wav_f32(&input_path, &audio).unwrap();
++
++    // in-memory reference
++    let stems = separator.separate(&audio).unwrap();
++
++    // chunked file path
++    let vpath = dir.join("v.wav");
++    let ipath = dir.join("i.wav");
++    let cd = 3200.0 / 44100.0;
++    separator.separate_file(&input_path, &vpath, &ipath, cd).unwrap();
++    let v = read_audio(&vpath).unwrap();
++    let iv = read_audio(&ipath).unwrap();
++
++    assert_eq!(v.frames(), frames);
++    assert_eq!(iv.frames(), frames);
++
++    // exact residual
++    let mut maxres = 0f32;
++    for i in 0..(2 * frames) {
++        let sum = v.planar[i] + iv.planar[i];
++        let d = (planar[i] - sum).abs();
++        if d > maxres { maxres = d; }
++    }
++    assert!(maxres < 1e-5, "multi-block residual too large: {}", maxres);
++
++    // file vs in-memory
++    let mut maxdiff = 0f32;
++    for i in 0..stems.vocals.planar.len() {
++        let d = (stems.vocals.planar[i] - v.planar[i]).abs();
++        if d > maxdiff { maxdiff = d; }
++        let d2 = (stems.instrumental.planar[i] - iv.planar[i]).abs();
++        if d2 > maxdiff { maxdiff = d2; }
++    }
++    assert!(maxdiff < 1e-5, "multi-block file vs in-memory diff: {}", maxdiff);
++}
++
++#[test]
++fn chunked_normalized_parity() {
++    let cfg = tiny_config();
++    let dir = tmpdir("norm_parity");
++    let (model, config) = write_tiny_model(&dir, &cfg);
++    // Default inference: normalization = 0.9 (no yaml override).
++    let assets = LocalSeparationAssets::new(&model, &config);
++    let separator = Separator::load(&assets, DeviceChoice::Cpu).unwrap();
++
++    let frames = 6000usize;
++    let samples: Vec<f32> = (0..frames).map(|i| (i as f32 * 0.037).sin() * 0.3).collect();
++    let mut planar = vec![0f32; 2 * frames];
++    for i in 0..frames {
++        planar[i] = samples[i];
++        planar[frames + i] = samples[i] * 0.5;
++    }
++    let audio = AudioBuffer {
++        sample_rate: 44100,
++        channels: 2,
++        planar: planar.clone(),
++    };
++    let input_path = dir.join("in.wav");
++    write_wav_f32(&input_path, &audio).unwrap();
++
++    let stems = separator.separate(&audio).unwrap();
++
++    let vpath = dir.join("v.wav");
++    let ipath = dir.join("i.wav");
++    let cd = 3200.0 / 44100.0;
++    separator.separate_file(&input_path, &vpath, &ipath, cd).unwrap();
++    let v = read_audio(&vpath).unwrap();
++    let iv = read_audio(&ipath).unwrap();
++
++    let mut maxv = 0f32;
++    let mut maxi = 0f32;
++    for i in 0..stems.vocals.planar.len() {
++        maxv = maxv.max((stems.vocals.planar[i] - v.planar[i]).abs());
++        maxi = maxi.max((stems.instrumental.planar[i] - iv.planar[i]).abs());
++    }
++    eprintln!("NORMALIZED PARITY max_abs vocals={} instrumental={}", maxv, maxi);
++    assert!(maxv <= 1e-4, "vocals parity too large: {}", maxv);
++    assert!(maxi <= 1e-4, "instrumental parity too large: {}", maxi);
++}
