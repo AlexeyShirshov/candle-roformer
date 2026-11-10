@@ -220,3 +220,207 @@ pub fn istft(
     }
     Ok(result)
 }
+
+// ---------- Level processing helpers (issue #13) ----------
+
+/// Peak absolute amplitude of a buffer.
+pub fn peak_abs(samples: &[f32]) -> f32 {
+    samples.iter().map(|x| x.abs()).fold(0.0f32, f32::max)
+}
+
+/// Peak-normalize a buffer in place to `threshold`. A threshold <= 0 disables
+/// scaling; a zero/NaN-free? zero peak leaves the buffer untouched (no divide
+/// by zero, no NaN/Inf).
+pub fn normalize_peak(samples: &mut [f32], threshold: f32) {
+    if !threshold.is_finite() || threshold <= 0.0 {
+        return;
+    }
+    let peak = peak_abs(samples);
+    if peak > 0.0 && peak.is_finite() {
+        let scale = threshold / peak;
+        if scale.is_finite() {
+            for x in samples.iter_mut() {
+                *x *= scale;
+            }
+        }
+    }
+}
+
+/// Amplify a quiet input in place: if `0 < peak < threshold`, scale up to the
+/// threshold. Threshold <= 0 disables. Zero peak is left untouched.
+pub fn amplify_quiet(samples: &mut [f32], threshold: f32) {
+    if !threshold.is_finite() || threshold <= 0.0 {
+        return;
+    }
+    let peak = peak_abs(samples);
+    if peak > 0.0 && peak < threshold && peak.is_finite() {
+        let scale = threshold / peak;
+        if scale.is_finite() {
+            for x in samples.iter_mut() {
+                *x *= scale;
+            }
+        }
+    }
+}
+
+/// Spectral inversion of the secondary stem: `secondary = input - primary` in
+/// the complex STFT domain, followed by iSTFT. Operates on a single channel.
+/// Returns the residual signal trimmed/padded to `input.len()`.
+pub fn spectral_invert(
+    primary: &[f32],
+    input: &[f32],
+    n_fft: usize,
+    hop: usize,
+    win_length: usize,
+) -> Result<Vec<f32>, DspError> {
+    if input.is_empty() {
+        return Ok(Vec::new());
+    }
+    let n = input.len().min(primary.len());
+    let input = &input[..n];
+    let primary = &primary[..n];
+    // Pad short inputs so STFT reflect-padding is valid.
+    let pad = n_fft / 2;
+    let mut in_buf = input.to_vec();
+    let mut pr_buf = primary.to_vec();
+    if in_buf.len() <= pad {
+        let need = pad + 1 - in_buf.len();
+        in_buf.resize(in_buf.len() + need, 0.0);
+        pr_buf.resize(pr_buf.len() + need, 0.0);
+    }
+    let spec_in = stft(&in_buf, n_fft, hop, win_length)?;
+    let spec_v = stft(&pr_buf, n_fft, hop, win_length)?;
+    if spec_in.frames != spec_v.frames || spec_in.bins != spec_v.bins {
+        return Err(DspError::ShapeMismatch("stft frame mismatch".into()));
+    }
+    let mut re = spec_in.re.clone();
+    let mut im = spec_in.im.clone();
+    for i in 0..re.len() {
+        re[i] -= spec_v.re[i];
+        im[i] -= spec_v.im[i];
+    }
+    let spec = StftResult {
+        re,
+        im,
+        frames: spec_in.frames,
+        bins: spec_in.bins,
+    };
+    let mut out = istft(&spec, n_fft, hop, win_length, in_buf.len())?;
+    out.truncate(n);
+    if out.len() < n {
+        out.resize(n, 0.0);
+    }
+    Ok(out)
+}
+
+/// Alias expected by some callers.
+pub fn invert_spect(
+    primary: &[f32],
+    input: &[f32],
+    n_fft: usize,
+    hop: usize,
+    win_length: usize,
+) -> Result<Vec<f32>, DspError> {
+    spectral_invert(primary, input, n_fft, hop, win_length)
+}
+
+/// Alias for amplification helper (reference name).
+pub fn amplify(samples: &mut [f32], threshold: f32) {
+    amplify_quiet(samples, threshold)
+}
+
+/// Alias for peak normalization helper (reference name).
+pub fn normalize(samples: &mut [f32], threshold: f32) {
+    normalize_peak(samples, threshold)
+}
+
+
+#[cfg(test)]
+mod level_tests {
+    use super::*;
+
+    #[test]
+    fn peak_abs_empty_and_zero() {
+        assert_eq!(peak_abs(&[]), 0.0);
+        assert_eq!(peak_abs(&[0.0, 0.0]), 0.0);
+    }
+
+    #[test]
+    fn peak_abs_basic() {
+        assert!((peak_abs(&[0.5, -0.25, 0.1]) - 0.5).abs() < 1e-6);
+    }
+
+    #[test]
+    fn normalize_peak_scales_to_threshold() {
+        let mut v = vec![0.5f32, -0.25, 0.1];
+        normalize_peak(&mut v, 0.9);
+        assert!((peak_abs(&v) - 0.9).abs() < 1e-5);
+    }
+
+    #[test]
+    fn normalize_peak_disabled_thresholds() {
+        let orig = vec![0.5f32, -0.25];
+        for thr in [0.0f32, -1.0, f32::NAN, f32::INFINITY] {
+            let mut v = orig.clone();
+            normalize_peak(&mut v, thr);
+            assert_eq!(v, orig);
+        }
+    }
+
+    #[test]
+    fn normalize_peak_zero_peak_no_nan() {
+        let mut v = vec![0.0f32; 4];
+        normalize_peak(&mut v, 0.9);
+        assert!(v.iter().all(|x| *x == 0.0));
+    }
+
+    #[test]
+    fn amplify_quiet_scales_quiet_input() {
+        let mut v = vec![0.1f32, -0.05];
+        amplify_quiet(&mut v, 0.5);
+        assert!((peak_abs(&v) - 0.5).abs() < 1e-5);
+    }
+
+    #[test]
+    fn amplify_quiet_noop_when_loud_or_disabled() {
+        let orig = vec![0.8f32, -0.4];
+        // peak >= threshold -> no change
+        let mut v = orig.clone();
+        amplify_quiet(&mut v, 0.5);
+        assert_eq!(v, orig);
+        // threshold 0 disables
+        let mut v2 = vec![0.1f32];
+        amplify_quiet(&mut v2, 0.0);
+        assert_eq!(v2[0], 0.1);
+        // zero peak untouched
+        let mut z = vec![0.0f32; 3];
+        amplify_quiet(&mut z, 0.5);
+        assert!(z.iter().all(|x| *x == 0.0));
+    }
+
+    #[test]
+    fn spectral_invert_length_and_finite() {
+        let n = 128usize;
+        let input: Vec<f32> = (0..n).map(|i| (i as f32 * 0.1).sin()).collect();
+        let vocals: Vec<f32> = input.iter().map(|x| x * 0.5).collect();
+        let res = spectral_invert(&vocals, &input, 64, 16, 64).unwrap();
+        assert_eq!(res.len(), n);
+        assert!(res.iter().all(|x| x.is_finite()));
+    }
+
+    #[test]
+    fn spectral_invert_empty_input() {
+        let res = spectral_invert(&[], &[], 64, 16, 64).unwrap();
+        assert!(res.is_empty());
+    }
+
+    #[test]
+    fn invert_spect_alias_works() {
+        let n = 64usize;
+        let input: Vec<f32> = (0..n).map(|i| (i as f32 * 0.2).sin()).collect();
+        let vocals: Vec<f32> = input.iter().map(|x| x * 0.3).collect();
+        let a = spectral_invert(&vocals, &input, 32, 8, 32).unwrap();
+        let b = invert_spect(&vocals, &input, 32, 8, 32).unwrap();
+        assert_eq!(a, b);
+    }
+}

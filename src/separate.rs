@@ -55,13 +55,29 @@ pub fn separate_all_with_config(
 
     let sr = cfg.sample_rate as u32;
 
+    // Apply input-level processing (amplification then normalization) up front.
+    // Pitch shift path handles its own (recursive) processing on the shifted
+    // signal.
+    let input = if cfg.pitch_shift.abs() <= 1e-9 {
+        let mut v = input.to_vec();
+        if cfg.amplification > 0.0 {
+            crate::dsp::amplify_quiet(&mut v, cfg.amplification);
+        }
+        if cfg.normalization > 0.0 {
+            crate::dsp::normalize_peak(&mut v, cfg.normalization);
+        }
+        v
+    } else {
+        input.to_vec()
+    };
+
     // Pitch shift: shift the input to a shifted sample rate, run inference on
     // that shifted-rate signal, then map every stem back to the original
     // length/rate. A default of 0.0 skips entirely (bit-identical).
     if cfg.pitch_shift.abs() > 1e-9 {
         let factor = 2f64.powf(cfg.pitch_shift as f64 / 12.0);
         let shifted_sr = ((sr as f64) * factor).round().max(1.0) as u32;
-        let shifted_input = crate::resample::resample_planar(input, channels, sr, shifted_sr);
+        let shifted_input = crate::resample::resample_planar(&input, channels, sr, shifted_sr);
         let mut inner_cfg = cfg.clone();
         inner_cfg.pitch_shift = 0.0;
         let shifted_outs = separate_all_with_config(model, &shifted_input, channels, &inner_cfg)?;
@@ -73,6 +89,9 @@ pub fn separate_all_with_config(
                 back.truncate(target);
             } else {
                 back.resize(target, 0.0);
+            }
+            if cfg.normalization > 0.0 {
+                crate::dsp::normalize_peak(&mut back, cfg.normalization);
             }
             backs.push(back);
         }
@@ -87,7 +106,13 @@ pub fn separate_all_with_config(
     let run = |pcm: &[f32]| -> Result<Vec<f32>, Error> {
         infer_chunk(model, cfg, pcm, channels, chunk)
     };
-    ola_all_with_batch(&input, channels, chunk, step, fade, batch_size, num_stems, &run)
+    let mut outs = ola_all_with_batch(&input, channels, chunk, step, fade, batch_size, num_stems, &run)?;
+    if cfg.normalization > 0.0 {
+        for stem in outs.iter_mut() {
+            crate::dsp::normalize_peak(stem, cfg.normalization);
+        }
+    }
+    Ok(outs)
 }
 
 pub fn separate_with_config(

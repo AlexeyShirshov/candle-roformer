@@ -167,6 +167,22 @@ pub struct InferenceConfig {
     pub denoise: bool,
     pub tta: bool,
     pub sample_rate: usize,
+    #[serde(default = "default_normalization")]
+    pub normalization: f32,
+    #[serde(default = "default_amplification")]
+    pub amplification: f32,
+    #[serde(default = "default_invert_spect")]
+    pub invert_spect: bool,
+}
+
+fn default_normalization() -> f32 {
+    0.9
+}
+fn default_amplification() -> f32 {
+    0.0
+}
+fn default_invert_spect() -> bool {
+    false
 }
 
 impl Default for InferenceConfig {
@@ -189,6 +205,9 @@ impl InferenceConfig {
             denoise: false,
             tta: false,
             sample_rate: 44100,
+            normalization: 0.9,
+            amplification: 0.0,
+            invert_spect: false,
         }
     }
 
@@ -243,6 +262,12 @@ impl InferenceConfig {
         }
         if self.sample_rate == 0 {
             return Err(ConfigError::Invalid("sample_rate must be > 0".into()));
+        }
+        if !self.normalization.is_finite() || self.normalization < 0.0 {
+            return Err(ConfigError::Invalid("normalization must be finite and >= 0".into()));
+        }
+        if !self.amplification.is_finite() || self.amplification < 0.0 {
+            return Err(ConfigError::Invalid("amplification must be finite and >= 0".into()));
         }
         Ok(())
     }

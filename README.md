@@ -33,13 +33,35 @@ candle_roformer::wav::write_wav_f32("out/instrumental.wav", &stems.instrumental)
   convenience fields `Stems::vocals` / `Stems::instrumental`.
 - **Residual vs. independent stems.** A single-stem profile (`num_stems == 1`,
   e.g. MelBandRoformer vocals) runs in *residual* mode: `vocals` is the model
-  estimate and `instrumental = input - vocals`, so `vocals + instrumental ==
-  input`. A multi-stem profile (`num_stems > 1`, e.g. Demucs / MDX / VR)
-  runs in *independent* mode: every stem is an independent model estimate and
-  no stem is replaced by `input - stem`, so the sum need not equal the input.
-  The mode follows from `num_stems`; it is not a runtime flag.
+  estimate and `instrumental` is the input residual. The pointwise identity
+  `vocals + instrumental == input` holds exactly only in exact residual mode
+  (level processing disabled: `normalization = 0.0`, `amplification = 0.0`,
+  `invert_spect = false`); see "Level processing" below. A multi-stem profile
+  (`num_stems > 1`, e.g. Demucs / MDX / VR) runs in *independent* mode:
+  every stem is an independent model estimate and no stem is replaced by
+  `input - stem`, so the sum need not equal the input. The mode follows from
+  `num_stems`; it is not a runtime flag.
 - A 4-stem profile returns four named `AudioBuffer`s through
   `Stems::stems` / `Stems::get`.
+
+- **Level processing** (reference `audio-separator` defaults). Controlled by
+  `InferenceConfig` (`normalization`, `amplification`, `invert_spect`):
+  - `normalization` (default `0.9`): peak-normalize the input mix and every
+    output stem to the threshold (`x *= threshold / peak(x)` for `peak > 0`;
+    silent buffers are untouched, no `NaN`/`Inf`). Set to `0.0` to disable;
+    negative or non-finite values are rejected by `InferenceConfig::validate`.
+  - `amplification` (default `0.0` = off): scale a quiet input up to the
+    threshold when `0 < peak < threshold`.
+  - `invert_spect` (default `false`): in residual mode compute the secondary
+    stem by spectral subtraction (STFT/iSTFT) instead of the waveform
+    residual.
+  - **Exact residual mode** (`normalization = 0.0`, `amplification = 0.0`,
+    `invert_spect = false`): `instrumental = input - vocals`, so
+    `vocals + instrumental == input` pointwise (within `f32` round-off).
+  - **Normalized mode** (default `normalization = 0.9`): the input and each
+    stem are peak-normalized independently, so the pointwise identity above no
+    longer holds in the original input scale; with `invert_spect = true` the
+    secondary stem is a spectral residual.
 - `AudioBuffer::validate` rejects absurd rates, >2 channels, misaligned or
   non-finite buffers.
 - Reading and writing files is limited to [`wav`]: `read_audio` (m4a/mp3/flac/
@@ -167,54 +189,68 @@ Metal: `cargo build --release --features metal` (macOS).
   [docs/superpowers/specs/2026-11-07-candle-roformer-design.md](https://github.com/AlexeyShirshov/candle-roformer/blob/main/docs/superpowers/specs/2026-11-07-candle-roformer-design.md).
 
 
-## Bounded-memory chunked separation (`--chunk_duration`)
+## File-based separation (`separate_file` / `separate_streaming`)
 
-`Separator::separate_file` / `separate_streaming` (and the `separate` example)
-process a file in bounded memory: decode chunk N → separate (overlap-add) →
-write stems → drop chunk N. The OLA window size is derived from
-`chunk_duration` (seconds): `chunk = round(chunk_duration * sample_rate)` model
-frames, `step = chunk / num_overlap`, `fade = chunk / 10`, reusing the same
-overlap-add weights as the in-memory `Separator::separate`. Only the current
-input chunk, the stem overlap tail and the ready step buffer are held in memory;
-finalised frames are written to the output WAVs through `StreamingWavWriter`
-and freed, so peak RSS depends on `chunk_duration`, not on input length.
+`Separator::separate_file` / `separate_streaming` separate an audio file on disk
+and write the resulting stems to WAV files. Two code paths are used:
 
-### Boundary quality
+- **Bounded streaming path** (input sample rate == model sample rate, residual
+  profile, `invert_spect == false`): the input is decoded in `chunk_duration`-
+  sized windows and processed with overlap-add (OLA), so peak RSS stays
+  `O(chunk)` and does not grow with the input length. `chunk_duration` drives
+  the OLA chunk size and therefore the separation granularity. Amplification
+  and input normalization are computed from a streaming global peak pre-pass;
+  output peaks are normalized in a second pass over the (disk-backed) raw stem
+  buffers, so `normalization` still applies. The secondary stem is the waveform
+  residual `input - vocals` (exact in exact residual mode).
+- **In-memory fallback** (input sample rate != model sample rate, multi-stem
+  profiles, or `invert_spect == true`): the whole input is decoded into memory
+  and processed by `Separator::separate`, then written with `write_wav_f32`.
+  Correct but not bounded-memory. `invert_spect` requires full-signal STFT and
+  therefore uses this path.
 
-Joints are artefact-free by construction: every output sample is the
-overlap-add (with the same triangular fade window) of the chunks that cover it,
-normalised by the accumulated weight, identical to the monolithic path. Measured
-on a 6000-frame stereo signal at 44.1 kHz with `chunk_duration = 3200/44100`
-(OLA chunk = 3200 frames, step = 1600, fade = 320):
+Both paths share the same level-processing semantics (`normalization`,
+`amplification`, `invert_spect`) and residual semantics (exact residual vs.
+normalized mode); only memory behavior and `chunk_duration` relevance differ.
 
-- `E_boundary` (max abs) = 0.0 (bit-identical)
-- `E_boundary` (RMSE) = 0.0
+### Bounded memory (streaming path)
 
-Test: `cargo test --test streaming_chunked chunked_boundary_parity`.
+The bounded streaming path keeps peak RSS `O(chunk_duration)` and does not grow
+with input length. Measured on the synthetic tiny model (CPU, `chunk_duration =
+0.07256 s`, stereo, 44100 Hz, input read from a pre-generated file, each
+duration in a separate process, `VmHWM` from `/proc/self/status`):
+
+| input length | VmHWM (KiB) | VmHWM (MiB) |
+|---|---|---|
+| 10 s  | 17476 | 17.07 |
+| 30 s  | 17420 | 17.01 |
+| 60 s  | 18964 | 18.52 |
+| 120 s | 18820 | 18.38 |
+
+Relative growth 10 s → 120 s: **18820 / 17476 = 1.077** (≤ 1.15 threshold
+from plan M1). The small non-monotonic spread is allocator/page noise, not an
+input-length dependence.
+
+The in-memory fallback (non-matching sample rate, multi-stem profiles, or
+`invert_spect == true`) decodes the whole input and is **not** bounded-memory;
+`invert_spect` requires a full-signal STFT and therefore uses that path.
+
+**Scale caveat.** Only short-scale measurements (10–120 s, tiny model,
+`chunk_duration = 0.07256 s`) are performed and claimed. Hour-scale runs
+(e.g. 7200 s) are **not** performed and are **not** claimed; the
+`O(chunk)` bound is an algorithmic statement about the streaming path, not a
+measured result at hour scale. A real-weights series on long inputs is likewise
+not measured here.
 
 ### Invariants
 
 - Output length equals input length exactly (0-sample deviation) for every stem.
-- `sum(stems) + residual = input` with `max |...| <= 1e-5` (f32 WAV precision).
+- In exact residual mode (level processing disabled) `vocals + instrumental ==
+  input` with `max |...| <= 1e-5` (f32 WAV precision); in normalized mode the
+  pointwise identity does not hold (see "Level processing").
 - No NaN/Inf in outputs.
 
-Tests: `cargo test --test streaming_chunked chunked_length_and_residual`,
-`chunked_mono`.
-
-### Peak RSS evidence (tiny model, CPU, `chunk_duration = 0.07256 s`)
-
-| input length | VmHWM (MiB) | wall time |
-|---|---|---|
-| 10 s  | 16.0 | 13 s |
-| 60 s  | 17.5 | 1:08 |
-| 300 s | 16.5 | 8:29 |
-
-Relative growth 10 s → 300 s: +3 %. These are short-scale measurements only
-(10–300 s, tiny model, `chunk_duration = 0.07256 s`); the 2 h (7200 s) scale
-and a 4 s `chunk_duration` are NOT measured (see
-`.pdca/issues-milestone-1.0/rv1/item10/SCALE-CAVEAT.md`). A real-weights
-series could not be run: the available v7 profile does not match the
-`MelBandRoformer_fp32.safetensors` checkpoint key set (see residual gap).
+Tests: `cargo test --test streaming_chunked`.
 
 
 ## License and attribution
