@@ -129,7 +129,8 @@ downmixed back to mono; stereo stays stereo.
 | MelBandRoformer | implemented | `configs/voc_fv7.yaml` (dim 256 / depth 12), `configs/kijai_melband_384.yaml` (384 / 6) | `voc_fv7.ckpt` converted with `tools/convert_voc_fv7.py`; `MelBandRoformer_fp32.safetensors` as published |
 | BS-RoFormer | implemented | `configs/bs_roformer_viperx_1297.yaml` (dim 512 / depth 12, 62 bands) | `model_bs_roformer_ep_317_sdr_12.9755.ckpt` converted with `tools/convert_bs_roformer.py` (pinned size/SHA-256) |
 | Whisper | implemented (transcription) | `config.json` from the checkpoint | `model.safetensors` + `tokenizer.json` |
-| MDX-Net (ONNX), VR/UVR, Demucs, MDX23C | not implemented | — | — |
+| MDX-Net (ONNX) | implemented | built-in profile `mdx::uvr_mdx_net_inst_hq_3()` | `UVR-MDX-NET-Inst_HQ_3.onnx` as published (SHA-256 checked before inference) |
+| VR/UVR, Demucs, MDX23C | not implemented | — | — |
 
 The family is selected from the profile: an explicit `family:` key (`mel_band_roformer` /
 `bs_roformer`), or, when absent, the config shape — `freqs_per_bands` selects BS-RoFormer,
@@ -195,9 +196,15 @@ Metal: `cargo build --release --features metal` (macOS).
   run. Measured with the original Candle git revision and re-checked against
   crates.io `candle-core 0.11.1`: both builds produce byte-identical stems.
   Hardware smoke tests (G2) remain open.
-- Supported architecture families: MelBandRoformer (`voc_fv7` 256/12 and Kimberley 384/6) and
-  BS-RoFormer (`configs/bs_roformer_viperx_1297.yaml`, "Viperx 1297" 512/12, 62 bands).
-  `audio-separator` also covers MDX-Net, VR/UVR, Demucs and MDX23C — those are not ported yet.
+- Supported architecture families: MelBandRoformer (`voc_fv7` 256/12 and Kimberley 384/6),
+  BS-RoFormer (`configs/bs_roformer_viperx_1297.yaml`, "Viperx 1297" 512/12, 62 bands), and
+  MDX-Net (ONNX) via a caller-supplied checkpoint (`UVR-MDX-NET-Inst_HQ_3.onnx`, pinned SHA-256
+  `317554b07fe1ea5279a77f2b1520a41ea4b93432560c4ffd08792c30fddf9adc`) on the CPU through the
+  pure-Rust `tract-onnx` runtime. On a frozen 20 s stereo fixture the MDX-Net stems match
+  `audio-separator` 0.48.0 at correlation 0.999999999999, max abs difference 1.4e-6 and RMSE 1.5e-7
+  (SDR 118.9 dB). `audio-separator` also covers VR/UVR, Demucs and MDX23C — those are not ported
+  yet. The MDX-Net checkpoint is user-supplied and is not downloaded, bundled or vendored; see
+  `docs/dependency-audit.md` for the licence audit.
 - BS-RoFormer parity: the published `model_bs_roformer_ep_317_sdr_12.9755.ckpt` (639,331,213 B,
   SHA-256 `5b84f37e…115aa`) passes strict validation (699 tensors, zero missing / unexpected /
   shape mismatches against the crate's own `expected_key_shapes` schema; see the opt-in test under

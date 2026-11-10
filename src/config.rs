@@ -181,6 +181,11 @@ impl SeparatorConfig {
                     )));
                 }
             }
+            // MDX-Net ONNX checkpoints carry their geometry in the pinned
+            // `mdx::MdxProfile`, not in a RoFormer YAML profile; the generic
+            // checks above still apply. Inference runs through
+            // `mdx::MdxSeparator`, which re-validates the profile.
+            ModelFamily::MdxNet => {}
         }
         if self.dim_head == 0 || self.heads == 0 {
             return Err(ConfigError::Invalid(
@@ -228,6 +233,8 @@ pub enum ModelFamily {
     MelBandRoformer,
     #[serde(rename = "bs_roformer", alias = "bsroformer", alias = "bs-roformer")]
     BSRoformer,
+    #[serde(rename = "mdx_net", alias = "MdxNet", alias = "mdxnet", alias = "mdx-net")]
+    MdxNet,
 }
 
 #[derive(Debug, Clone, PartialEq, serde::Deserialize)]
@@ -298,10 +305,35 @@ impl InferenceConfig {
         }
     }
 
+    /// MDX-Net (ONNX) architecture parameters as used by `audio-separator`
+    /// 0.48.0 for the `UVR-MDX-NET-Inst_HQ_3` profile. The MDX-Net runtime
+    /// itself (`crate::mdx`) reads the authoritative window/segment geometry
+    /// from its [`crate::mdx::MdxProfile`]; this config carries the same
+    /// user-facing level and segmentation choices for family dispatch.
+    pub fn mdx() -> Self {
+        Self {
+            segment_size: Some(256),
+            chunk_hops: 255,
+            num_overlap: 4,
+            step_size: None,
+            overlap_size: None,
+            fade_size: None,
+            batch_size: 1,
+            pitch_shift: 0.0,
+            denoise: false,
+            tta: false,
+            sample_rate: 44100,
+            normalization: 0.9,
+            amplification: 0.0,
+            invert_spect: false,
+        }
+    }
+
     pub fn for_family(family: ModelFamily) -> Self {
         match family {
             ModelFamily::MelBandRoformer => Self::melband(),
             ModelFamily::BSRoformer => Self::bsroformer(),
+            ModelFamily::MdxNet => Self::mdx(),
         }
     }
 

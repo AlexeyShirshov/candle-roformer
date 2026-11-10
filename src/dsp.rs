@@ -246,6 +246,27 @@ pub fn normalize_peak(samples: &mut [f32], threshold: f32) {
     }
 }
 
+/// Scale a buffer **down** so its peak absolute amplitude does not exceed
+/// `max_peak`. Unlike [`normalize_peak`] a buffer already at or below the
+/// threshold is left untouched: nothing is ever amplified, which mirrors
+/// `audio-separator`'s `spec_utils.normalize(.., max_peak, min_peak = 0)`.
+/// A non-finite or non-positive `max_peak` disables scaling; a silent buffer
+/// is left untouched and never produces `NaN`/`Inf`.
+pub fn normalize_max_peak(samples: &mut [f32], max_peak: f32) {
+    if !max_peak.is_finite() || max_peak <= 0.0 {
+        return;
+    }
+    let peak = peak_abs(samples);
+    if peak > max_peak && peak.is_finite() {
+        let scale = max_peak / peak;
+        if scale.is_finite() {
+            for x in samples.iter_mut() {
+                *x *= scale;
+            }
+        }
+    }
+}
+
 /// Amplify a quiet input in place: if `0 < peak < threshold`, scale up to the
 /// threshold. Threshold <= 0 disables. Zero peak is left untouched.
 pub fn amplify_quiet(samples: &mut [f32], threshold: f32) {
@@ -372,6 +393,31 @@ mod level_tests {
         let mut v = vec![0.0f32; 4];
         normalize_peak(&mut v, 0.9);
         assert!(v.iter().all(|x| *x == 0.0));
+    }
+
+    #[test]
+    fn normalize_max_peak_scales_down_only() {
+        let mut loud = vec![1.8f32, -1.2];
+        normalize_max_peak(&mut loud, 0.9);
+        assert!((peak_abs(&loud) - 0.9).abs() < 1e-5);
+
+        let quiet = vec![0.2f32, -0.1];
+        let mut v = quiet.clone();
+        normalize_max_peak(&mut v, 0.9);
+        assert_eq!(v, quiet, "quiet buffers must not be amplified");
+    }
+
+    #[test]
+    fn normalize_max_peak_disabled_and_zero_peak() {
+        let orig = vec![2.0f32, -1.0];
+        for thr in [0.0f32, -1.0, f32::NAN, f32::INFINITY] {
+            let mut v = orig.clone();
+            normalize_max_peak(&mut v, thr);
+            assert_eq!(v, orig);
+        }
+        let mut z = vec![0.0f32; 4];
+        normalize_max_peak(&mut z, 0.9);
+        assert!(z.iter().all(|x| *x == 0.0));
     }
 
     #[test]

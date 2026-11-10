@@ -466,6 +466,9 @@ pub fn expected_key_shapes(cfg: &SeparatorConfig) -> Vec<(String, Vec<usize>)> {
     match cfg.family() {
         ModelFamily::MelBandRoformer => expected_key_shapes_melband(cfg),
         ModelFamily::BSRoformer => bs_roformer::expected_key_shapes(cfg),
+        // MDX-Net is an ONNX graph with no safetensors key schema; it is loaded
+        // by `crate::mdx::MdxSeparator`.
+        ModelFamily::MdxNet => Vec::new(),
     }
 }
 

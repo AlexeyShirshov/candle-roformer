@@ -32,5 +32,8 @@ serde = { version = "1", features = ["derive"] }
 serde_yaml = "0.9"
 symphonia = { version = "0.6", features = ["all"] }
 claxon = "0.4"
+# MDX-Net (ONNX) inference: pure-Rust ONNX runtime, CPU only.
+tract-onnx = "0.23"
+sha2 = "0.10"
 [dev-dependencies]
 # Tests use only the standard library plus the crate's own dependencies.

@@ -234,6 +234,14 @@ impl Separator {
             crate::config::ModelFamily::BSRoformer => {
                 Box::new(BSRoformer::new(&cfg, vb).map_err(Error::Candle)?)
             }
+            // MDX-Net is an ONNX graph loaded and driven by `crate::mdx`; it has
+            // no safetensors key schema and never goes through `Separator::load`.
+            crate::config::ModelFamily::MdxNet => {
+                return Err(Error::Config(crate::error::ConfigError::Invalid(
+                    "MDX-Net ONNX checkpoints are loaded by mdx::MdxSeparator, not Separator::load"
+                        .into(),
+                )));
+            }
         };
         Ok(Self {
             model,

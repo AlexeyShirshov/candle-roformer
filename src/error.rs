@@ -30,6 +30,20 @@ pub enum DspError {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Error)]
+pub enum MdxError {
+    #[error("invalid MDX profile: {0}")]
+    InvalidProfile(String),
+    #[error("MDX model asset missing: {0}")]
+    MissingAsset(String),
+    #[error("MDX model checksum mismatch: expected {expected}, got {actual}")]
+    ChecksumMismatch { expected: String, actual: String },
+    #[error("MDX inference failed: {0}")]
+    Inference(String),
+    #[error("unsupported MDX input: {0}")]
+    UnsupportedInput(String),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Error)]
 pub enum ConverterError {
     #[error("converter error: {0}")]
     Failed(String),
@@ -74,6 +88,8 @@ pub enum Error {
     Device(#[from] DeviceError),
     #[error(transparent)]
     Dsp(#[from] DspError),
+    #[error(transparent)]
+    Mdx(#[from] MdxError),
     #[error(transparent)]
     Converter(#[from] ConverterError),
     #[error(transparent)]

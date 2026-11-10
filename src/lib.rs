@@ -10,6 +10,7 @@ pub mod device;
 pub mod dsp;
 pub mod error;
 pub mod mel;
+pub mod mdx;
 pub mod model;
 pub mod resample;
 pub mod separate;
@@ -23,8 +24,9 @@ pub use config::{InferenceConfig, ModelFamily, SeparatorConfig};
 pub use device::DeviceChoice;
 pub use error::{
     AsrError, AssetError, AudioError, ConfigError, ConverterError, DecodeError, DeviceError,
-    DspError, Error, WavError,
+    DspError, Error, MdxError, WavError,
 };
+pub use mdx::{uvr_mdx_net_inst_hq_3, MdxProfile, MdxSeparator};
 pub use mel::mel_bin_membership;
 pub use model::{BSRoformer, MelBandRoformer, RoformerModel};
 pub use separator::{Separator, Stems};
