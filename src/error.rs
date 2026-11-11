@@ -49,6 +49,30 @@ pub enum ConverterError {
     Failed(String),
 }
 
+/// Errors of the ensemble operators and preset resolution.
+///
+/// Every unknown operator or preset is a typed error: an id this crate does not
+/// implement is never silently mapped onto a different computation.
+#[derive(Debug, Clone, PartialEq, Eq, Error)]
+pub enum EnsembleError {
+    #[error("unknown ensemble algorithm `{id}`: supported algorithms are {supported}")]
+    UnknownAlgorithm { id: String, supported: String },
+    #[error("unknown ensemble preset `{id}`: known presets are {known}")]
+    UnknownPreset { id: String, known: String },
+    #[error("ensemble needs at least one waveform")]
+    EmptyWaveforms,
+    #[error("ensemble channel mismatch: {0}")]
+    ChannelMismatch(String),
+    #[error("ensemble sample-rate mismatch: {0}")]
+    SampleRateMismatch(String),
+    #[error("invalid ensemble weights: {0}")]
+    InvalidWeights(String),
+    #[error("ensemble preset does not match the loaded separators: {0}")]
+    MemberCount(String),
+    #[error("invalid ensemble preset: {0}")]
+    InvalidPreset(String),
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Error)]
 pub enum AudioError {
     #[error("audio error: {0}")]
@@ -92,6 +116,8 @@ pub enum Error {
     Mdx(#[from] MdxError),
     #[error(transparent)]
     Converter(#[from] ConverterError),
+    #[error(transparent)]
+    Ensemble(#[from] EnsembleError),
     #[error(transparent)]
     Audio(#[from] AudioError),
     #[error(transparent)]

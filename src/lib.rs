@@ -8,6 +8,7 @@ pub mod assets;
 pub mod config;
 pub mod device;
 pub mod dsp;
+pub mod ensemble;
 pub mod error;
 pub mod mel;
 pub mod mdx;
@@ -20,11 +21,15 @@ pub mod wav;
 pub mod whisper;
 
 pub use assets::{LocalSeparationAssets, LocalWhisperAssets};
-pub use config::{InferenceConfig, ModelFamily, SeparatorConfig};
+pub use config::{
+    EnsembleAlgorithm, EnsembleMember, EnsemblePreset, InferenceConfig, ModelFamily,
+    SeparatorConfig,
+};
 pub use device::DeviceChoice;
+pub use ensemble::{ensemble_waveforms, separate_with_preset};
 pub use error::{
     AsrError, AssetError, AudioError, ConfigError, ConverterError, DecodeError, DeviceError,
-    DspError, Error, MdxError, WavError,
+    DspError, EnsembleError, Error, MdxError, WavError,
 };
 pub use mdx::{uvr_mdx_net_inst_hq_3, MdxProfile, MdxSeparator};
 pub use mel::mel_bin_membership;

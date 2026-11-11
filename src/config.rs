@@ -437,3 +437,220 @@ impl InferenceConfig {
         Self::from_yaml_str(&text)
     }
 }
+
+/// Ensemble operator ids of the reference implementation.
+///
+/// The ids are exactly the `audio-separator` 0.48.0 names
+/// (`separator/ensembler.py`, `Separator.VALID_ENSEMBLE_ALGORITHMS`). Only the
+/// two waveform operators this crate implements are accepted; every other id —
+/// including reference operators such as `avg_fft` or `uvr_max_spec` — is
+/// rejected with [`crate::error::EnsembleError::UnknownAlgorithm`] rather than
+/// being mapped onto a different computation.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum EnsembleAlgorithm {
+    /// Per-sample arithmetic mean of the model waveforms.
+    AvgWave,
+    /// Per-sample median across the model waveforms.
+    MedianWave,
+}
+
+impl EnsembleAlgorithm {
+    /// Ids accepted by [`EnsembleAlgorithm::from_id`], in documented order.
+    pub const SUPPORTED: [&'static str; 2] = ["avg_wave", "median_wave"];
+
+    /// The reference id of this operator (`avg_wave` / `median_wave`).
+    pub fn as_str(self) -> &'static str {
+        match self {
+            EnsembleAlgorithm::AvgWave => "avg_wave",
+            EnsembleAlgorithm::MedianWave => "median_wave",
+        }
+    }
+
+    /// Resolve a reference operator id; unknown ids are a typed error.
+    pub fn from_id(id: &str) -> Result<Self, crate::error::EnsembleError> {
+        match id {
+            "avg_wave" => Ok(EnsembleAlgorithm::AvgWave),
+            "median_wave" => Ok(EnsembleAlgorithm::MedianWave),
+            other => Err(crate::error::EnsembleError::UnknownAlgorithm {
+                id: other.to_string(),
+                supported: Self::SUPPORTED.join(", "),
+            }),
+        }
+    }
+}
+
+/// One model of an ensemble preset.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+pub struct EnsembleMember {
+    /// Published checkpoint file name the member is built from (`.ckpt`); the
+    /// runtime loads the offline-converted `.safetensors` of that checkpoint.
+    pub checkpoint: String,
+    /// Repository profile for that checkpoint (`configs/*.yaml`).
+    pub profile: String,
+    /// Stem this member contributes to the ensemble (the member's target stem).
+    pub role: String,
+}
+
+/// A documented ensemble preset: the models, their weights, the operator and
+/// the stem set a run produces.
+#[derive(Debug, Clone, PartialEq, Deserialize)]
+pub struct EnsemblePreset {
+    /// Stable id used on the command line.
+    pub id: String,
+    /// Human-readable name.
+    pub name: String,
+    /// What the preset is for, including anything it is *not* (see
+    /// `docs/ensemble-presets.md`).
+    #[serde(default)]
+    pub description: String,
+    /// Operator applied across the members' waveforms.
+    pub algorithm: EnsembleAlgorithm,
+    /// Per-member weights; `null`/absent means equal weights.
+    #[serde(default)]
+    pub weights: Option<Vec<f32>>,
+    /// Members, in application order.
+    pub models: Vec<EnsembleMember>,
+    /// The documented stem set the preset produces, in output order.
+    pub stems: Vec<String>,
+}
+
+impl EnsemblePreset {
+    /// Ids of the presets built into the crate.
+    pub const BUILTINS: [&'static str; 1] = ["vocal_balanced"];
+
+    /// The crate's `vocal_balanced` preset.
+    ///
+    /// MelBand (`voc_fv7`) + BS-RoFormer (`model_bs_roformer_ep_317_sdr_12.9755`)
+    /// vocals models averaged with `avg_wave`, producing `vocals` and
+    /// `instrumental`. It is this project's own preset: the `audio-separator`
+    /// 0.48.0 preset of the same id uses different models and `avg_fft`, so the
+    /// two are not interchangeable — see `docs/ensemble-presets.md`.
+    pub fn vocal_balanced() -> Self {
+        Self {
+            id: "vocal_balanced".to_string(),
+            name: "Vocal Balanced".to_string(),
+            description: "MelBand (voc_fv7) + BS-RoFormer (Viperx 1297) vocals averaged with \
+                          avg_wave; stems vocals + instrumental. Not the audio-separator preset \
+                          of the same id (that one uses avg_fft and different models)."
+                .to_string(),
+            algorithm: EnsembleAlgorithm::AvgWave,
+            weights: None,
+            models: vec![
+                EnsembleMember {
+                    checkpoint: "model_bs_roformer_ep_317_sdr_12.9755.ckpt".to_string(),
+                    profile: "configs/bs_roformer_viperx_1297.yaml".to_string(),
+                    role: "vocals".to_string(),
+                },
+                EnsembleMember {
+                    checkpoint: "voc_fv7.ckpt".to_string(),
+                    profile: "configs/voc_fv7.yaml".to_string(),
+                    role: "vocals".to_string(),
+                },
+            ],
+            stems: vec!["vocals".to_string(), "instrumental".to_string()],
+        }
+    }
+
+    /// Resolve a built-in preset id; unknown ids are a typed error.
+    pub fn builtin(id: &str) -> Result<Self, crate::error::EnsembleError> {
+        match id {
+            "vocal_balanced" => Ok(Self::vocal_balanced()),
+            other => Err(crate::error::EnsembleError::UnknownPreset {
+                id: other.to_string(),
+                known: Self::BUILTINS.join(", "),
+            }),
+        }
+    }
+
+    /// Reject presets the runner cannot honour.
+    pub fn validate(&self) -> Result<(), crate::error::EnsembleError> {
+        if self.id.trim().is_empty() {
+            return Err(crate::error::EnsembleError::InvalidPreset(
+                "preset id is empty".into(),
+            ));
+        }
+        if self.models.is_empty() {
+            return Err(crate::error::EnsembleError::InvalidPreset(format!(
+                "preset `{}` has no models",
+                self.id
+            )));
+        }
+        if self.stems.is_empty() {
+            return Err(crate::error::EnsembleError::InvalidPreset(format!(
+                "preset `{}` declares no stems",
+                self.id
+            )));
+        }
+        for (i, stem) in self.stems.iter().enumerate() {
+            if stem.trim().is_empty() {
+                return Err(crate::error::EnsembleError::InvalidPreset(format!(
+                    "preset `{}` has an empty stem name",
+                    self.id
+                )));
+            }
+            if self.stems[..i].contains(stem) {
+                return Err(crate::error::EnsembleError::InvalidPreset(format!(
+                    "preset `{}` repeats stem `{}`",
+                    self.id, stem
+                )));
+            }
+        }
+        for member in &self.models {
+            if member.role.trim().is_empty() {
+                return Err(crate::error::EnsembleError::InvalidPreset(format!(
+                    "preset `{}` has a member without a role",
+                    self.id
+                )));
+            }
+            if !self.stems.contains(&member.role) {
+                return Err(crate::error::EnsembleError::InvalidPreset(format!(
+                    "preset `{}` member role `{}` is not one of its stems",
+                    self.id, member.role
+                )));
+            }
+        }
+        if let Some(weights) = &self.weights {
+            if weights.len() != self.models.len() {
+                return Err(crate::error::EnsembleError::InvalidWeights(format!(
+                    "preset `{}` has {} weights for {} models",
+                    self.id,
+                    weights.len(),
+                    self.models.len()
+                )));
+            }
+            if weights.iter().any(|w| !w.is_finite()) {
+                return Err(crate::error::EnsembleError::InvalidWeights(format!(
+                    "preset `{}` weights must be finite",
+                    self.id
+                )));
+            }
+            let sum: f64 = weights.iter().map(|w| *w as f64).sum();
+            if sum == 0.0 {
+                return Err(crate::error::EnsembleError::InvalidWeights(format!(
+                    "preset `{}` weights sum to zero",
+                    self.id
+                )));
+            }
+        }
+        Ok(())
+    }
+
+    /// Parse a preset from YAML (the reference `ensemble_presets.json` fields
+    /// plus `stems` and member roles).
+    pub fn from_yaml_str(text: &str) -> Result<Self, crate::error::EnsembleError> {
+        let preset: EnsemblePreset = serde_yaml::from_str(text).map_err(|e| {
+            crate::error::EnsembleError::InvalidPreset(format!("cannot parse preset: {}", e))
+        })?;
+        preset.validate()?;
+        Ok(preset)
+    }
+
+    /// Read and parse a preset file from disk.
+    pub fn from_yaml_file(path: impl AsRef<Path>) -> Result<Self, crate::error::EnsembleError> {
+        let text = std::fs::read_to_string(path).map_err(|e| {
+            crate::error::EnsembleError::InvalidPreset(format!("cannot read preset: {}", e))
+        })?;
+        Self::from_yaml_str(&text)
+    }
+}
