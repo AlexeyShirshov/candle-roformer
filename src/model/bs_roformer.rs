@@ -108,11 +108,14 @@ impl BsMaskEstimator {
         let bands = x.dim(2)?;
         let mut outs = Vec::with_capacity(bands);
         for i in 0..bands {
-            let band_x = x.narrow(2, i, 1)?.squeeze(2)?; // (b, t, dim)
+            // A band slice of (b, t, bands, dim) is a strided view. Candle's
+            // Metal matmul requires contiguous operands, and this slice feeds an
+            // MLP directly, so materialise it. A copy, not a numerical change.
+            let band_x = x.narrow(2, i, 1)?.squeeze(2)?.contiguous()?; // (b, t, dim)
             let out = self.to_freqs[i].forward(&band_x)?; // (b, t, dim_in * 2)
             let half = out.dim(D::Minus1)? / 2;
-            let a = out.narrow(D::Minus1, 0, half)?;
-            let b = out.narrow(D::Minus1, half, half)?;
+            let a = out.narrow(D::Minus1, 0, half)?.contiguous()?;
+            let b = out.narrow(D::Minus1, half, half)?.contiguous()?;
             let gate = candle_nn::ops::sigmoid(&b)?;
             outs.push(a.broadcast_mul(&gate)?);
         }
