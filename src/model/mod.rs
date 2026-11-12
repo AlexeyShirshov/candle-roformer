@@ -170,13 +170,16 @@ impl Attention {
         // attention, blocked over the query dimension to keep peak memory bounded
         // (60 bands x 8 heads x 801 x 801 would be ~1.2 GB per layer otherwise).
         let scale_t = Tensor::new(self.scale as f32, x.device())?;
-        let kt = k.transpose(2, 3)?;
+        // The Metal matmul kernel rejects non-contiguous operands; a transpose
+        // and a narrow are views, so materialise them once. This is a copy, not
+        // a numerical change: CPU results are bit-identical.
+        let kt = k.transpose(2, 3)?.contiguous()?;
         const ATTN_BLOCK: usize = 128;
         let mut blocks = Vec::with_capacity(seq.div_ceil(ATTN_BLOCK));
         let mut start = 0usize;
         while start < seq {
             let len = ATTN_BLOCK.min(seq - start);
-            let q_blk = q.narrow(2, start, len)?;
+            let q_blk = q.narrow(2, start, len)?.contiguous()?;
             let scores = q_blk.matmul(&kt)?; // (b,h,len,seq)
             let scores = scores.broadcast_mul(&scale_t)?;
             let attn = candle_nn::ops::softmax(&scores, D::Minus1)?;
