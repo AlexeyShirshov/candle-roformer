@@ -13,7 +13,7 @@
 - status path: `.pdca/status/collection-open-issues-r5.md`
 - evidence root: `.pdca/open-issues-r5/rv1/`
 - baseline: `main @ 2d0be53`, tree clean except untracked `.openidea/` and `.pdca/status/collection-open-issues-r3.md` (observed; see §Git state)
-- phase: `PLAN` · record: `open` · outcome: `pending` — collection `open-issues-r5` is between items: items `#2` and `#8` are **accepted, committed (`59fb1fb`, `a38bb7f`) and finalized**, and both GitHub issues were **closed as `COMPLETED` by the driver** (`#2` at `2026-11-11T06:18:29Z`, comment `6788661305`; `#8` at `2026-11-11T07:57:47Z`, comment `6790434030`); completeness **`2/4 accepted`**; next item **`#3`** (VR/UVR), then `#4`; context rows `#1` and `#11` unchanged. Item history: §Current state, §ACT record, §General verification and recovery, §Progress log
+- phase: `PLAN` · record: `open` · outcome: `pending` — collection `open-issues-r5` is between items: items `#2`, `#8` and `#3` are **accepted, committed (`59fb1fb`, `a38bb7f`, `3130f55`) and finalized**, and all three GitHub issues were **closed as `COMPLETED` by the driver** (`#2` at `2026-11-11T06:18:29Z`, comment `6788661305`; `#8` at `2026-11-11T07:57:47Z`, comment `6790434030`; `#3` at `2026-11-12T07:22:14Z`, comment `6817426243`); completeness **`3/4 accepted`**; next item **`#4`** (HTDemucs); context rows `#1` and `#11` unchanged. Item history: §Current state, §ACT record, §General verification and recovery, §Progress log
 - goal: implement GitHub issues #2, #3, #4 and #8 against their verbatim `Done when` clauses plus the user-approved numeric tolerances, with one atomic commit and GitHub issue closure per accepted item
 - criteria: `AC-2.1`–`AC-2.4` (item `#2`, contract revision `r2`, exact text in `.pdca/status/issue-2-r5.md` §PLAN record `r2`), `AC-3.1`–`AC-3.3`, `AC-4.1`–`AC-4.3`, `AC-8.1`–`AC-8.4` (exact text in §PLAN record `r1`; source: user criteria message 2026-11-10 and the approved addendum persisted at `.pdca/open-issues-r5/rv1/criteria-approval.md`), not retyped here
 
@@ -21,14 +21,14 @@
 
 - task: `open-issues-r5` · form: `collection` · specialized skill: `pdca-coder` · overlay: `pdca-coder`
 - mode: `autonomous` — no plan approval requested or required; the criteria addendum was approved by the user (see §Approval record)
-- counters: collection `N=1` · plan revision `r=1` (collection PLAN; item `#2` finalized at contract revision `r=2`, item `#8` revised to `r=3`) · attempts `n=0` (per-item attempts are in the §Item table; item `#2` consumed `n=1/3` and `n=2/3` under `r2` and was finalized; item `#8` consumed attempt `n=1/3` under `r1`, its CHECK 1 (`r1`/`n1`) returned `not accepted → PLAN` and consumed no additional attempt, `CHECK 2` on `r2`/`n1` then returned `not accepted → PLAN` and consumed no attempt, and the revised contract `r3` starts at attempt `n=1/3`)
+- counters: collection `N=1` · plan revision `r=1` (collection PLAN; item `#2` finalized at contract revision `r=2`, item `#8` revised to `r=3`) · attempts `n=0` (per-item attempts are in the §Item table; item `#2` consumed `n=1/3` and `n=2/3` under `r2` and was finalized; item `#8` consumed attempt `n=1/3` under `r1`, its CHECK 1 (`r1`/`n1`) returned `not accepted → PLAN` and consumed no additional attempt, `CHECK 2` on `r2`/`n1` then returned `not accepted → PLAN` and consumed no attempt, and the revised contract `r3` starts at attempt `n=1/3`; item `#3` consumed attempt `n=1` under `r1`, `CHECK 1` and `CHECK 2` (`r1`/`n1`) both returned `not accepted` and consumed no attempt, the item-level revision `r2` is recorded and attempt `n=1` of `r2` is **accepted by `CHECK 3` and finalized by `ACT`** — product commit `3130f55` and GitHub `#3` closed as `COMPLETED` at `2026-11-12T07:22:14Z`; its 2 attempts in total are consumed)
 - scope: `#2`, `#3`, `#4`, `#8` in group `G1`; context rows `#1` (accepted at `dc94520`, closed in GitHub) and `#11` (terminal `infeasible`) are recorded but outside this collection's execution
 - evidence root: `.pdca/open-issues-r5/rv1/`
 - goal: implement GitHub issues #2, #3, #4 and #8 against their verbatim `Done when` clauses plus the user-approved numeric tolerances, one atomic commit and GitHub closure per accepted item — §PLAN record and §Original task are authoritative
-- phase: `PLAN` · record: `open` · outcome: `pending` — active item `#3` (`pending` / `ready` / `active`), next authorized step **`DO item #3 (r1/n1)`**, then `#4`; `#2` and `#8` are `done` / `finalized` with terminal outcome (cycle) `accepted`: `#2` committed as `59fb1fb` and GitHub `#2` closed as `COMPLETED` at `2026-11-11T06:18:29Z` (comment `6788661305`), `#8` committed as `a38bb7f` and GitHub `#8` closed as `COMPLETED` at `2026-11-11T07:57:47Z` (comment `6790434030`); completeness **`2/4 accepted`**. Superseded history (kept): item `#2` contract revision `r2` after `CHECK → PLAN`, attempts `r2`/`n1` and `r2`/`n2`, `CHECK 3` `accepted → ACT`; item `#8` `CHECK 1` and `CHECK 2` `not accepted`, item-level contract revisions `r1→r2→r3`, `CHECK 3` (`r3`/`n1`) `accepted → ACT` and commit `a38bb7f` — full reports in `.pdca/status/issue-2-r5.md` and `.pdca/status/issue-8-r5.md`
+- phase: `PLAN` · record: `open` · outcome: `pending` — **next item `#4`**: item `#3` is `done` / `finalized` with terminal outcome (cycle) `accepted` — `CHECK 3` (`r2`/`n1`) `accepted` (`AC-3.1` `met`, `AC-3.2` `met`), `AC-3.3` performed (commit `3130f55`, parent `1a164ae`, 33 files, `+3207/−68`, footer `Refs #3`; GitHub `#3` closed as `COMPLETED` at `2026-11-12T07:22:14Z`, comment `6817426243`); `#2` and `#8` are `done` / `finalized` with terminal outcome (cycle) `accepted` (`59fb1fb` / `a38bb7f`, GitHub `#2`/`#8` closed); completeness **`3/4 accepted`**; `#4` is `pending` / `ready` and untouched. **One record-closure blocker on `#3`**: the mandatory `pdca-check` retrospective report was not supplied with the ACT finalization brief, so `.pdca/status/issue-3-r5.md` keeps `record: open` with an explicit blocker in §Lessons learned (the accepted outcome, commit and GitHub closure are unaffected and not reopened). Superseded history (kept): item `#2` contract revision `r2` after `CHECK → PLAN`, attempts `r2`/`n1` and `r2`/`n2`, `CHECK 3` `accepted → ACT`; item `#8` `CHECK 1`/`CHECK 2` `not accepted`, revisions `r1→r2→r3`, `CHECK 3` (`r3`/`n1`) `accepted → ACT`, commit `a38bb7f`; item `#3` `CHECK 1` `not accepted → PLAN`, `CHECK 2` `not accepted` (`AC-3.1` `unverified`), revision `r2`, evidence-only `DO` `r2`/`n1` — full reports in `.pdca/status/issue-2-r5.md`, `.pdca/status/issue-8-r5.md`, `.pdca/status/issue-3-r5.md`
 - source: user request over the open GitHub issues of `AlexeyShirshov/candle-roformer` · context refs: `.pdca/status/collection-open-issues-r4.md`, `.pdca/open-issues-r4/`, `.pdca/open-issues-r5/rv1/plan.md`, `.pdca/open-issues-r5/rv1/criteria-approval.md`
 - schedule: one group `G1` on the current worktree `main`, one sequential lane (`plan_cap 1`, `lane_cap 1`), order by risk `#2 → #8 → #3 → #4`; single worktree, no branches/merges
-- next item: `#3` — **`DO item #3 (r1/n1)`** is the next authorized collection step (VR/UVR checkpoint with a pinned checksum plus audio-separator `0.48.0` parity at `window_size=512`, `aggression=5`, no post-processing); `#4` stays `pending` and untouched. `#2` and `#8` are `done` / `finalized` with their GitHub issues closed by the driver (see the `2026-11-11` bullets below). Superseded history: the `#8` CHECK 1/CHECK 2 loop-backs, the `r3` revision and the `CHECK 3` acceptance stay in §CHECK record, §ACT record and `.pdca/status/issue-8-r5.md`
+- next item: `#4` — **`DO item #4 (r1)`** is the next authorized collection step. Item `#3` is `done` / `finalized` / `accepted` (commit `3130f55`, GitHub `#3` closed at `2026-11-12T07:22:14Z`) with only the record-closure blocker of its mandatory retrospective outstanding; `#2` and `#8` are `done` / `finalized` with their GitHub issues closed by the driver (see the `2026-11-11` bullets below). Superseded history: the `#8` CHECK 1/CHECK 2 loop-backs, the `r3` revision and its `CHECK 3` acceptance stay in §CHECK record, §ACT record and `.pdca/status/issue-8-r5.md`; the `#3` `CHECK 1`/`CHECK 2` loop-backs, its revision `r2` and `CHECK 3` stay in §CHECK record, §ACT record and `.pdca/status/issue-3-r5.md`
 - **`#8` `DO` `r2`/`n1` complete (2026-11-11T07:12:49Z)** — the `next allowed step: DO item #8 (r2/n1)` lines above are history, superseded by this bullet: `PAD-8` is fixed (1 fix), the `LIC-8` primary-source licence evidence is in `licence/` (1 evidence fix), `AC-8.1`/`AC-8.3` are re-measured on the fixed bytes (`max_abs 0` / `RMSE 0` over 915,374 samples; 120 passed / 0 failed / 2 ignored), `AC-8.2` is unchanged and non-invalidated, and `AC-8.4(1)` holds (index empty, no commit, GitHub `#8` untouched). Active item is `#8` at `DO r2/n1` **complete**, next allowed step **`CHECK item #8 (r2/n1)`**; the commit and the GitHub `#8` closure stay forbidden before `CHECK: accepted`; completeness stays **`1/4 accepted`**.
 - **`#8` `CHECK 2` (`r2`/`n1`) returned `not accepted → PLAN` (2026-11-11T07:21:22Z)** — the `#8` `DO` `r2`/`n1` bullet above and every `next allowed step: CHECK item #8 (r2/n1)` line are history, superseded by this bullet. Graded candidate: the `r2`/`n1` snapshot (3 changed product files, seven hashes of `logs/reanchor-snapshot.log` on `59fb1fb`). Matrix `AC-8.1` `met`, `AC-8.2` `met`, `AC-8.3` `unmet` (the literal "no warnings" clause is violated by the measured clippy/test warnings), `AC-8.4(1)` `unverified`, `AC-8.4(2)` `unverified` (term not reached). New keys: `F-8-ac3-contract-drift` (blocking, confirmed, AC-8.3 — the derived contract both promises `r1` invariance and forbids linter warnings) and `F-8-issue-open-evidence` (major, unverified, AC-8.4(1) — no stored GitHub `#8` state was presented); `F-8-acceptance-order`, `F-8-song-licence`/`LIC-8` and `PAD-8` are refuted/closed on the `r2` candidate. **Next allowed step: a PLAN contract revision for item `#8`**; counters `r=2`, `n=1/3` stand and the transition consumes no attempt; the commit, the GitHub `#8` closure and `done` are **not authorized**; completeness `1/4 accepted`. Verbatim report: `.pdca/status/issue-8-r5.md` §CHECK record `### CHECK 2 — r2/n1`.
 - **`#8` item-level contract revision `r3` recorded (2026-11-11T07:27:43Z)** — the `CHECK 2` bullet above and every `next allowed step: a PLAN contract revision for item #8` line are history, superseded by this bullet. `r3` explicitly revises `AC-8.3` back to the `r1` gate semantics (`exit 0` and `0 failed`; non-fatal compiler/linter warnings are not a failure, so `F-8-ac3-contract-drift` is **closed by the contract, fixes applied 1**) and refines `AC-8.4(1)` to the stored read-only GitHub `#8` observation (identity, URL, `state=OPEN`, observation time — the bounded probe is authorized in `DO`, `F-8-issue-open-evidence` fix pending, fixes applied 0). Counters item `#8` `r=3`, `n=1/3`; the 7-file product snapshot is unchanged; **next allowed step `DO item #8 (r3/n1)`**; the commit, the GitHub `#8` closure and `done` stay **not authorized**; completeness `1/4 accepted`. Verbatim report: `.pdca/status/issue-8-r5.md` §PLAN record `r3`.
@@ -44,6 +44,7 @@
 - **Both GitHub closures performed by the driver (`2026-11-11`) — the credential blocker is resolved.** Item `#2` was closed as `COMPLETED` at `2026-11-11T06:18:29Z` (comment `6788661305`) and item `#8` as `COMPLETED` at `2026-11-11T07:57:47Z` (comment `6790434030`), both by the driver through the GitHub CLI because the repository owner confirmed it works in this environment; `gh` is **authenticated** at `C:\Program Files\GitHub CLI\gh.exe`. This resolves the earlier blocker note that closure was impossible for lack of GitHub credentials — the earlier item records (`gh` not installed, unauthenticated read-only REST observation for the pre-acceptance state) stay true as history. No PDCA phase performed or claims the closure: it is the driver's external action, now recorded as completed.
 - **Completeness `2/4 accepted`** — `#2` and `#8` are `done` / `finalized` with terminal outcome (cycle) `accepted` (commits `59fb1fb` and `a38bb7f`; GitHub `#2` and `#8` closed as `COMPLETED`); `#3` and `#4` are `pending` / `ready` / `active`; `#1` (accepted at `dc94520`, closed in GitHub) and `#11` (`infeasible`) remain context rows outside this collection's execution.
 - **Record correction (one-writer rule, `2026-11-11`)** — this collection record had been left with a stale `#2` header (`phase: ACT · record: completed`) and contradictory `#8` item-row dispositions written by concurrent record writers during item `#8`; the header, §Current state, item rows `#2`/`#8` and §ACT record now carry the authoritative `2/4 accepted` disposition with both GitHub closures recorded. The record is written only by the driver's executor; competing blocks are kept and superseded, never deleted.
+- **`#3` `CHECK 2` returned `not accepted`; item-level revision `r2` recorded; `DO` `r2`/`n1` complete (`2026-11-12`)** — the `#3` `CHECK 1` lines and the "next allowed step: PLAN contract revision for `#3`" lines above are history, superseded by this bullet. `CHECK 2` (`r1`/`n1`) returned **`not accepted`** with `AC-3.2` **`met`** and `AC-3.1` **`unverified`** (`ref/reference.json` was missing and the reference log was truncated); **no product defect was reported** and no product change was requested. The planner's return is recorded as the item-level revision **`r2`**: `AC-3.1`/`AC-3.2`/`AC-3.3` unchanged, the **evidence plan** updated to require `ref/reference.json` with the recorded reference parameters, the completed reference log, the full gate logs `logs/30`–`34` and the snapshot `logs/35`/`36` (item record §PLAN record `### r2`). The driver closed the proof gap: `ref/gen_reference.py` was re-run to completion (exit `0`, `logs/40-reference-run-full.log`), producing `ref/reference.json` (class `VRSeparator`, `vr_model_param 4band_v2`, primary `Instrumental`, `window_size 512`, `batch_size 1`, `aggression 0.05` with `split_bin 85`, TTA/post-process/high-end `false`, `adjust_aggr.is_non_accom_stem=false`, `y_spec`/`v_spec` shapes `[2,673,1103]`, `api_cross_check`) and regenerated stems sha256 `7d732bfb…53cf` (primary) / `7b7fcf0e…ee1b` (secondary), and parity was re-measured against it (exit `0`, `logs/41-check-parity-after-reference-rerun.log`: primary ch0 `1.2814999e-6` / `3.38146e-8` / `112.80 dB` / `0.999999999998`, primary ch1 `1.2218952e-6` / `3.0912e-8` / `112.72 dB` / `0.999999999997`, secondary ch0 `1.4007092e-6` / `3.5573663e-8` / `124.13 dB` / `1.0`, secondary ch1 `1.2218952e-6` / `3.193839e-8` / `122.67 dB` / `1.0`). Item `#3` stays **`in-progress`**, `plan_revision 2`, attempts `2`; counters `N=1 · r=2 · n=1`; next allowed step **`CHECK item #3 (r2/n1)`** (CHECK 3); **no commit, no GitHub `#3` closure and no `done` is authorized**; completeness stays **`2/4 accepted`**; `#4` untouched.
 
 ## Original task
 
@@ -144,7 +145,7 @@ Item-level pointer (not a collection revision — the collection's own revision 
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
 | #2 | G1 | main | done | ready | cycle | pdca | pdca-coder | issue-2-r5 | .pdca/status/issue-2-r5.md | 2 | finalized | execution | 2 | order 1 (risk-first): MDX-Net ONNX separation on CPU from a locally supplied, checksum-verified published `.onnx`; accepted by `CHECK 3` (`r2`/`n2`: `AC-2.1`–`AC-2.4` `met`, `AC-2.4` on its pre-acceptance component with the commit action performed); attempts `n=1/3` and `n=2/3` under contract `r2`; product commit `59fb1fb` (parent `2d0be53`, 13 files, `+1750/-23`, footer `Refs #2`) on `main`, not pushed; **GitHub `#2` closed as `COMPLETED` by the driver at `2026-11-11T06:18:29Z`** (comment `6788661305`); terminal outcome (cycle) `accepted`; full item history in `.pdca/status/issue-2-r5.md` §CHECK record, §ACT record, §Lessons learned |
 | #8 | G1 | main | done | ready | cycle | pdca | pdca-coder | issue-8-r5 | .pdca/status/issue-8-r5.md | 3 | finalized | execution | 1 | order 2: ensemble operators `avg_wave`/`median_wave` plus preset `vocal_balanced` on a real CC0 song; item-level contract revisions `r1→r2→r3` (item detail, the collection plan stays `r1`); accepted by `CHECK 3` (`r3`/`n1`: `AC-8.1`, `AC-8.2`, `AC-8.3`, `AC-8.4(1)` `met`); product commit `a38bb7f` (parent `59fb1fb`, 7 files, `+1368/-2`, footer `Refs #8`) on `main`, not pushed; **GitHub `#8` closed as `COMPLETED` by the driver at `2026-11-11T07:57:47Z`** (comment `6790434030`); terminal outcome (cycle) `accepted`; full item history in `.pdca/status/issue-8-r5.md` §CHECK record, §ACT record, §Lessons learned |
-| #3 | G1 | main | pending | ready | cycle | pdca | pdca-coder | issue-3-r5 | .pdca/status/issue-3-r5.md | 1 | active | execution | 0 | order 3: real VR/UVR checkpoint with pinned checksum, conversion plus audio-separator parity at window_size=512/aggression=5 with no post-processing |
+| #3 | G1 | main | done | ready | cycle | pdca | pdca-coder | issue-3-r5 | .pdca/status/issue-3-r5.md | 2 | finalized | execution | 2 | order 3: **accepted by `CHECK 3` (`r2`/`n1`)** — `AC-3.1` `met`, `AC-3.2` `met`; terminal outcome (cycle) **`accepted`** (the `terminal` column carries the plan-terminal cause `execution`, as for `#2`/`#8`); `AC-3.3` performed: product commit **`3130f55`** (parent `1a164ae`, 33 files, `+3207/−68`, footer `Refs #3`, not pushed, no weights/`.pdca`/`.openidea`) and **GitHub `#3` closed as `COMPLETED` by the driver at `2026-11-12T07:22:14Z`** (comment `6817426243`); same-commit note: `src/dsp.rs` (`stft_zeros`) plus formatting-only `src/ensemble.rs`, `src/wav.rs`, `tests/ensemble.rs`, `tests/s1_spikes.rs`; final measured parity primary `1.2814999e-6` / `3.38146e-8` / `112.80 dB` / `0.999999999998`, secondary `1.4007092e-6` / `3.5573663e-8` / `124.13 dB` / `1.0`; **record-closure blocker:** the mandatory `pdca-check` retrospective report was not supplied with the ACT brief, so `.pdca/status/issue-3-r5.md` keeps `record: open` with the explicit blocker (accepted outcome, commit and closure unaffected, nothing reopened). Superseded history: order 3: real VR/UVR checkpoint with pinned checksum, conversion plus audio-separator parity at window_size=512/aggression=5 with no post-processing; `DO` `r1`/`n1` complete (converter `tools/convert_vr_arch.py`, artifact `47a6e24f…4b8d`, Rust `src/model/vr_arch.rs` + `vr_pipeline.rs` + `vr_resample.rs`, converter tests `Ran 8 tests` `OK`, `cargo test` 135 passed / 0 failed / 2 ignored); `CHECK 1` `not accepted → PLAN` (dispatch/contract drift plus evidence gaps — no product defect); item-level contract revision **`r2`** recorded (same `AC-3.1`–`AC-3.3`, evidence plan requires `ref/reference.json`, the completed reference log, gate logs `logs/30`–`34` and the snapshot `logs/35`/`36`); `CHECK 2` (`r1`/`n1`) `not accepted` with `AC-3.2` `met` and `AC-3.1` `unverified` (`ref/reference.json` missing, reference log truncated) — no product defect; `DO` `r2`/`n1` complete, evidence-only, **no product change**: reference re-run exit `0` (`logs/40-reference-run-full.log`), `ref/reference.json` recorded (`VRSeparator`, `4band_v2`, `Instrumental`, `window_size 512`, `batch_size 1`, `aggression 0.05`/`split_bin 85`, TTA/post-process/high-end `false`, `adjust_aggr.is_non_accom_stem=false`, `y_spec`/`v_spec` `[2,673,1103]`, `api_cross_check`), stems sha256 `7d732bfb…53cf` / `7b7fcf0e…ee1b`, parity re-measured exit `0` (`logs/41-check-parity-after-reference-rerun.log`) — full r2 evidence in `.pdca/status/issue-3-r5.md` §PLAN record `### r2`, §DO result `### r2 / n1`, §CHECK record `### CHECK 2 — r1/n1`; counters `N=1 · r=2 · n=1`; next allowed step: **`CHECK item #3 (r2/n1)`**; no commit, no GitHub `#3` closure |
 | #4 | G1 | main | pending | ready | cycle | pdca | pdca-coder | issue-4-r5 | .pdca/status/issue-4-r5.md | 1 | active | execution | 0 | order 4: HTDemucs strict validation and 4-stem parity (drums/bass/other/vocals) at shifts=0 with equal segment/overlap |
 | #1 | — | — | done | pending | cycle | pdca | pdca-coder | issue-1-r4 | .pdca/status/issue-1-r4.md | 1 | finalized | execution | 2 | context row: accepted at dc94520 and closed in GitHub; not part of this collection's execution |
 | #11 | — | — | incomplete | pending | cycle | pdca | pdca-coder | — | — | — | finalized | infeasible | 0 | context row: terminal infeasible, unchanged from r4; requires both a real CUDA and an Apple Silicon host |
@@ -455,6 +456,32 @@ snapshot hashes, `HEAD 59fb1fb`, index empty, no commit, no push, GitHub `#8` un
 only). Both status files were concurrently written by another dispatch in the same window; its blocks are
 preserved byte-identically and nothing was lost.
 
+Item `#3` — DO attempt `r2`/`n1` **complete** (evidence only, **no product change**), candidate ready
+for CHECK. Details in `.pdca/status/issue-3-r5.md` §DO result `### r2 / n1` and the evidence root
+`.pdca/open-issues-r5/rv1/item-3-vr-uvr/`.
+
+- **Reference re-run to completion** (performed by the driving role, recorded as the attempt's
+  evidence): `ref/gen_reference.py` exit **`0`**, full log `logs/40-reference-run-full.log` (6,038 B,
+  ends with `Separation duration: 00:00:05` and the `REFERENCE_JSON` record), producing
+  `ref/reference.json` and regenerated stems.
+- **`ref/reference.json` recorded**: `VRSeparator`, `vr_model_param 4band_v2`, primary stem
+  `Instrumental` (secondary `Vocals`), `window_size 512`, `batch_size 1`, `aggression 0.05` with
+  `split_bin 85`, `enable_tta`/`enable_post_process`/`high_end_process` `false`,
+  `adjust_aggr.is_non_accom_stem=false`, inference `y_spec`/`v_spec` shapes `[2,673,1103]`, and the
+  `api_cross_check` block. Stems (hashes re-computed on disk): primary
+  `7d732bfb176fa63eef149d44cb24a2056564526eed79cf6ffe020f895cd953cf`, secondary
+  `7b7fcf0edec9e4beb35647f44a0970bd25e9a0ff60053eb0b4cce6c21c7bee1b`, both 4,231,768 B and
+  528,960 frames × 2 ch.
+- **Parity re-measured**: `cargo test --test vr_pipeline_parity` exit **`0`**, `1 passed; 0 failed`
+  (`logs/41-check-parity-after-reference-rerun.log`) — primary ch0 `1.2814999e-6` / `3.38146e-8` /
+  `112.80 dB` / `0.999999999998`; primary ch1 `1.2218952e-6` / `3.0912e-8` / `112.72 dB` /
+  `0.999999999997`; secondary ch0 `1.4007092e-6` / `3.5573663e-8` / `124.13 dB` / `1.0`; secondary
+  ch1 `1.2218952e-6` / `3.193839e-8` / `122.67 dB` / `1.0`; all four thresholds inside the approved
+  `#3` tolerance.
+- **No product byte changed** (newest dirty-product mtime `2026-11-12T12:01:32Z`, before the
+  reference re-run and this recording); `HEAD 1a164ae`, index empty, no commit, no push, no GitHub
+  write. Counters `N=1 · r=2 · n=1`. Next allowed step: **`CHECK item #3 (r2/n1)`**.
+
 ## CHECK record
 
 `not run` for items `#3` and `#4` — both are still `pending` and unstarted. Item `#8` ran three CHECK
@@ -464,6 +491,55 @@ Item `#2`: CHECK **ran** on the `r1`/`n1` candidate and returned **`not accepted
 `F-2-acceptance-order` (blocking) and `F-2-reference-provider` (major, unverified), with
 `F-2-wav-trimming` refuted. The complete report is recorded verbatim in the `## CHECK record` of
 `.pdca/status/issue-2-r5.md`. This is not a pass and no item is accepted.
+
+Item `#3` — CHECK **1** has since run on the `r1`/`n1` candidate and returned
+**`not accepted → PLAN`**, so the `not run` line above is history (kept, superseded): `#3` is
+`in-progress` with attempts `1` (now attempts `2` at revision `r2`; see the CHECK 2 paragraph below), and only `#4` is still unstarted. The findings were
+`F-3-contract-drift` (the dispatch's AC numbering differed from the saved collection PLAN and treated
+the commit and the GitHub closure as CHECK-time acceptance conditions), `F-3-proof-gaps` (the full
+gate logs, the reference flags and the snapshot were not readable) and `F-3-status-stale` (no item
+status record existed); **no product defect was found and no product change was requested**. The
+corrective round aligned the dispatch to `AC-3.1`/`AC-3.2`/`AC-3.3`, captured the gate logs and the
+snapshot under the evidence root and created `.pdca/status/issue-3-r5.md`. The complete CHECK report
+was not supplied to this record and is not persisted under the evidence root — it is recorded as
+missing, not reconstructed; the item record states its verdict, findings and route. Not a pass: no
+commit and no GitHub `#3` closure is authorized, and the contract revision was still the planner's
+return at that point (it was returned as `r2` afterwards; see below).
+
+Item `#3` — CHECK **2** (`r1`/`n1`) then returned **`not accepted`**: `AC-3.2` **`met`** and `AC-3.1`
+**`unverified`** because `ref/reference.json` was missing and the reference log was truncated;
+**no product defect was reported** and no product change was requested. The planner's return is the
+item-level contract revision **`r2`** (same `AC-3.1`–`AC-3.3`; the evidence plan now requires
+`ref/reference.json` with the recorded reference parameters, the completed reference log, the gate
+logs `logs/30`–`34` and the snapshot `logs/35`/`36`), and the driver then closed the proof gap —
+`ref/gen_reference.py` re-run to completion (exit `0`, `logs/40-reference-run-full.log`) and parity
+re-measured against the regenerated reference (exit `0`,
+`logs/41-check-parity-after-reference-rerun.log`: primary ch0 `1.2814999e-6` / `3.38146e-8` /
+`112.80 dB` / `0.999999999998`; primary ch1 `1.2218952e-6` / `3.0912e-8` / `112.72 dB` /
+`0.999999999997`; secondary ch0 `1.4007092e-6` / `3.5573663e-8` / `124.13 dB` / `1.0`; secondary
+ch1 `1.2218952e-6` / `3.193839e-8` / `122.67 dB` / `1.0`). `DO` `r2`/`n1` is complete with **no
+product change**; item `#3` stays `in-progress`, `plan_revision 2`, attempts `2`; counters
+`N=1 · r=2 · n=1`; next allowed step **`CHECK item #3 (r2/n1)`**. The complete verbatim report of
+CHECK 2 was not supplied and is not persisted under the evidence root — the item record states its
+verdict and matrix and marks the verbatim text as missing, not reconstructed. Not a pass: no commit
+and no GitHub `#3` closure is authorized.
+
+Item `#3` — CHECK **3** (`r2`/`n1`) then returned **`accepted → ACT`**:
+
+- **Matrix as returned:** `AC-3.1` **`met`**, `AC-3.2` **`met`**; `AC-3.3` was **ready** — its commit
+  and GitHub closure are the post-CHECK obligations of the item, not CHECK-time acceptance
+  conditions — and has since been **performed** (commit `3130f55`, GitHub `#3` closed; see §ACT
+  record).
+- **Evidence graded:** the `r2` evidence set — `logs/40-reference-run-full.log` (exit `0`),
+  `ref/reference.json`, `logs/41-check-parity-after-reference-rerun.log` (exit `0`,
+  `1 passed; 0 failed`, every row inside the approved `#3` tolerance), plus the `r1` gate logs
+  `logs/30`–`34` binding the same product bytes.
+- **Findings:** none against the product; `F-3-proof-gaps` is satisfied at the evidence level and
+  `F-3-contract-drift` / `F-3-status-stale` stay refuted from `CHECK 2`. No product change was
+  requested and none was made by the CHECK.
+- The complete verbatim report of CHECK 3 was not supplied and is not persisted under the evidence
+  root — the item record states its verdict and matrix and marks the verbatim text as missing, not
+  reconstructed. CHECK 1, CHECK 2 and CHECK 3 stay **three distinct outcomes**, never merged.
 
 Item `#2` — CHECK **2** ran on the `r2`/`n1` candidate and returned **`not accepted → DO`**:
 `AC-2.1` `met`, `AC-2.2` `unmet` (no per-dependency version/licence inventory of the MDX build graph),
@@ -691,6 +767,38 @@ unchanged).** `CHECK 3`'s verdict and the commit facts above are confirmed by an
 - **Closure no longer requires a token for this record's account**: the driver used the GitHub CLI, which is authenticated at `C:\Program Files\GitHub CLI\gh.exe` (owner-confirmed working). This supersedes the earlier blocker note about missing credentials; no credential value is recorded, read or reproduced here.
 - **Counters unchanged**: collection `N=1`, `r=1`; item `#2` `r=2` / `n=2/3`; item `#8` `r=3` / `n=1/3`. The closures consume no attempt and add no verification, no criterion and no verdict.
 
+Item `#3` — **outcome `accepted`, finalized** (`2026-11-12T07:23Z`). CHECK 3 (`r2`/`n1`) accepted the
+candidate (`AC-3.1` `met`, `AC-3.2` `met`) and ACT performed the post-acceptance closure it owns; it
+issues no new verdict.
+
+- **`AC-3.3` — commit performed** (by the driver's execution lane, before this recording):
+  `3130f552ee3bd02b037beed8c09ac916a0a587f8` (`3130f55`) on `main`, parent
+  `1a164ae8bc29a72b5b2f005a4f1e52cee1f172b2`, **33 files changed, +3207/−68**, subject
+  `#3: VR Arch (UVR) support with audio-separator waveform parity`, footer `Refs #3` (no auto-close
+  keyword); **not pushed**, no branch switch, no amend, no tag; the commit carries **no** weights,
+  **no** `.pdca/**` and **no** `.openidea/**`.
+- **Same-commit scope note (recorded, not evaluated):** `src/dsp.rs` (`stft_zeros`) and
+  **formatting-only** changes to `src/ensemble.rs`, `src/wav.rs`, `tests/ensemble.rs`,
+  `tests/s1_spikes.rs` are part of the same commit and therefore of the item's committed delta.
+- **`AC-3.3` — GitHub `#3` closed** as `COMPLETED` at `2026-11-12T07:22:14Z` (comment id
+  `6817426243`), an **external action by the driver**: no PDCA phase performed or verified a GitHub
+  write.
+- **Final measured parity:** primary `max_abs 1.2814999e-6` / `RMSE 3.38146e-8` / `SDR 112.80 dB` /
+  `corr 0.999999999998`; secondary `1.4007092e-6` / `3.5573663e-8` / `124.13 dB` / `1.0` — inside the
+  approved `#3` tolerance (`max_abs ≤ 1e-5`, `RMSE ≤ 1e-6`, `SDR ≥ 100 dB`, `corr ≥ 0.999999`);
+  evidence `item-3-vr-uvr/logs/41-check-parity-after-reference-rerun.log` (exit `0`,
+  `1 passed; 0 failed`).
+- **Counters:** item `#3` `r=2`, attempt `n=1`, attempts `2` consumed in total; collection `N=1`,
+  `r=1`. Neither the acceptance nor the closure consumes an attempt.
+- **Remaining work:** none inside the collection for item `#3` — `AC-3.1`/`AC-3.2` are `met` and both
+  `AC-3.3` components are performed. **Record-closure blocker (explicit):** the mandatory `pdca-check`
+  retrospective report was not supplied, so `.pdca/status/issue-3-r5.md` keeps `record: open` with the
+  blocker recorded in its §Lessons learned; no fallback analysis was written and none is authorized.
+- **Handoff / next authorized action:** a `pdca-check` `retrospective` dispatch for the closed cycle
+  `issue-3-vr-uvr` (its raw report is then persisted in the item record, which may then be marked
+  `completed`); the collection's next item work is **`DO item #4 (r1)`** — `#4` stays `pending` and was
+  not started by this recording.
+
 ## General verification and recovery
 
 - verification state: `#2 contract revision r=2 (AC-2.1–AC-2.4), DO r2/n2 complete, CHECK 3 accepted → ACT, ACT closed (commit 59fb1fb, retrospective recorded)`; the `r1`/`n1` and `r2`/`n1` candidates were `not accepted` and are not progress; the `r2`/`n2` attempt changed one documentation file and closed the three CHECK 2 findings; all four item keys are `refuted/closed on the r2/n2 candidate` and `AC-2.1`–`AC-2.4` are `met` (`AC-2.4` pre-acceptance component, its post-acceptance commit action now performed). Item `#2`'s only residual is the GitHub `#2` closure by the calling driver; `#8`, `#3`, `#4` untouched and unstarted
@@ -868,6 +976,45 @@ unchanged).** `CHECK 3`'s verdict and the commit facts above are confirmed by an
 - **record lint (this update)** — `& "C:\Users\Пользователь\AppData\Local\Programs\Python\Python312\python.exe" .pdca/scripts/status_lint.py .pdca/status/collection-open-issues-r5.md` → exit status **`0`** (`status-lint: OK (.pdca\status\collection-open-issues-r5.md: 2 tables, 7 rows)`); `& …python.exe .pdca/scripts/status_lint.py .pdca/status/issue-2-r5.md` → exit **`0`** (`status-lint: OK (.pdca\status\issue-2-r5.md: 3 tables, 11 rows)`); `& …python.exe .pdca/scripts/status_lint.py .pdca/status/issue-8-r5.md` → exit **`0`** (`status-lint: OK (.pdca\status\issue-8-r5.md: 10 tables, 41 rows)`). The same three-file run was repeated after this bullet was written and returned exit `0` again; log `.pdca/open-issues-r5/rv1/lint.txt`. A failing lint would be recorded as failing, never as a pass.
 - **bookkeeping commit (`2026-11-11`)**: one commit on `main` containing only the three status files `.pdca/status/collection-open-issues-r5.md`, `.pdca/status/issue-2-r5.md` and `.pdca/status/issue-8-r5.md`; `.openidea/` and `.pdca/status/collection-open-issues-r3.md` were not staged and stay untouched; no push. A commit cannot record its own id, so the hash is reported to the driver by the executor.
 
+- **`#3` `CHECK 2` + revision `r2` + `DO` `r2`/`n1` (`2026-11-12`)** — the earlier `#3` bullets such as
+  "next allowed step: `DO item #3 (r1/n1)`" are history: that attempt completed, `CHECK 1` and
+  `CHECK 2` both returned `not accepted` with **no product defect**, the item-level revision **`r2`**
+  is recorded (same `AC-3.1`–`AC-3.3`, evidence plan updated), and `DO` `r2`/`n1` closed the
+  reference-provenance gap with **no product change**. Item `#3` is `in-progress`,
+  `plan_revision 2`, attempts `2`; counters `N=1 · r=2 · n=1`.
+- **verification state for `#3`** — the evidence is readable under
+  `.pdca/open-issues-r5/rv1/item-3-vr-uvr/`: gates `logs/30-build.log` (exit `0`), `31-test.log`
+  (exit `0`, 135 passed / 0 failed / 2 ignored), `32-clippy.log` (exit `0`), `33-fmt.log` (exit `0`),
+  `34-converter-tests.log` (exit `0`, `Ran 8 tests`, `OK`); snapshot `logs/35-snapshot-status.txt` and
+  candidate hashes `logs/36-candidate-sha256.txt`; reference `ref/reference.json` + the completed log
+  `logs/40-reference-run-full.log` (exit `0`); parity `logs/41-check-parity-after-reference-rerun.log`
+  (exit `0`, `1 passed; 0 failed`, all four rows inside the `#3` tolerance). No product byte changed.
+- **next allowed step: `CHECK item #3 (r2/n1)`** (CHECK 3) — **no commit, no GitHub `#3` closure and
+  no `done` is authorized**; `#4` stays `pending` and untouched.
+- **completeness: `2/4 accepted`** (history, superseded by the ACT bullets below) — `#2` and `#8` accepted, committed and closed in
+  GitHub; `#3` was `in-progress` at `r=2`/`n=1`; `#4` `pending`.
+- **`#3` `CHECK 3` (`r2`/`n1`) `accepted → ACT`; ACT closed it (`2026-11-12T07:23Z`)** — matrix
+  `AC-3.1` `met`, `AC-3.2` `met`; `AC-3.3` was ready as the post-CHECK obligation and is now
+  performed: commit `3130f55` (parent `1a164ae`, 33 files, `+3207/−68`, footer `Refs #3`, not pushed)
+  and GitHub `#3` closed as `COMPLETED` at `2026-11-12T07:22:14Z` (comment `6817426243`, external
+  action by the driver). Final parity: primary `1.2814999e-6` / `3.38146e-8` / `112.80 dB` /
+  `0.999999999998`; secondary `1.4007092e-6` / `3.5573663e-8` / `124.13 dB` / `1.0` — every value
+  inside the approved tolerance. Item `#3` is `done` / `finalized` / `accepted`, `plan_revision 2`,
+  attempts `2`, counters `N=1 · r=2 · n=1`. No key is open against the product and no escalation.
+- **verification state for `#3` (ACT)**: `HEAD 3130f55` on `main`, index empty, no product path left
+  dirty; the evidence root `item-3-vr-uvr/` (ignored by `.gitignore`) holds the gates, the reference
+  and both parity logs; `git show --name-only 3130f55` lists the 33 product paths and no `.pdca`/
+  `.openidea`/weights.
+- **record-closure blocker (`#3`)**: the mandatory `pdca-check` retrospective report was not supplied
+  with the ACT brief, so `.pdca/status/issue-3-r5.md` keeps `record: open` (its §Lessons learned states
+  the absence; no fallback analysis written). The accepted outcome, the commit and the GitHub closure
+  stand unchanged and nothing is reopened; the collection-level `## Lessons learned` also stays
+  `pending`.
+- **next allowed step: `DO item #4 (r1)`** — `#4` is the only remaining collection item, `pending` /
+  `ready` and untouched by this recording; nothing for `#3` remains except its retrospective recording.
+- **completeness: `3/4 accepted`** — `#2` (`59fb1fb`), `#8` (`a38bb7f`) and `#3` (`3130f55`) are
+  accepted, committed, finalized and closed in GitHub; `#4` is `pending` (`3/4 closed in GitHub`).
+
 ## Revision history
 
 `none` at collection level — `r1` is the collection's initial revision; no collection replan has occurred. Item `#2` carries its own
@@ -888,6 +1035,8 @@ stays `r1`.
 - 2026-11-11T07:27:43Z | item `#8` contract revision **`r3`** (item level; the collection revision stays `r1`, no collection replan, no new group or lane) → cause `CHECK 2` (`r2`/`n1`) `not accepted → PLAN`: `F-8-ac3-contract-drift` (blocking) closed by explicitly revising `AC-8.3` to the `r1` gate semantics, and `F-8-issue-open-evidence` (major) carried as the `AC-8.4(1)` stored-observation obligation. Item `#8` is at `r=3`, attempt `n=1/3`; next allowed step `DO item #8 (r3/n1)`.
 
 - 2026-11-11 | item `#8` `r1 → r2 → r3` (item level only; the **collection plan is not rewritten and stays `r1`**) → two genuine item contract revisions inside the item cycle: `r1 → r2` from `CHECK 1 → PLAN` (acceptance-order defect `F-8-acceptance-order` plus the `F-8-song-licence` evidence obligation) and `r2 → r3` from `CHECK 2 → PLAN` (`F-8-ac3-contract-drift` — `AC-8.3` revised to the `r1` gate semantics — and `F-8-issue-open-evidence` — `AC-8.4(1)` refined to the stored read-only observation). Complete reports: `.pdca/status/issue-8-r5.md` §PLAN record `r2` and `### r3`. This row is a pointer, not a collection replan and not a new group or lane.
+
+- 2026-11-12 | item `#3` contract revision **`r1 → r2`** (item level only; the **collection plan is not rewritten and stays `r1`**) → `AC-3.1`/`AC-3.2`/`AC-3.3` are unchanged and the **evidence plan** was revised to require `ref/reference.json` with the recorded reference parameters, the completed reference log, the full gate logs `logs/30`–`34` and the snapshot `logs/35`/`36`; cause `CHECK 2` (`r1`/`n1`) `not accepted` — `AC-3.2` `met`, `AC-3.1` `unverified` (`ref/reference.json` missing, reference log truncated), **no product defect**. Item `#3` is at `r=2`, attempt `n=1` (DO complete, CHECK 3 next). Complete report: `.pdca/status/issue-3-r5.md` §PLAN record `### r2`. This row is a pointer, not a collection replan and not a new group or lane.
 
 ## Defect history
 
@@ -914,6 +1063,15 @@ fixes applied 0) — both **open**, routed `CHECK → PLAN`, no escalation (atte
   its attribution corrected (the 11:52–11:56 local writer was an earlier dispatch of the same attempt).
   No key is open against the code, none recurs without a new measure, no escalation. The full per-key rows
   live in `.pdca/status/issue-8-r5.md` §Defect history.
+- **Update for item `#3` (`2026-11-12`)** — append-only; the "Items `#3`, `#4` have none" clause above is
+  history. Item `#3` now carries three item-level keys in `.pdca/status/issue-3-r5.md` §Defect history:
+  `F-3-proof-gaps` (**confirmed** at `CHECK 2` — `ref/reference.json` missing, reference log truncated;
+  **now closed**, fixes applied **2**, evidence `ref/reference.json`, `logs/40-reference-run-full.log`
+  exit `0`, `logs/41-check-parity-after-reference-rerun.log` exit `0`; closure awaits `CHECK 3`
+  re-verification), `F-3-contract-drift` (**refuted at `CHECK 2`**, fixes applied 1) and
+  `F-3-status-stale` (**refuted at `CHECK 2`**, fixes applied 1). No product defect was reported at any
+  `#3` CHECK; no key recurs without a new measure and no escalation (`n=1` of `r2`, ceiling `3`).
+  Item `#4` has none.
 
 ## Changed files
 
@@ -1072,6 +1230,29 @@ fixes applied 0) — both **open**, routed `CHECK → PLAN`, no escalation (atte
 
 - **Driver-closure bookkeeping (`2026-11-11`)** — `.pdca/status/collection-open-issues-r5.md` (header phase `PLAN` / record `open`, §Current state, item rows `#2`/`#8`, §ACT record, §General verification and recovery, §Revision history, §Git state, progress rows), `.pdca/status/issue-2-r5.md` and `.pdca/status/issue-8-r5.md` (§ACT record `External GitHub closure` notes) → status records only; no product file, test, gate, evidence artifact or screenshot was touched and nothing was pushed.
 
+- **`#3` `CHECK 2` + revision `r2` + `DO` `r2`/`n1` recording (`2026-11-12`)** — status records plus one
+  appended evidence log, **no product change**: `.pdca/status/collection-open-issues-r5.md` (§Current
+  state bullet, header phase and counters, item row `#3`, §DO result `#3` block, §CHECK record `#3`
+  CHECK 2 paragraph, §General verification and recovery, §Revision history, §Changed files, §Git
+  state, §Progress log) and `.pdca/status/issue-3-r5.md` (counters `r=2`, §Current state, §PLAN record
+  `### r2`, §DO result `### r2 / n1`, §CHECK record `### CHECK 2 — r1/n1`, §ACT record, §Revision
+  history, §Defect history, §Changed files, §Git state, §Progress log);
+  `.pdca/open-issues-r5/rv1/item-3-vr-uvr/lint.txt` appended. The cited evidence
+  (`ref/reference.json`, `logs/40-reference-run-full.log`, `logs/41-check-parity-after-reference-rerun.log`)
+  was produced by the driving role's reference re-run and is read, not written, by this recording.
+
+- **`#3` `CHECK 3` + `ACT` recording (`2026-11-12T07:23Z`)** — status records plus one bookkeeping
+  commit, **no product change by this recording**: `.pdca/status/collection-open-issues-r5.md`
+  (header + §Current state, item row `#3` → `done` / `finalized` / `accepted`, §CHECK record `#3`
+  CHECK 3 paragraph, §ACT record `#3` block, §General verification and recovery, §Changed files,
+  §Git state, §Progress log) and `.pdca/status/issue-3-r5.md` (§Current state, §CHECK record
+  `### CHECK 3 — r2/n1`, §ACT record, §Lessons learned closure blocker, §Defect history, §Changed
+  files, §Git state, §Progress log); `.pdca/open-issues-r5/rv1/item-3-vr-uvr/lint.txt` appended. The
+  item's product delta was committed **before** this recording as `3130f55` (33 files, `+3207/−68`) —
+  see the §ACT record block above; this recording created the bookkeeping commit
+  `chore: record PDCA r5 acceptance and close #3 evidence` containing exactly the two status files
+  (no `.openidea/`, no `.pdca/status/collection-open-issues-r3.md`, no push).
+
 ## Git state
 
 - status path: `.pdca/status/collection-open-issues-r5.md` — created this cycle · untracked (durable on disk, not committed).
@@ -1190,7 +1371,28 @@ fixes applied 0) — both **open**, routed `CHECK → PLAN`, no escalation (atte
     supplied per command with `git -c`; **no git config was written**
     (`item-8-ensembles/logs/commit-a38bb7f.log`).
 
-- **Driver-closure bookkeeping, refreshed `2026-11-11`** — status-record writes only: no product byte, no build/test, no `git add` by any PDCA phase. `HEAD` is `a38bb7fd969dc0ebb36ca74957af93b6b4b20a19` on `main`; the two product commits (`59fb1fb`, `a38bb7f`) are on `main` and **not pushed** (`origin/main` unchanged at `bf2cab6`). The three status files were untracked before this bookkeeping commit and are committed by it alone (`.pdca/status/collection-open-issues-r5.md`, `.pdca/status/issue-2-r5.md`, `.pdca/status/issue-8-r5.md`); `.openidea/` and `.pdca/status/collection-open-issues-r3.md` stay untracked, untouched and unclaimed. The commit id cannot be recorded inside the commit itself; it is reported to the driver by the executor, and no push followed.
+- **Driver-closure bookkeeping, refreshed `2026-11-11`** - status-record writes only: no product byte, no build/test, no `git add` by any PDCA phase. `HEAD` is `a38bb7fd969dc0ebb36ca74957af93b6b4b20a19` on `main`; the two product commits (`59fb1fb`, `a38bb7f`) are on `main` and **not pushed** (`origin/main` unchanged at `bf2cab6`). The three status files were untracked before this bookkeeping commit and are committed by it alone (`.pdca/status/collection-open-issues-r5.md`, `.pdca/status/issue-2-r5.md`, `.pdca/status/issue-8-r5.md`); `.openidea/` and `.pdca/status/collection-open-issues-r3.md` stay untracked, untouched and unclaimed. The commit id cannot be recorded inside the commit itself; it is reported to the driver by the executor, and no push followed.
+- **`#3` `r2`/`n1` recording (`2026-11-12`)** — status-record writes plus the appended
+  `item-3-vr-uvr/lint.txt`; **no product byte**. `HEAD` stays
+  `1a164ae8bc29a72b5b2f005a4f1e52cee1f172b2` (`1a164ae`) on `main`, index empty,
+  `git status --porcelain` 37 entries (15 modified — 14 pre-existing product paths plus this
+  collection record — and 22 untracked, including `.openidea/`, the `.pdca/status` records and the 19
+  `#3` product paths); the newest dirty-product mtime is `2026-11-12T12:01:32Z`, before the reference
+  re-run (`12:13`) and this write. No `git add`, no staging, no commit, no push, no branch switch, no
+  amend, no tag, no GitHub write by this recording; the evidence root stays invisible via
+  `.gitignore` (`/.pdca/*`). Item `#3`'s commit remains ACT work after an accepted CHECK.
+
+- **`#3` `CHECK 3` + `ACT`, refreshed `2026-11-12T07:23Z`** — `HEAD` is now
+  **`3130f552ee3bd02b037beed8c09ac916a0a587f8`** (`3130f55`, parent `1a164ae`, 33 files,
+  `+3207/−68`, footer `Refs #3`) on `main`, index empty; before this recording `git status --short`
+  showed only ` M .pdca/status/collection-open-issues-r5.md`, `?? .openidea/`,
+  `?? .pdca/status/collection-open-issues-r3.md`, `?? .pdca/status/issue-3-r5.md` — no product path
+  left dirty, nothing staged, **no push** (`3130f55` is not pushed; `origin/main` unchanged). This
+  recording stages exactly the two status files for one bookkeeping commit
+  (`chore: record PDCA r5 acceptance and close #3 evidence`); `.openidea/` and
+  `.pdca/status/collection-open-issues-r3.md` stay untracked, untouched and unclaimed; no branch
+  switch, no amend, no tag, no GitHub write; the evidence root stays invisible to `git status` via
+  `.gitignore` (`/.pdca/*`).
 
 ## Lessons learned
 
@@ -1205,6 +1407,14 @@ evidence, executor coordination — plus limits and the completion signal
 `retrospective_complete`); it is an item-level source for the future collection retrospective and is
 **not** a collection-level retrospective. No collection-level retrospective report has been produced
 yet, and none is reconstructed here.
+
+- **`#3` retrospective — closure blocker (append-only, `2026-11-12T07:23Z`):** item `#3` closed
+  (`CHECK 3` `accepted`, commit `3130f55`, GitHub `#3` closed) but its mandatory `pdca-check`
+  retrospective report was **not supplied** with the ACT finalization brief, so
+  `.pdca/status/issue-3-r5.md` §Lessons learned records the absence and keeps `record: open`; no
+  fallback analysis was written. The collection-level retrospective therefore still has only two
+  item sources (`#2`, `#8`) and stays `pending` — a future collection retrospective must not treat
+  `#3` as analysed until its report is recorded.
 
 - **refreshed `2026-11-11T07:51Z` by the `#8` ACT verification dispatch** — re-read after all of its
   work: `HEAD a38bb7fd969dc0ebb36ca74957af93b6b4b20a19` on `main` (the `#8` commit, parent `59fb1fb`);
@@ -1325,3 +1535,18 @@ yet, and none is reconstructed here.
 - 2026-11-11T07:57:47Z | ACT | r3 | n=1 | item `#8` **GitHub `#8` closed as `COMPLETED` by the driver** (external closure, performed by no PDCA phase) — product commit `a38bb7f` (parent `59fb1fb`, 7 files, `+1368/-2`) on `main`, not pushed; item `#8` `done` / `finalized` / terminal outcome (cycle) `accepted`; completeness **`2/4 accepted`**; next allowed step `DO item #3 (r1/n1)`, `#4` stays `pending` | GitHub issue `#8`, comment `6790434030`
 - 2026-11-11T07:59:36Z | ACT | r1 | n=0 | **record correction (one-writer rule):** the collection record had been left with a stale `#2` header (`phase: ACT · record: completed`), contradictory `#8` item-row dispositions and competing `1/4` versus `2/4` completeness claims from concurrent record writers; header, §Current state, item rows `#2`/`#8`, §ACT record and §General verification corrected to the authoritative `2/4 accepted` with both GitHub closures recorded, and the earlier blocks kept and superseded — this record is written only by the driver's executor | `.pdca/status/collection-open-issues-r5.md` §Current state, §Item table, §ACT record
 - 2026-11-11T08:02Z | ACT | r1 | n=0 | **Notice — external observation:** GitHub `AlexeyShirshov/candle-roformer#8` is `state=closed` (`closed_at 2026-11-11T07:57:47Z`, `state_reason=completed`, closed_by the repository owner = the calling driver), observed `2026-11-11T07:59:12Z` by unauthenticated GET (HTTP `200`, no token read or sent); the closure was performed externally by no PDCA phase and this cycle performed no GitHub write; item `#8` stays `done` / `finalized`, its `AC-8.4(2)` closure component satisfied externally; completeness `2/4 accepted` | .pdca/status/issue-8-r5.md (item record), .pdca/open-issues-r5/rv1/item-8-ensembles/github/issue-8-observation-external-closure.json
+- unknown (returned before this recording at 2026-11-12T07:09:19Z; the verdict's own clock is not recorded) | CHECK | r1 | n=1 | item `#3` **CHECK 1** ran on the `r1`/`n1` candidate and returned **`not accepted → PLAN`**: findings `F-3-contract-drift`, `F-3-proof-gaps`, `F-3-status-stale`; **no product defect found and no product change requested**; the complete report was not supplied to this record and is recorded as missing, not reconstructed; item `#3` row set `in-progress`, attempts `1` | .pdca/status/issue-3-r5.md §CHECK record, .pdca/open-issues-r5/rv1/plan.md:9
+- 2026-11-12T07:09:19Z | CHECK | r1 | n=1 | item `#3` **evidence-gap closure recorded** (one fix per key, no product byte changed): dispatch aligned to `AC-3.1`/`AC-3.2`/`AC-3.3`; gate logs `30-build.log` exit `0`, `31-test.log` exit `0` (135 passed / 0 failed / 2 ignored), `32-clippy.log` exit `0`, `33-fmt.log` exit `0`, `34-converter-tests.log` exit `0` (`Ran 8 tests`, `OK`), checks `20`/`21`/`22`, snapshot `35-snapshot-status.txt`, candidate hashes `36-candidate-sha256.txt` and reference flags `ref/reference-run.json` all persisted under the item evidence root; `.pdca/status/issue-3-r5.md` created | .pdca/open-issues-r5/rv1/item-3-vr-uvr/logs/, .pdca/status/issue-3-r5.md
+- 2026-11-12T07:09:19Z | CHECK | r1 | n=1 | item `#3` counters unchanged (`r=1`, `n=1`); next allowed step **PLAN contract revision for item `#3`**, then DO under the revised contract; **no commit, no GitHub `#3` closure and no `done` is authorized**; `#4` stays `pending` and untouched; completeness `2/4 accepted` | .pdca/status/collection-open-issues-r5.md §Current state, §Item table
+- unknown (returned before this recording at 2026-11-12T12:20Z; the verdict's own clock is not recorded) | CHECK | r1 | n=1 | item `#3` **CHECK 2** returned **`not accepted`**: `AC-3.2` **`met`**, `AC-3.1` **`unverified`** (`ref/reference.json` missing, reference log truncated); **no product defect reported** and no product change requested; no attempt consumed; counters stay `r=1`, `n=1` | .pdca/status/issue-3-r5.md §CHECK record `### CHECK 2 — r1/n1`
+- 2026-11-12T12:14:14Z | PLAN | r2 | n=1 | item `#3` **item-level contract revision `r1 → r2`** recorded (collection revision stays `r1`, no replan, no new group/lane): `AC-3.1`/`AC-3.2`/`AC-3.3` **unchanged**, evidence plan updated to require `ref/reference.json` (recorded parameters), the completed reference log, gate logs `logs/30`–`34` and the snapshot `logs/35`/`36`; item `#3` `plan_revision 2`, attempt `n=1` of `r2`; next allowed step `DO item #3 (r2/n1)` | .pdca/status/issue-3-r5.md §PLAN record `### r2`
+- 2026-11-12T12:13:32Z | DO | r2 | n=1 | item `#3` **reference re-run to completion** (driving role): `ref/gen_reference.py` exit **`0`**, log `logs/40-reference-run-full.log` (6,038 B, ends with `Separation duration: 00:00:05` and the `REFERENCE_JSON` record); `ref/reference.json` records `VRSeparator`, `4band_v2`, `Instrumental`, `window_size 512`, `batch_size 1`, `aggression 0.05`/`split_bin 85`, TTA/post-process/high-end `false`, `adjust_aggr.is_non_accom_stem=false`, `y_spec`/`v_spec` `[2,673,1103]`, `api_cross_check`; stems sha256 `7d732bfb…53cf` / `7b7fcf0e…ee1b` | .pdca/open-issues-r5/rv1/item-3-vr-uvr/logs/40-reference-run-full.log, ref/reference.json
+- 2026-11-12T12:14:14Z | DO | r2 | n=1 | item `#3` **parity re-measured** against the regenerated reference: `cargo test --test vr_pipeline_parity` exit **`0`**, `1 passed; 0 failed` — primary ch0 `1.2814999e-6` / `3.38146e-8` / `112.80 dB` / `0.999999999998`, primary ch1 `1.2218952e-6` / `3.0912e-8` / `112.72 dB` / `0.999999999997`, secondary ch0 `1.4007092e-6` / `3.5573663e-8` / `124.13 dB` / `1.0`, secondary ch1 `1.2218952e-6` / `3.193839e-8` / `122.67 dB` / `1.0`; all four thresholds inside the `#3` tolerance | .pdca/open-issues-r5/rv1/item-3-vr-uvr/logs/41-check-parity-after-reference-rerun.log
+- 2026-11-12T12:20:00Z | DO | r2 | n=1 | item `#3` **`DO` `r2`/`n1` complete — no product change** (item row `in-progress`, `plan_revision 2`, attempts `2`; counters `N=1 · r=2 · n=1`); next allowed step **`CHECK item #3 (r2/n1)`** (CHECK 3); no commit, no GitHub `#3` closure, no `done`; `#4` untouched; completeness `2/4 accepted` | .pdca/status/collection-open-issues-r5.md §Current state, §Item table row `#3`
+- 2026-11-12T12:26:00Z | DO | r2 | n=1 | record lint exit **`0`** on both files — `status-lint: OK (.pdca\status\issue-3-r5.md: 0 tables, 0 rows)` and `status-lint: OK (.pdca\status\collection-open-issues-r5.md: 2 tables, 7 rows)`; commands and exit codes in `.pdca/open-issues-r5/rv1/item-3-vr-uvr/lint.txt` | .pdca/open-issues-r5/rv1/item-3-vr-uvr/lint.txt
+- `unknown` (returned before this ACT recording at `2026-11-12T07:23Z`; the verdict's own clock is not recorded) | CHECK | r2 | n=1 | item `#3` **CHECK 3** (`r2`/`n1`) returned **`accepted → ACT`**: `AC-3.1` `met`, `AC-3.2` `met`, `AC-3.3` **ready** as the post-CHECK obligation; no product finding, no product change requested; report verbatim not supplied (recorded as missing, not reconstructed); counters unchanged `N=1 · r=2 · n=1` | .pdca/status/issue-3-r5.md §CHECK record `### CHECK 3 — r2/n1`
+- 2026-11-12T07:23:00Z | ACT | r2 | n=1 | item `#3` **post-acceptance commit performed** (by the driver's execution lane): **`3130f552ee3bd02b037beed8c09ac916a0a587f8`** (`3130f55`) on `main` — `#3: VR Arch (UVR) support with audio-separator waveform parity`, parent `1a164ae`, **33 files changed +3207/−68**, footer `Refs #3`, **not pushed**, no weights / `.pdca` / `.openidea`; `src/dsp.rs` (`stft_zeros`) and formatting-only `src/ensemble.rs`, `src/wav.rs`, `tests/ensemble.rs`, `tests/s1_spikes.rs` belong to the same commit | `git show --name-only 3130f55`
+- 2026-11-12T07:23:00Z | ACT | r2 | n=1 | item `#3` **GitHub `#3` closed as `COMPLETED` by the driver** (external action, no PDCA phase wrote to GitHub) at `2026-11-12T07:22:14Z`, comment id `6817426243`; final measured parity primary `1.2814999e-6` / `3.38146e-8` / `112.80 dB` / `0.999999999998`, secondary `1.4007092e-6` / `3.5573663e-8` / `124.13 dB` / `1.0` | GitHub issue `#3`; `.pdca/open-issues-r5/rv1/item-3-vr-uvr/logs/41-check-parity-after-reference-rerun.log`
+- 2026-11-12T07:23:00Z | ACT | r2 | n=1 | item `#3` **`done` / `finalized`**, terminal outcome (cycle) `accepted`; completeness **`3/4 accepted`**; next allowed step **`DO item #4 (r1)`**, `#4` untouched; **record-closure blocker**: the mandatory `pdca-check` retrospective report was not supplied, so `.pdca/status/issue-3-r5.md` keeps `record: open` (§Lessons learned) and no fallback analysis was written | .pdca/status/collection-open-issues-r5.md §ACT record, §Current state
+- 2026-11-12T07:24:00Z | ACT | r2 | n=1 | record lint: `issue-3-r5.md` exit **`0`** (`status-lint: OK (.pdca\status\issue-3-r5.md: 0 tables, 0 rows)`); the first run on the collection file exited **`2`** — `FAIL: .pdca\status\collection-open-issues-r5.md:148: terminal 'accepted' is not one of: execution / criteria-undetermined / infeasible / already-established` — and was fixed by restoring the schema value `execution` in the `terminal` column while stating the cycle outcome `accepted` in the notes; the re-run exited **`0`** (`status-lint: OK (.pdca\status\collection-open-issues-r5.md: 2 tables, 7 rows)`). The failing run is recorded as failing, not as a pass | .pdca/open-issues-r5/rv1/item-3-vr-uvr/lint.txt
+- 2026-11-12T07:24:00Z | ACT | r2 | n=1 | **bookkeeping commit created on `main`** with exactly two paths — `.pdca/status/collection-open-issues-r5.md` and `.pdca/status/issue-3-r5.md`, message `chore: record PDCA r5 acceptance and close #3 evidence`; repository author identity supplied per command with `git -c` (no `git config` written); `.openidea/` and `.pdca/status/collection-open-issues-r3.md` not staged, no push, no branch switch, no amend. A commit cannot record its own id: the hash is reported to the driver by the executor | `git show --stat HEAD`
