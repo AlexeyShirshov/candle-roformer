@@ -7,7 +7,7 @@
 - cycle: `N=1` · revision: `r=2` · attempt: `n=1` (attempt `n=1` of `r=2` consumed; `CHECK 3` returned `accepted`; `ACT` recorded — counters unchanged by the acceptance and by the closure)
 - scope: collection `open-issues-r5` item `#3` (order 3, group `G1`, branch `main`) — a chosen public VR/UVR (VR Arch) checkpoint converted with a pinned checksum and used to separate audio, with `audio-separator` 0.48.0 parity on a frozen fixture at `window_size=512`, `aggression=5` and no post-processing, plus converter tests in the shape of the v7 one · status path: `.pdca/status/issue-3-r5.md`
 - goal: `#3` is done when "a chosen VR checkpoint converts with a pinned checksum and separates audio; parity fixture against audio-separator; converter covered by tests like the v7 one" holds at the user-approved `#3` tolerance — the §PLAN record and §Original task are authoritative
-- phase: `ACT` · record: `open` · outcome: `accepted` — item `#3` is **accepted and closed out**: `CHECK 3` (`r2`/`n1`) returned **`accepted`** with `AC-3.1` `met` and `AC-3.2` `met`, `AC-3.3` was the post-CHECK obligation (commit + GitHub `#3` closure) and has now been performed — product commit **`3130f55`** (parent `1a164ae`, 33 files, +3207/−68, footer `Refs #3`, not pushed, no weights, no `.pdca/**`) and GitHub `#3` **closed as `COMPLETED` at `2026-11-12T07:22:14Z`** (comment id `6817426243`). The record is **not** marked `completed`: the mandatory `pdca-check` retrospective report was not supplied with the finalization brief, so `## Lessons learned` carries the explicit closure blocker (§ACT record, last bullet). **History (kept, superseded) — the state at the `r2`/`n1` DO write was:** DO `r2`/`n1` was **complete** (candidate unchanged, no product change, no commit, no staging, no push, no GitHub write) and **CHECK 3 was the next step**. History, kept: DO `r1`/`n1` was **complete** (candidate in the worktree, no commit, no staging, no push, no GitHub write) and the first CHECK returned **`not accepted → PLAN`** for dispatch/contract drift (the dispatch's AC numbering differed from the saved collection PLAN and treated the commit/closure as CHECK-time acceptance conditions) and evidence gaps (the full build/test/clippy logs, the reference flags, the snapshot and this status file were missing). **No product defect was found and CHECK requested no product change.** The recorded corrective state: the dispatch is aligned to `AC-3.1`/`AC-3.2`/`AC-3.3`, the gate logs and the snapshot are captured under the evidence root and this record now exists. The genuine contract revision is still the planner's return to make, so the counters stayed `r=1`, `n=1` at that write; no commit and no GitHub `#3` closure is authorized. **CHECK 2** (`r1`/`n1`) then returned **`not accepted`** with `AC-3.2` `met` and `AC-3.1` `unverified` — `ref/reference.json` was missing and the reference log was truncated — and **no product defect was reported**. The planner's return is recorded as the item-level contract revision **`r2`** (same `AC-3.1`–`AC-3.3`; evidence plan updated to require `ref/reference.json` with the recorded parameters, the completed reference log, the full gate logs `logs/30`–`34` and the snapshot `logs/35`/`36`). The driver closed the proof gap: `ref/gen_reference.py` was re-run to completion (exit `0`, `logs/40-reference-run-full.log`), producing `ref/reference.json` and regenerated stems, and parity was re-measured against it (exit `0`, `logs/41-check-parity-after-reference-rerun.log`). Counters **`N=1 · r=2 · n=1`**; **no commit and no GitHub `#3` closure is authorized**.
+- phase: `ACT` · record: `completed` · outcome: `accepted` — item `#3` is **accepted and closed out**: `CHECK 3` (`r2`/`n1`) returned **`accepted`** with `AC-3.1` `met` and `AC-3.2` `met`, `AC-3.3` was the post-CHECK obligation (commit + GitHub `#3` closure) and has now been performed — product commit **`3130f55`** (parent `1a164ae`, 33 files, +3207/−68, footer `Refs #3`, not pushed, no weights, no `.pdca/**`) and GitHub `#3` **closed as `COMPLETED` at `2026-11-12T07:22:14Z`** (comment id `6817426243`). The record is **not** marked `completed`: the mandatory `pdca-check` retrospective report was not supplied with the finalization brief, so `## Lessons learned` carries the explicit closure blocker (§ACT record, last bullet). **History (kept, superseded) — the state at the `r2`/`n1` DO write was:** DO `r2`/`n1` was **complete** (candidate unchanged, no product change, no commit, no staging, no push, no GitHub write) and **CHECK 3 was the next step**. History, kept: DO `r1`/`n1` was **complete** (candidate in the worktree, no commit, no staging, no push, no GitHub write) and the first CHECK returned **`not accepted → PLAN`** for dispatch/contract drift (the dispatch's AC numbering differed from the saved collection PLAN and treated the commit/closure as CHECK-time acceptance conditions) and evidence gaps (the full build/test/clippy logs, the reference flags, the snapshot and this status file were missing). **No product defect was found and CHECK requested no product change.** The recorded corrective state: the dispatch is aligned to `AC-3.1`/`AC-3.2`/`AC-3.3`, the gate logs and the snapshot are captured under the evidence root and this record now exists. The genuine contract revision is still the planner's return to make, so the counters stayed `r=1`, `n=1` at that write; no commit and no GitHub `#3` closure is authorized. **CHECK 2** (`r1`/`n1`) then returned **`not accepted`** with `AC-3.2` `met` and `AC-3.1` `unverified` — `ref/reference.json` was missing and the reference log was truncated — and **no product defect was reported**. The planner's return is recorded as the item-level contract revision **`r2`** (same `AC-3.1`–`AC-3.3`; evidence plan updated to require `ref/reference.json` with the recorded parameters, the completed reference log, the full gate logs `logs/30`–`34` and the snapshot `logs/35`/`36`). The driver closed the proof gap: `ref/gen_reference.py` was re-run to completion (exit `0`, `logs/40-reference-run-full.log`), producing `ref/reference.json` and regenerated stems, and parity was re-measured against it (exit `0`, `logs/41-check-parity-after-reference-rerun.log`). Counters **`N=1 · r=2 · n=1`**; **no commit and no GitHub `#3` closure is authorized**. **Update (`2026-11-12T12:48Z`, supersedes the `record: open` state and the "not marked `completed`" sentence earlier in this bullet):** the mandatory `pdca-check` `retrospective` report for the closed cycle was supplied and is recorded **verbatim** in `## Lessons learned` (completion signal `retrospective_complete`), so the record-closure blocker is cleared and this record is now `record: completed` with the same outcome `accepted`; no verdict, counter, attempt or verification was added, and the accepted result, product commit `3130f55` and the GitHub `#3` closure are not reopened.
 - source: collection `open-issues-r5` item `#3` (order 3) · context refs: `.pdca/status/collection-open-issues-r5.md`, `.pdca/open-issues-r5/rv1/plan.md`, `.pdca/open-issues-r5/rv1/criteria-approval.md`, `.pdca/open-issues-r5/rv1/item-3-vr-uvr/` (this cycle's evidence root)
 - criteria: `AC-3.1`–`AC-3.3` — exact text in §PLAN record `r1`, unchanged by `r2` (source: `.pdca/open-issues-r5/rv1/plan.md:9`, quoted below); the user's `Done when` and the approved tolerance are quoted verbatim in §Original task
 
@@ -308,6 +308,25 @@ determined.
   cycle `issue-3-vr-uvr` (`N=1`, `r=2`, `n=1`) — once its raw report is routed, it is persisted in
   `## Lessons learned` and only then may the record be marked `completed`; (2) the collection's next
   item work is **`DO item #4 (r1)`**, not started by this recording.
+- **Retrospective recorded — closure mandate satisfied (`2026-11-12T12:48Z`):** the mandatory
+  `pdca-check` run in `retrospective` mode returned its report for the closed cycle `issue-3-vr-uvr`
+  (`N=1`, `r=2`, `n=1`); it is persisted **verbatim** (Russian, unchanged bytes) in `## Lessons
+  learned`, and the completion signal is `retrospective_complete`. The record is therefore now
+  `phase: ACT · record: completed · outcome: accepted` (`accepted` unchanged). No verdict, criterion,
+  counter, attempt or verification was added; the accepted result, product commit `3130f55` and the
+  GitHub `#3` closure are not reopened. **Superseded by this bullet (kept as history, nothing deleted):**
+  the "Record-closure blocker" bullet above, item (1) of the "Handoff / next authorized action"
+  bullet above, and the closure-blocker note that stood at the head of `## Lessons learned`.
+  **Handoff / next authorized action now:** the collection's next item work is **`DO item #4 (r1)`**;
+  nothing for item `#3` remains.
+- **Retrospective persisted for this bookkeeping dispatch (`2026-11-12T17:50Z`) — append-only:** the
+  `pdca-check` report in `mode: retrospective` for the closed cycle (`N=1`, `r=2`, `n=1`), routed by
+  the driver with completion signal `retrospective_complete`, is recorded **verbatim** in
+  `## Lessons learned` (second report block, labelled as such); the earlier block written at
+  `2026-11-12T12:48Z` is kept byte-identical and is **not** rewritten or deleted. The item record is
+  **closed**: `phase: ACT · record: completed · outcome: accepted`; counters stay `N=1 · r=2 · n=1`;
+  no new verdict, attempt or verification was added, and the accepted outcome, product commit
+  `3130f55` and the GitHub `#3` closure are unchanged and not reopened.
 
 ## Lessons learned
 
@@ -327,6 +346,95 @@ absence instead of a retrospective and the record stays `open`.
   counter, attempt or new verification. Evidence pointers for the retrospective dispatch: this file
   (§CHECK record, §DO result, §Defect history), `E/logs/30`–`34`, `E/logs/40`, `E/logs/41`,
   `E/ref/reference.json`, and commit `3130f55`.
+
+**Superseded (kept as history, `2026-11-12T12:48Z`):** everything above in this section — the
+`closure blocker` note and the three bullets that follow it — records the state before the mandatory
+retrospective was supplied. It is kept as history and is superseded by the recorded retrospective
+below; nothing above was deleted or rewritten.
+
+### Ретроспектива `pdca-check` (`retrospective` mode) — записана дословно
+
+Источник: сырой отчёт `pdca-check` в режиме `retrospective` для закрытого цикла `issue-3-vr-uvr`
+(`N=1`, `r=2`, `n=1`), переданный ведущей ролью; записан ниже дословно, в исходном языке, без
+изменения текста. Он не добавляет вердикта, критерия, счётчика, попытки или новой проверки.
+
+### Охват анализа
+
+Рассмотрены исходная задача, PLAN и DO обеих ревизий, записи трёх CHECK, ACT, история дефектов и ревизий item `#3`, а также ограничения и история дефектов коллекции. Анализ выполнен только по существующим записям, без новых проверок.
+
+Обозначения: `S = .pdca/status/issue-3-r5.md`; `C = .pdca/status/collection-open-issues-r5.md`.
+
+### Уроки
+
+1. **Передавать сохранённый контракт по точной ссылке, отдельно обозначая обязательства после CHECK.**  
+   Наблюдение: первый CHECK выявил расхождение нумерации критериев и включение commit/закрытия issue в условия до CHECK. После согласования dispatch эти замечания больше не повторялись. В следующих циклах использовать исходный блок критериев, не пересказывать его заново.  
+   **Категория:** контракт и порядок фаз.  
+   **Источники:** `S` §PLAN record, §CHECK record, `F-3-contract-drift`; `C` §Constraints.
+
+2. **Сохранять полную provenance эталона одновременно с численными результатами.**  
+   Наблюдение: первоначальное дополнение логов не устранило отсутствие `reference.json` и усечённый лог эталона. Завершённый запуск эталона и повторное измерение дали прежние показатели без изменения продукта. Сработало разделение доказательного пробела и дефекта реализации. На будущее сохранять вместе версии, фактически разрешённые параметры, идентичности входов/выходов и полный лог завершения.  
+   **Категория:** воспроизводимость и наблюдаемость.  
+   **Источники:** `S` §DO result `r2 / n1`, §CHECK record `CHECK 2`/`CHECK 3`, `F-3-proof-gaps`; указанные там `ref/reference.json`, `logs/40-reference-run-full.log`, `logs/41-check-parity-after-reference-rerun.log`. Предотвращение подобных повторных раундов — ожидаемый эффект, не измеренный в этом цикле.
+
+3. **Сохранять исходные фазовые отчёты и включать ретроспективу в пакет финализации.**  
+   Наблюдение: полные тексты всех трёх CHECK не были переданы в запись; отсутствие обязательной ретроспективы оставило явный блокер завершения записи после выполнения внешних обязательств. Полезно сохранять сырой отчёт сразу после возврата и передавать его либо точную ссылку следующей фазе. Сработало честное обозначение отсутствующих материалов без их реконструкции.  
+   **Категория:** передача контекста и полнота закрытия.  
+   **Источники:** `S` §CHECK record, §ACT record, прежний §Lessons learned; `C` §ACT record, блок item `#3`.
+
+### Ограничения и неопределённость
+
+- Полные исходные отчёты CHECK 1–3 отсутствуют; выводы об их содержании ограничены сохранёнными сводками.
+- Первичные логи, продукт, commit и GitHub непосредственно не исследовались. Внешнее закрытие issue известно из сообщения драйвера, сохранённого в ACT.
+- Временные метки записей не дают надёжной общей хронологии; длительность задержек не оценивалась.
+- Технические результаты относятся к выбранному checkpoint и fixture; обобщение на другие модели или устройства не делается. Исходный результат не пересматривался.
+
+**Сигнал завершения ретроспективы:** `retrospective_complete`
+
+**Completion signal recorded:** `retrospective_complete` — the retrospective mandate is satisfied and
+ACT is completed (`record: completed`, outcome `accepted` unchanged).
+
+### Retrospective report returned for the record-closure bookkeeping (verbatim)
+
+Source: the `pdca-check` report in `mode: retrospective` for the closed cycle `issue-3-vr-uvr`
+(`N=1`, `r=2`, `n=1`), routed by the driver for this record-closure bookkeeping with completion signal
+`retrospective_complete`. Recorded **verbatim** below — complete original, unchanged bytes. It adds no
+verdict, criterion result, counter, attempt or verification and does not override the originating
+`accepted` outcome. The earlier retrospective block above (recorded `2026-11-12T12:48Z`) is kept
+byte-identical as a concurrent recording over the same evidence; both carry the signal
+`retrospective_complete`.
+
+````text
+## Retrospective — `issue-3-vr-uvr`
+
+`E = .pdca/open-issues-r5/rv1/item-3-vr-uvr/`
+
+### What worked
+- Converter coverage included checksum refusals, structural validation, runtime-loader exclusion and pinned determinism: all 8 tests passed (`E/logs/34-converter-tests.log:1–13`).
+- The completed reference capture and subsequent parity log provided readable provenance and four stem/channel measurements without a recorded product change (`E/logs/40-reference-run-full.log:1–56`; `E/logs/41-check-parity-after-reference-rerun.log:116–125`; status:159–198).
+
+### Lessons
+1. **Contract fidelity:** Dispatch criteria by exact reference, preserving IDs and distinguishing CHECK conditions from post-CHECK obligations. Restatement introduced contract drift and a recorded loop-back.
+   Evidence: `.pdca/open-issues-r5/rv1/plan.md:9–11`; `.pdca/status/issue-3-r5.md:202–225`.
+
+2. **Evidence completeness:** Capture reference parameters, complete logs, output geometry and candidate identity alongside measurements. Numeric parity alone did not resolve missing reference provenance; a second evidence correction was needed. Keep evidence repair distinct from implementation repair.
+   Evidence: status:72–85, 227–242, 350–358; `E/logs/40-reference-run-full.log:55–56`.
+
+3. **Report preservation and closure:** Preserve phase returns verbatim or by exact reference, and include the retrospective before recording ACT completion. Here, CHECK summaries survived but raw reports did not; missing retrospective input explicitly left the record open.
+   Evidence: status:206–207, 229–231, 249–251, 303–317.
+
+### Limits and uncertainty
+- Complete verbatim CHECK 1/2/3 reports are absent; their reasoning and transitions are available only through recorded summaries, not independently recoverable.
+- Commit and GitHub closure observations were read from the status record, not independently verified.
+- Recorded parity covers one checkpoint/fixture on CPU/f32; CUDA/Metal were not tested.
+- Both outputs contain 528,960 frames versus the fixture’s 529,200; configured aggression `5` and resolved `0.05` remain separately recorded observations.
+- No tests, proving actions, research or artifact changes were performed. Conclusions concern process lessons, not a new product determination.
+
+`retrospective_complete`
+````
+
+**Completion signal — second report persisted; record stays closed.** `retrospective_complete` has
+been recorded for this report too; the item record remains `phase: ACT · record: completed ·
+outcome: accepted` with counters `N=1 · r=2 · n=1`.
 
 ## Revision history
 
@@ -449,6 +557,20 @@ claimed as its delta.
 - **No product byte was changed by this recording**; the commit above already contained the accepted
   tree before it started.
 
+### ACT retrospective recording — status files only (`2026-11-12T12:48Z`)
+
+- `.pdca/status/issue-3-r5.md` → updated (§Current state `record: completed` with the superseding
+  sentence, §ACT record retrospective bullet, §Lessons learned — old closure-blocker text marked
+  superseded and kept + the verbatim `pdca-check` retrospective + the completion signal, §Git state,
+  §Progress log).
+- `.pdca/status/collection-open-issues-r5.md` → updated (§Current state, §Item table row `#3`, §ACT
+  record `#3` block, §General verification and recovery, §Lessons learned note, §Git state,
+  §Progress log); item `#4` and every other item's disposition untouched.
+- `.pdca/open-issues-r5/rv1/item-3-vr-uvr/lint.txt` → appended (this recording's `status_lint.py`
+  runs with commands, exit codes and output lines).
+- **No product, test or doc file was changed by this recording**; no staging, no commit, no push and
+  no GitHub write.
+
 ## Git state
 
 - status path: `.pdca/status/issue-3-r5.md` — **created this cycle** · **untracked** (durable on disk,
@@ -490,6 +612,18 @@ claimed as its delta.
   work in the workspace is not claimed; no push, no branch switch, no amend, no tag, no GitHub write
   by this recording.
 
+- **ACT retrospective recording (`2026-11-12T12:48Z`) — refreshed:** status path
+  `.pdca/status/issue-3-r5.md` — **modified this cycle** and now **tracked** (committed by the
+  bookkeeping commit `e1a8cf8 chore: record PDCA r5 acceptance and close #3 evidence` after the ACT
+  write; the "untracked" statements above are history, superseded by this bullet). `HEAD` observed at
+  this write: `edb68a3507df10f51e394ec0d6bc32dd40d3f5f5` (`edb68a3`, later driver commits after
+  `3130f55`; the item's product delta is unchanged and not reopened). Index **empty**
+  (`git diff --cached --name-only` prints nothing); `git status --porcelain` for the two status files
+  shows `.pdca/status/issue-3-r5.md` modified and `.pdca/status/collection-open-issues-r5.md`
+  modified — both **in the worktree only**: not staged, not committed, no push. The evidence root stays
+  invisible to `git status` via `.gitignore` (`/.pdca/*`). No product byte was touched by this
+  recording.
+
 ## Progress log
 
 - 2026-11-11T10:51:42Z | DO | r1 | n=1 | checkpoint `2_HP-UVR.pth` verified — 126,782,699 B, sha256 `26d6400d2d2e90811ba2381828c8c3519196097375af524c3d0edd969acf5356`, tail md5 `941f3f7f…44b1`, `vr_model_param=4band_v2`, `nn_arch=123812` | .pdca/open-issues-r5/rv1/item-3-vr-uvr/logs/01-checkpoint-verify.log
@@ -518,3 +652,7 @@ claimed as its delta.
 - 2026-11-12T07:23:00Z | ACT | r2 | n=1 | item `#3` **outcome `accepted`**; record left **`open`** on one explicit record-closure blocker — the mandatory `pdca-check` `retrospective` report was not supplied with the finalization brief, so `## Lessons learned` records the absence, no fallback analysis was written, and the record is not marked `completed` | .pdca/status/issue-3-r5.md §ACT record, §Lessons learned
 - 2026-11-12T07:24:00Z | ACT | r2 | n=1 | record lint exit **`0`** on both files — `status-lint: OK (.pdca\status\issue-3-r5.md: 0 tables, 0 rows)` and `status-lint: OK (.pdca\status\collection-open-issues-r5.md: 2 tables, 7 rows)`; one earlier collection run exited **`2`** on the `terminal` column and was fixed (recorded in the collection progress log, not as a pass) | .pdca/open-issues-r5/rv1/item-3-vr-uvr/lint.txt
 - 2026-11-12T07:24:00Z | ACT | r2 | n=1 | **bookkeeping commit created on `main`** carrying exactly `.pdca/status/collection-open-issues-r5.md` and `.pdca/status/issue-3-r5.md` (message `chore: record PDCA r5 acceptance and close #3 evidence`); identity per command via `git -c`, no `git config` written, `.openidea/` and `.pdca/status/collection-open-issues-r3.md` not staged, no push; the hash is reported to the driver because a commit cannot record its own id | `git show --stat HEAD`
+- 2026-11-12T12:48Z | ACT | r2 | n=1 | item `#3` **mandatory `pdca-check` retrospective recorded verbatim** in §Lessons learned (source: `pdca-check` `retrospective` mode report routed by the driving role; 3 lessons with sources, limits and uncertainty; completion signal `retrospective_complete`) and the item record marked **`completed`** (outcome `accepted` unchanged) — record-closure blocker cleared; no verdict, counter, attempt or verification added; accepted result, commit `3130f55` and GitHub `#3` closure not reopened | .pdca/status/issue-3-r5.md §Lessons learned
+- 2026-11-12T17:50Z | ACT | r2 | n=1 | item `#3` **mandatory retrospective returned and persisted for the record-closure bookkeeping** — the `pdca-check` report in `mode: retrospective` (completion signal `retrospective_complete`) is recorded **verbatim** in §Lessons learned as a second, labelled block, with the `12:48Z` block kept byte-identical; record **closed** (`phase: ACT · record: completed · outcome: accepted`), counters `N=1 · r=2 · n=1` unchanged; no new verdict, attempt or verification, and the accepted outcome, product commit `3130f55` and the GitHub `#3` closure are unchanged and not reopened | .pdca/status/issue-3-r5.md §Lessons learned, §ACT record
+- 2026-11-12T17:51Z | ACT | r2 | n=1 | record lint exit **`0`** on both files — `status-lint: OK (.pdca\status\collection-open-issues-r5.md: 2 tables, 7 rows)` and `status-lint: OK (.pdca\status\issue-3-r5.md: 0 tables, 0 rows)`; commands, exit codes and outputs in the log | .pdca/open-issues-r5/rv1/item-3-vr-uvr/lint.txt
+- 2026-11-12T12:52Z | ACT | r2 | n=1 | **Notice — concurrent ACT writers, reconciled:** a second executor dispatch performed the same record-closure bookkeeping at `2026-11-12T17:50Z`–`17:51Z` (its clock, recorded as returned) and recorded its own English retrospective block and ACT bullet; both retrospective reports stay in §Lessons learned, each labelled and verbatim, and both §ACT record bullets stay. Agreed state: `phase: ACT · record: completed · outcome: accepted`, counters `N=1 · r=2 · n=1`, no counter/attempt/verification change, no staging, no commit, no push, no GitHub write. Record-writer collision, not a defect of the work; no STOP | .pdca/status/issue-3-r5.md §Lessons learned, §ACT record
