@@ -172,13 +172,46 @@ impl Stems {
 /// mismatched pair fails with a typed error instead of producing garbage.
 pub struct Separator {
     model: Box<dyn RoformerModel>,
+    /// The Demucs v4 path has its own segment/overlap pipeline
+    /// (`model::demucs_pipeline`), so a Demucs separator is not a
+    /// [`RoformerModel`]; when present, [`Separator::separate`] delegates to it.
+    demucs: Option<crate::model::DemucsSeparator>,
     config: SeparatorConfig,
     inference: InferenceConfig,
     device: DeviceChoice,
 }
 
-fn default_stem_names(n: usize) -> Vec<String> {
-    match n {
+/// Placeholder model slot for pipelines that are not RoFormer families.
+///
+/// A Demucs separator owns its own forward pass (`model::demucs_pipeline`), so
+/// [`Separator::separate`] dispatches to it before the RoFormer path is reached.
+/// Every method below is therefore unreachable for that configuration and
+/// reports a typed error instead of panicking.
+struct NoRoformerModel {
+    device: Device,
+}
+
+impl RoformerModel for NoRoformerModel {
+    fn forward(&self, _raw_audio: &candle_core::Tensor) -> candle_core::Result<candle_core::Tensor> {
+        Err(candle_core::Error::Msg(
+            "this separator is not a RoFormer model".into(),
+        ))
+    }
+    fn audio_channels(&self) -> usize {
+        2
+    }
+    fn num_stems(&self) -> usize {
+        4
+    }
+    fn hop(&self) -> usize {
+        1024
+    }
+    fn device(&self) -> &Device {
+        &self.device
+    }
+}
+
+fn default_stem_names(n: usize) -> Vec<String> {    match n {
         1 => vec!["vocals".to_string()],
         4 => vec!["drums", "bass", "other", "vocals"]
             .iter()
@@ -207,8 +240,7 @@ fn named_or_index(stems: &[(String, AudioBuffer)], name: &str, idx: usize) -> Au
 
 impl Separator {
     /// Load a local checkpoint (`safetensors`) and its YAML profile.
-    pub fn load(assets: &LocalSeparationAssets, device: DeviceChoice) -> Result<Self, Error> {
-        assets.validate()?;
+    pub fn load(assets: &LocalSeparationAssets, device: DeviceChoice) -> Result<Self, Error> {        assets.validate()?;
         let cfg = SeparatorConfig::from_yaml_file(&assets.config)?;
         cfg.validate()?;
         let inference = InferenceConfig::from_yaml_file(&assets.config)?;
@@ -250,10 +282,45 @@ impl Separator {
                         .into(),
                 )));
             }
+            // Demucs v4 has no RoFormer YAML profile; load it with
+            // `Separator::load_demucs`.
+            crate::config::ModelFamily::Demucs => {
+                return Err(Error::Config(crate::error::ConfigError::Invalid(
+                    "Demucs checkpoints are loaded by Separator::load_demucs, not Separator::load"
+                        .into(),
+                )));
+            }
         };
         Ok(Self {
             model,
+            demucs: None,
             config: cfg,
+            inference,
+            device,
+        })
+    }
+
+    /// Load a Demucs v4 (HTDemucs) `safetensors` artifact produced by
+    /// `tools/convert_demucs.py`.
+    ///
+    /// Every tensor name and shape is validated against the pinned
+    /// [`crate::model::demucs::DemucsConfig`] schema before the model is built;
+    /// a mismatch is a typed error, never a silent skip. Separation then follows
+    /// the reference `apply_model(shifts=0, split=True, overlap=0.25)` path and
+    /// returns four stems named `drums`, `bass`, `other`, `vocals`.
+    pub fn load_demucs(
+        checkpoint: impl AsRef<Path>,
+        device: DeviceChoice,
+    ) -> Result<Self, Error> {
+        let demucs = crate::model::DemucsSeparator::load(checkpoint, device)?;
+        let config = SeparatorConfig::demucs();
+        let inference = InferenceConfig::demucs();
+        let dev = device.resolve()?;
+        let model: Box<dyn RoformerModel> = Box::new(NoRoformerModel { device: dev });
+        Ok(Self {
+            model,
+            demucs: Some(demucs),
+            config,
             inference,
             device,
         })
@@ -294,6 +361,9 @@ impl Separator {
     ///   and `stems` holds one named entry per `num_stems` (no residual).
     pub fn separate(&self, audio: &AudioBuffer) -> Result<Stems, Error> {
         audio.validate()?;
+        if let Some(demucs) = &self.demucs {
+            return demucs.separate(audio);
+        }
         let channels = audio.channels as usize;
         let input_sr = audio.sample_rate;
         let n = audio.planar.len() / channels;
@@ -1108,3 +1178,4 @@ impl Separator {
         self.separate_file(input_path, vocals_path, instrumental_path, chunk_duration)
     }
 }
+

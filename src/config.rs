@@ -141,6 +141,41 @@ impl SeparatorConfig {
         }
     }
 
+    /// The profile of the pinned Demucs v4 (HTDemucs) checkpoint.
+    ///
+    /// The separator geometry lives in [`crate::model::demucs::DemucsConfig`];
+    /// this envelope carries the fields the generic [`crate::separator::Separator`]
+    /// API needs (sample rate, stem count, stereo, STFT geometry).
+    pub fn demucs() -> Self {
+        Self {
+            dim: 48,
+            depth: 4,
+            stereo: true,
+            num_stems: 4,
+            num_bands: 1,
+            family: Some(ModelFamily::Demucs),
+            freqs_per_bands: None,
+            dim_head: 8,
+            heads: 8,
+            flash_attn: false,
+            dim_freqs_in: 2048,
+            sample_rate: 44100,
+            stft_n_fft: 4096,
+            stft_hop_length: 1024,
+            stft_win_length: 4096,
+            stft_normalized: true,
+            mask_estimator_depth: 0,
+            use_torch_checkpoint: false,
+            time_transformer_depth: 1,
+            freq_transformer_depth: 1,
+            mlp_expansion_factor: 4,
+            linear_transformer_depth: 0,
+            norm_output: true,
+            skip_connection: false,
+            zero_dc: false,
+        }
+    }
+
     pub fn validate(&self) -> Result<(), ConfigError> {
         if self.dim == 0 {
             return Err(ConfigError::Invalid("dim must be > 0".into()));
@@ -191,6 +226,10 @@ impl SeparatorConfig {
             // a RoFormer YAML profile. `VrProfile::from_separator_config`
             // re-validates the STFT geometry against that table.
             ModelFamily::VrArch => {}
+            // Demucs v4 keeps its whole geometry in the pinned
+            // `model::demucs::DemucsConfig`; the profile only carries the
+            // envelope needed to reach `Separator::load_demucs`.
+            ModelFamily::Demucs => {}
         }
         if self.dim_head == 0 || self.heads == 0 {
             return Err(ConfigError::Invalid(
@@ -253,6 +292,16 @@ pub enum ModelFamily {
         alias = "uvr"
     )]
     VrArch,
+    /// Demucs v4 (HTDemucs). Its geometry is pinned in
+    /// `model::demucs::DemucsConfig`; the profile is used only to reach
+    /// `Separator::load_demucs`.
+    #[serde(
+        rename = "demucs",
+        alias = "Demucs",
+        alias = "htdemucs",
+        alias = "demucs_v4"
+    )]
+    Demucs,
 }
 
 #[derive(Debug, Clone, PartialEq, serde::Deserialize)]
@@ -373,12 +422,37 @@ impl InferenceConfig {
         }
     }
 
+    /// Demucs v4 (HTDemucs) level and segmentation choices.
+    ///
+    /// The reference path segments at `int(44100 * 39/5)` samples with
+    /// `overlap = 0.25` and `shifts = 0`, and applies its own per-track
+    /// normalisation, so the generic writer level processing is disabled here.
+    pub fn demucs() -> Self {
+        Self {
+            segment_size: Some(343_980),
+            chunk_hops: 343_980,
+            num_overlap: 2,
+            step_size: None,
+            overlap_size: None,
+            fade_size: None,
+            batch_size: 1,
+            pitch_shift: 0.0,
+            denoise: false,
+            tta: false,
+            sample_rate: 44100,
+            normalization: 0.0,
+            amplification: 0.0,
+            invert_spect: false,
+        }
+    }
+
     pub fn for_family(family: ModelFamily) -> Self {
         match family {
             ModelFamily::MelBandRoformer => Self::melband(),
             ModelFamily::BSRoformer => Self::bsroformer(),
             ModelFamily::MdxNet => Self::mdx(),
             ModelFamily::VrArch => Self::vr_arch(),
+            ModelFamily::Demucs => Self::demucs(),
         }
     }
 

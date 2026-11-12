@@ -6,11 +6,15 @@ use crate::error::Error;
 use crate::mel::mel_bin_membership;
 
 pub mod bs_roformer;
+pub mod demucs;
+pub mod demucs_pipeline;
 pub mod vr_arch;
 pub mod vr_pipeline;
 pub mod vr_resample;
 
 pub use bs_roformer::BSRoformer;
+pub use demucs::{DemucsConfig, HTDemucs};
+pub use demucs_pipeline::DemucsSeparator;
 pub use vr_arch::CascadedAsppNet as VrCascadedAsppNet;
 pub use vr_pipeline::{VrProfile, VrSeparator};
 
@@ -483,6 +487,9 @@ pub fn expected_key_shapes(cfg: &SeparatorConfig) -> Vec<(String, Vec<usize>)> {
         // VR Arch has a fixed `CascadedASPPNet` key schema; it is validated by
         // `crate::model::vr_pipeline::VrSeparator` while loading.
         ModelFamily::VrArch => Vec::new(),
+        // Demucs v4 has a fixed `HTDemucs` schema; it is validated by
+        // `crate::model::demucs::validate_state` while loading.
+        ModelFamily::Demucs => Vec::new(),
     }
 }
 
@@ -1141,3 +1148,4 @@ impl RoformerModel for MelBandRoformer {
         &self.device
     }
 }
+
