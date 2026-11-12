@@ -31,6 +31,10 @@ concurrency:
 
 env:
   CARGO_TERM_COLOR: always
+  # GitHub-hosted runners ship CMake 4.x, which refuses the
+  # `cmake_minimum_required(VERSION 2.8...)` line inside the vendored
+  # libsamplerate sources. This keeps the build working without pinning CMake.
+  CMAKE_POLICY_VERSION_MINIMUM: "3.5"
   # The published UVR "Viperx 1297" BS-RoFormer checkpoint. Pinned by size and
   # SHA-256 inside tools/convert_bs_roformer.py; the converter refuses anything
   # else.
@@ -102,7 +106,7 @@ jobs:
           else
             curl -fL --retry 3 --retry-delay 5 -o "$CACHE/model.ckpt" "$BS_ROFORMER_CKPT_URL"
             python3 -m venv "$CACHE/venv"
-            "$CACHE/venv/bin/pip" install --quiet --disable-pip-version-check torch safetensors
+            "$CACHE/venv/bin/pip" install --quiet --disable-pip-version-check torch numpy safetensors
             "$CACHE/venv/bin/python" tools/convert_bs_roformer.py \
               --ckpt "$CACHE/model.ckpt" \
               --config configs/bs_roformer_viperx_1297.yaml \
