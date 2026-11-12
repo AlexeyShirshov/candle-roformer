@@ -421,7 +421,10 @@ impl MaskEstimator {
         let bands = x.dim(2)?;
         let mut outs = Vec::with_capacity(bands);
         for i in 0..bands {
-            let band_x = x.narrow(2, i, 1)?.squeeze(2)?; // (b,t,dim)
+            // A band slice of (b, t, bands, dim) is a strided view; candle's
+            // Metal matmul requires contiguous operands, so materialise it.
+            // This is a copy, not a numerical change.
+            let band_x = x.narrow(2, i, 1)?.squeeze(2)?.contiguous()?; // (b,t,dim)
             let mlp = &self.to_freqs[i];
             let out = mlp.forward(&band_x)?; // (b,t,dim_in*2)
                                              // GLU over last dim
