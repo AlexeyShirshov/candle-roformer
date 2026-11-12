@@ -1,0 +1,161 @@
+name: gpu-smoke
+
+# Gate G2 (issue #11): per-backend GPU smoke evidence.
+#
+# * `metal-smoke` runs a REAL checkpoint through the public `Separator` API on
+#   an Apple Silicon runner and compares it against the CPU result. It is the
+#   only job that can justify a "Metal tested" claim, and the claim is only
+#   valid for the runner labels and date of a green run.
+# * `cpu-sanity` only proves that the crate still builds and the CPU suite
+#   still passes on hosts *without* a GPU. It asserts nothing about CUDA/Metal.
+#
+# There is no CUDA job here: GitHub-hosted runners have no NVIDIA GPU, so a
+# CUDA smoke run can only come from a real CUDA host (see
+# docs/gpu-smoke-evidence/ for the local run).
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "tests/gpu_smoke.rs"
+      - ".github/workflows/gpu-smoke.yml"
+      - "src/**"
+      - "configs/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
+
+concurrency:
+  group: gpu-smoke-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  # The published UVR "Viperx 1297" BS-RoFormer checkpoint. Pinned by size and
+  # SHA-256 inside tools/convert_bs_roformer.py; the converter refuses anything
+  # else.
+  BS_ROFORMER_CKPT_URL: https://github.com/nomadkaraoke/python-audio-separator/releases/download/model-configs/model_bs_roformer_ep_317_sdr_12.9755.ckpt
+  CHECKPOINT_CACHE: ~/.cache/candle-roformer-gpu
+
+jobs:
+  cpu-sanity:
+    name: no-GPU sanity (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Install Linux build dependencies
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y build-essential cmake pkg-config
+
+      - name: Build (no GPU features)
+        run: cargo build --release --locked
+
+      - name: Test (CPU only)
+        # No GPU feature is compiled in, so tests/gpu_smoke.rs compiles to the
+        # "no backend compiled in" stub and asserts nothing about a GPU.
+        run: cargo test --release --locked
+
+  metal-smoke:
+    name: Metal smoke (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-14, macos-15]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Measure the runner's Metal support (no assumption)
+        run: |
+          set -euo pipefail
+          echo "--- hardware"
+          sysctl -n machdep.cpu.brand_string || true
+          sysctl -n hw.ncpu hw.memsize || true
+          echo "--- system_profiler SPDisplaysDataType"
+          system_profiler SPDisplaysDataType || true
+
+      - name: Restore the converted checkpoint
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/candle-roformer-gpu
+          key: bs-roformer-viperx-1297-converted-v1
+
+      - name: Fetch and convert the real checkpoint
+        run: |
+          set -euo pipefail
+          CACHE="$HOME/.cache/candle-roformer-gpu"
+          OUT="$CACHE/model_bs_roformer_ep_317_sdr_12.9755.safetensors"
+          mkdir -p "$CACHE"
+          if [ -s "$OUT" ]; then
+            echo "checkpoint already cached: $(ls -l "$OUT")"
+          else
+            curl -fL --retry 3 --retry-delay 5 -o "$CACHE/model.ckpt" "$BS_ROFORMER_CKPT_URL"
+            python3 -m venv "$CACHE/venv"
+            "$CACHE/venv/bin/pip" install --quiet --disable-pip-version-check torch safetensors
+            "$CACHE/venv/bin/python" tools/convert_bs_roformer.py \
+              --ckpt "$CACHE/model.ckpt" \
+              --config configs/bs_roformer_viperx_1297.yaml \
+              --out "$OUT"
+            rm -f "$CACHE/model.ckpt"
+          fi
+          ls -l "$OUT"
+
+      - name: Build --features metal
+        run: cargo build --release --locked --features metal
+
+      - name: Run the Metal smoke test
+        id: smoke
+        env:
+          CANDLE_ROFORMER_GPU_SMOKE_SAFETENSORS: ~/.cache/candle-roformer-gpu/model_bs_roformer_ep_317_sdr_12.9755.safetensors
+          CANDLE_ROFORMER_GPU_SMOKE_CONFIG: configs/bs_roformer_viperx_1297.yaml
+        run: |
+          set -o pipefail
+          # The tilde in the env var is not expanded by cargo; expand it here.
+          export CANDLE_ROFORMER_GPU_SMOKE_SAFETENSORS="$HOME/.cache/candle-roformer-gpu/model_bs_roformer_ep_317_sdr_12.9755.safetensors"
+          cargo test --release --locked --features metal --test gpu_smoke \
+            -- --ignored --nocapture 2>&1 | tee "$RUNNER_TEMP/metal-smoke.log"
+
+      - name: Upload the smoke log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: metal-smoke-${{ matrix.os }}
+          path: ${{ runner.temp }}/metal-smoke.log
+          if-no-files-found: error
+
+      - name: Classify the outcome
+        # This step never turns a failure green: it only states, in the run
+        # summary, whether Metal was proven on this runner or the backend was
+        # unavailable here. The job status stays whatever the test produced.
+        if: always()
+        run: |
+          LOG="$RUNNER_TEMP/metal-smoke.log"
+          {
+            echo "### Metal smoke on ${{ matrix.os }}"
+            echo ""
+            if [ ! -f "$LOG" ]; then
+              echo "**NO EVIDENCE**: the smoke test produced no log."
+            elif grep -q "result=PASS" "$LOG"; then
+              echo "**PROVEN on this runner**: the smoke test passed."
+            elif grep -qi "backend unavailable on this host" "$LOG"; then
+              echo "**NOT RUN**: Metal is unavailable on this runner (measured, see log)."
+              echo "This run proves nothing about Metal and must not be cited as support."
+            else
+              echo "**FAILED**: the smoke test ran and failed (see the uploaded log)."
+            fi
+            echo ""
+            echo '```'
+            grep -E "^\[gpu-smoke\]|^error|panicked" "$LOG" | head -40 || true
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
