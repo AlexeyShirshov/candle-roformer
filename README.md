@@ -130,7 +130,8 @@ downmixed back to mono; stereo stays stereo.
 | BS-RoFormer | implemented | `configs/bs_roformer_viperx_1297.yaml` (dim 512 / depth 12, 62 bands) | `model_bs_roformer_ep_317_sdr_12.9755.ckpt` converted with `tools/convert_bs_roformer.py` (pinned size/SHA-256) |
 | Whisper | implemented (transcription) | `config.json` from the checkpoint | `model.safetensors` + `tokenizer.json` |
 | MDX-Net (ONNX) | implemented | built-in profile `mdx::uvr_mdx_net_inst_hq_3()` | `UVR-MDX-NET-Inst_HQ_3.onnx` as published (SHA-256 checked before inference) |
-| VR/UVR, Demucs, MDX23C | not implemented | — | — |
+| VR Arch / UVR (.pth) | implemented | built-in `4band_v2` profile (`VrProfile::four_band_v2()`, nn_arch 123812) | `2_HP-UVR.pth` converted offline with `tools/convert_vr_arch.py` (pinned SHA-256 and size) |
+| Demucs, MDX23C | not implemented | - | - |
 
 The family is selected from the profile: an explicit `family:` key (`mel_band_roformer` /
 `bs_roformer`), or, when absent, the config shape — `freqs_per_bands` selects BS-RoFormer,
@@ -202,9 +203,19 @@ Metal: `cargo build --release --features metal` (macOS).
   `317554b07fe1ea5279a77f2b1520a41ea4b93432560c4ffd08792c30fddf9adc`) on the CPU through the
   pure-Rust `tract-onnx` runtime. On a frozen 20 s stereo fixture the MDX-Net stems match
   `audio-separator` 0.48.0 at correlation 0.999999999999, max abs difference 1.4e-6 and RMSE 1.5e-7
-  (SDR 118.9 dB). `audio-separator` also covers VR/UVR, Demucs and MDX23C — those are not ported
+  (SDR 118.9 dB). `audio-separator` also covers VR/UVR, Demucs and MDX23C - those are not ported
   yet. The MDX-Net checkpoint is user-supplied and is not downloaded, bundled or vendored; see
   `docs/dependency-audit.md` for the licence audit.
+- VR Arch (UVR) support: the published `2_HP-UVR.pth` (126,782,699 B, SHA-256
+  `26d6400d2d2e90811ba2381828c8c3519196097375af524c3d0edd969acf5356`) is converted offline to
+  safetensors by `tools/convert_vr_arch.py` (pinned size and checksum, refusal paths covered by
+  `tools/tests/test_convert_vr_arch.py`; the `.pth` is never read at runtime). Inference reproduces
+  the `4band_v2` profile (band STFTs 960/512/320/640 with hops 480/160/80/80, `window_size=512`,
+  `aggression=5`, no TTA / high-end / post-process) on the CPU in f32. On a frozen 12 s stereo
+  fixture the stems match `audio-separator` 0.48.0 at max abs difference 1.4e-6, RMSE 3.6e-8 and
+  SDR 112.8 dB (correlation 0.999999999998) for the primary stem. The synthesis resampler is
+  `libsamplerate` (`sinc_fastest`), which is what the reference uses on non-ARM hosts; building the
+  crate therefore needs CMake on the build machine. The checkpoint is user-supplied.
 - BS-RoFormer parity: the published `model_bs_roformer_ep_317_sdr_12.9755.ckpt` (639,331,213 B,
   SHA-256 `5b84f37e…115aa`) passes strict validation (699 tensors, zero missing / unexpected /
   shape mismatches against the crate's own `expected_key_shapes` schema; see the opt-in test under

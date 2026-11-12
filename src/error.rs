@@ -43,6 +43,21 @@ pub enum MdxError {
     UnsupportedInput(String),
 }
 
+/// Errors of the VR Arch (UVR) family.
+#[derive(Debug, Clone, PartialEq, Eq, Error)]
+pub enum VrError {
+    #[error("invalid VR profile: {0}")]
+    InvalidProfile(String),
+    #[error("VR model asset missing: {0}")]
+    MissingAsset(String),
+    #[error("VR model checksum mismatch: expected {expected}, got {actual}")]
+    ChecksumMismatch { expected: String, actual: String },
+    #[error("VR inference failed: {0}")]
+    Inference(String),
+    #[error("unsupported VR input: {0}")]
+    UnsupportedInput(String),
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Error)]
 pub enum ConverterError {
     #[error("converter error: {0}")]
@@ -114,6 +129,8 @@ pub enum Error {
     Dsp(#[from] DspError),
     #[error(transparent)]
     Mdx(#[from] MdxError),
+    #[error(transparent)]
+    Vr(#[from] VrError),
     #[error(transparent)]
     Converter(#[from] ConverterError),
     #[error(transparent)]

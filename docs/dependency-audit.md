@@ -12,6 +12,8 @@ This repository's own license: `LICENSE` (MIT, copyright 2026 Alexey) — see sp
 |---|---:|---|---|
 | candle-core | 0.11.1 | MIT OR Apache-2.0 | `docs/dependency-audit-evidence/candle-core-0.11.1.txt` |
 | candle-nn | 0.11.1 | MIT OR Apache-2.0 | `metadata_only` (no licence file in source tree) |
+| samplerate | 0.2.4 | BSD-2-Clause | `metadata_only` (crate manifest; wraps libsamplerate) |
+| libsamplerate-sys | 0.1.12 | BSD-2-Clause | `metadata_only` (crate manifest; builds vendored libsamplerate C sources with CMake) |
 | candle-transformers | 0.11.1 | MIT OR Apache-2.0 | pinned Candle checkout; Whisper encoder/decoder/log-mel |
 | tokenizers | 0.23.2 | Apache-2.0 | Whisper `tokenizer.json` loading and text decoding |
 | serde_json | 1.0.154 | MIT OR Apache-2.0 | Whisper `config.json` and the transcript JSON sidecar |

@@ -104,7 +104,8 @@ pub fn read_audio(path: impl AsRef<Path>) -> Result<AudioBuffer, Error> {
     }
     let channels = codec_params
         .channels
-        .as_ref().map(|c| c.count() as u16)
+        .as_ref()
+        .map(|c| c.count() as u16)
         .unwrap_or(1);
     if channels == 0 || channels > 2 {
         return Err(Error::Audio(AudioError::TooManyChannels(format!(
@@ -216,8 +217,7 @@ pub fn write_wav_f32(path: impl AsRef<Path>, buf: &AudioBuffer) -> Result<(), Er
     let channels_usize = channels as usize;
     let frames = buf.planar.len() / channels_usize;
 
-    let mut f = File::create(path)
-        .map_err(|e| Error::Audio(AudioError::Io(e.to_string())))?;
+    let mut f = File::create(path).map_err(|e| Error::Audio(AudioError::Io(e.to_string())))?;
     // RIFF header
     f.write_all(b"RIFF").unwrap();
     f.write_all(&file_size.to_le_bytes()).unwrap();
@@ -239,7 +239,9 @@ pub fn write_wav_f32(path: impl AsRef<Path>, buf: &AudioBuffer) -> Result<(), Er
         for c in 0..channels_usize {
             let s = buf.planar[c * frames + frame];
             if !s.is_finite() {
-                return Err(Error::Audio(AudioError::NonFinite("non-finite output".into())));
+                return Err(Error::Audio(AudioError::NonFinite(
+                    "non-finite output".into(),
+                )));
             }
             f.write_all(&s.to_le_bytes()).unwrap();
         }
@@ -297,9 +299,7 @@ fn read_flac(
                 }
                 Ok(None) => break,
                 Err(SymphoniaError::ResetRequired) => break,
-                Err(e) => {
-                    return Err(Error::Audio(AudioError::UnsupportedFormat(e.to_string())))
-                }
+                Err(e) => return Err(Error::Audio(AudioError::UnsupportedFormat(e.to_string()))),
             }
         }
     }
@@ -328,7 +328,9 @@ fn read_flac(
             as f32
             * scale;
         if !v.is_finite() {
-            return Err(Error::Audio(AudioError::NonFinite("non-finite sample".into())));
+            return Err(Error::Audio(AudioError::NonFinite(
+                "non-finite sample".into(),
+            )));
         }
         planar[idx % channels].push(v);
         idx += 1;
@@ -367,9 +369,13 @@ pub struct StreamingWavWriter {
 }
 
 impl StreamingWavWriter {
-    pub fn create(path: impl AsRef<std::path::Path>, sample_rate: u32, channels: u16) -> Result<Self, Error> {
-        let mut f = File::create(path.as_ref())
-            .map_err(|e| Error::Audio(AudioError::Io(e.to_string())))?;
+    pub fn create(
+        path: impl AsRef<std::path::Path>,
+        sample_rate: u32,
+        channels: u16,
+    ) -> Result<Self, Error> {
+        let mut f =
+            File::create(path.as_ref()).map_err(|e| Error::Audio(AudioError::Io(e.to_string())))?;
         let bits_per_sample: u16 = 32;
         let byte_rate = sample_rate * channels as u32 * (bits_per_sample as u32 / 8);
         let block_align = channels * (bits_per_sample / 8);
@@ -407,7 +413,9 @@ impl StreamingWavWriter {
             for c in 0..channels {
                 let s = planar[c * frames + frame];
                 if !s.is_finite() {
-                    return Err(Error::Audio(AudioError::NonFinite("non-finite output".into())));
+                    return Err(Error::Audio(AudioError::NonFinite(
+                        "non-finite output".into(),
+                    )));
                 }
                 self.file
                     .write_all(&s.to_le_bytes())
@@ -475,7 +483,12 @@ impl AudioStreamReader {
         }
 
         let mut format = symphonia::default::get_probe()
-            .probe(&hint, mss, FormatOptions::default(), MetadataOptions::default())
+            .probe(
+                &hint,
+                mss,
+                FormatOptions::default(),
+                MetadataOptions::default(),
+            )
             .map_err(|e| Error::Audio(AudioError::UnsupportedFormat(e.to_string())))?;
 
         let track = format
@@ -494,7 +507,11 @@ impl AudioStreamReader {
         let sample_rate = codec_params
             .sample_rate
             .ok_or_else(|| Error::Audio(AudioError::InvalidSampleRate("missing".into())))?;
-        let channels = codec_params.channels.as_ref().map(|c| c.count()).unwrap_or(1);
+        let channels = codec_params
+            .channels
+            .as_ref()
+            .map(|c| c.count())
+            .unwrap_or(1);
         if channels == 0 || channels > 2 {
             return Err(Error::Audio(AudioError::TooManyChannels(format!(
                 "unsupported channel count {}",
@@ -548,7 +565,12 @@ impl AudioStreamReader {
 
     pub fn read_frames(&mut self, n: usize) -> Result<Vec<f32>, Error> {
         match &mut self.inner {
-            ReaderInner::Buffered { data, channels, pos, .. } => {
+            ReaderInner::Buffered {
+                data,
+                channels,
+                pos,
+                ..
+            } => {
                 let ch = *channels;
                 let frames_avail = (data.len() / ch).saturating_sub(*pos);
                 let take = n.min(frames_avail);
@@ -617,7 +639,9 @@ impl AudioStreamReader {
                             }
                             let v = interleaved[f * pc + c];
                             if !v.is_finite() {
-                                return Err(Error::Audio(AudioError::NonFinite("non-finite sample".into())));
+                                return Err(Error::Audio(AudioError::NonFinite(
+                                    "non-finite sample".into(),
+                                )));
                             }
                             pending.push(v);
                         }

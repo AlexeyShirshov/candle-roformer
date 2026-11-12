@@ -242,6 +242,14 @@ impl Separator {
                         .into(),
                 )));
             }
+            // VR Arch drives its own multi-band STFT/ROI pipeline; load it with
+            // `crate::model::vr_pipeline::VrSeparator::load`.
+            crate::config::ModelFamily::VrArch => {
+                return Err(Error::Config(crate::error::ConfigError::Invalid(
+                    "VR Arch checkpoints are loaded by vr_pipeline::VrSeparator, not Separator::load"
+                        .into(),
+                )));
+            }
         };
         Ok(Self {
             model,

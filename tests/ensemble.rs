@@ -103,13 +103,17 @@ fn avg_wave_pads_each_channel_separately_for_unequal_length_stereo() {
         &[long.clone(), short.clone()],
     )
     .expect("weighted avg_wave");
-    assert_eq!(padded.frames(), 3, "output length is the longest input's frames");
+    assert_eq!(
+        padded.frames(),
+        3,
+        "output length is the longest input's frames"
+    );
     assert_eq!(padded.channels, 2);
     assert_eq!(padded.planar, vec![1.0, 2.0, 0.0, 3.0, 4.0, 0.0]);
 
     // Equal weights: the per-position mean of the same padded layout.
-    let mean = ensemble_waveforms(EnsembleAlgorithm::AvgWave, None, &[long, short])
-        .expect("avg_wave");
+    let mean =
+        ensemble_waveforms(EnsembleAlgorithm::AvgWave, None, &[long, short]).expect("avg_wave");
     assert_eq!(
         mean.planar,
         vec![5.0, 5.5, 4.5, 6.0, 6.5, 4.5],
@@ -135,7 +139,11 @@ fn median_wave_even_model_count_is_the_mean_of_the_two_middles() {
     // the reference's np.median behaviour for an even count, evaluated in f32.
     assert_eq!(
         out.planar,
-        vec![(0.9f32 + 0.1) / 2.0, (-0.9f32 + 0.3) / 2.0, (0.4f32 + -0.2) / 2.0]
+        vec![
+            (0.9f32 + 0.1) / 2.0,
+            (-0.9f32 + 0.3) / 2.0,
+            (0.4f32 + -0.2) / 2.0
+        ]
     );
 }
 
@@ -145,12 +153,8 @@ fn median_wave_ignores_weights_like_the_reference() {
     let b = buffer(44_100, 1, vec![0.1, 0.3, -0.2]);
     let equal = ensemble_waveforms(EnsembleAlgorithm::MedianWave, None, &[a.clone(), b.clone()])
         .expect("median");
-    let weighted = ensemble_waveforms(
-        EnsembleAlgorithm::MedianWave,
-        Some(&[10.0, 1.0]),
-        &[a, b],
-    )
-    .expect("median");
+    let weighted = ensemble_waveforms(EnsembleAlgorithm::MedianWave, Some(&[10.0, 1.0]), &[a, b])
+        .expect("median");
     assert_eq!(equal.planar, weighted.planar);
 }
 
@@ -182,9 +186,12 @@ fn median_wave_pads_each_channel_separately_for_unequal_length_stereo() {
 
     // The reference ignores weights for `median_wave`; that stays true when the
     // shorter member is padded per channel.
-    let weighted =
-        ensemble_waveforms(EnsembleAlgorithm::MedianWave, Some(&[1.0, 8.0, 2.0]), &[a, short, c])
-            .expect("weighted median");
+    let weighted = ensemble_waveforms(
+        EnsembleAlgorithm::MedianWave,
+        Some(&[1.0, 8.0, 2.0]),
+        &[a, short, c],
+    )
+    .expect("weighted median");
     assert_eq!(weighted.planar, out.planar);
 }
 
@@ -197,9 +204,8 @@ fn single_model_is_returned_unchanged() {
     assert_eq!(out.sample_rate, only.sample_rate);
     assert_eq!(out.channels, only.channels);
     // The reference returns waveforms[0] as-is, weights or not.
-    let weighted =
-        ensemble_waveforms(EnsembleAlgorithm::MedianWave, Some(&[7.0]), &[only.clone()])
-            .expect("median");
+    let weighted = ensemble_waveforms(EnsembleAlgorithm::MedianWave, Some(&[7.0]), &[only.clone()])
+        .expect("median");
     assert_eq!(weighted.planar, only.planar);
 }
 
@@ -243,19 +249,32 @@ fn weights_of_the_wrong_length_are_rejected() {
     let b = buffer(44_100, 1, vec![0.2]);
     let err = ensemble_waveforms(EnsembleAlgorithm::AvgWave, Some(&[1.0]), &[a, b])
         .expect_err("weight count");
-    assert!(matches!(ensemble_error(err), EnsembleError::InvalidWeights(_)));
+    assert!(matches!(
+        ensemble_error(err),
+        EnsembleError::InvalidWeights(_)
+    ));
 }
 
 #[test]
 fn zero_or_non_finite_weights_are_rejected() {
     let a = buffer(44_100, 1, vec![0.1]);
     let b = buffer(44_100, 1, vec![0.2]);
-    let zero = ensemble_waveforms(EnsembleAlgorithm::AvgWave, Some(&[1.0, -1.0]), &[a.clone(), b.clone()])
-        .expect_err("zero sum");
-    assert!(matches!(ensemble_error(zero), EnsembleError::InvalidWeights(_)));
+    let zero = ensemble_waveforms(
+        EnsembleAlgorithm::AvgWave,
+        Some(&[1.0, -1.0]),
+        &[a.clone(), b.clone()],
+    )
+    .expect_err("zero sum");
+    assert!(matches!(
+        ensemble_error(zero),
+        EnsembleError::InvalidWeights(_)
+    ));
     let nan = ensemble_waveforms(EnsembleAlgorithm::AvgWave, Some(&[f32::NAN, 1.0]), &[a, b])
         .expect_err("non-finite");
-    assert!(matches!(ensemble_error(nan), EnsembleError::InvalidWeights(_)));
+    assert!(matches!(
+        ensemble_error(nan),
+        EnsembleError::InvalidWeights(_)
+    ));
 }
 
 #[test]
@@ -268,7 +287,10 @@ fn operator_ids_round_trip_and_unknown_operators_are_typed() {
     // silent substitution of different semantics.
     for id in ["avg_fft", "median_fft", "uvr_max_spec", "ensemble_wav", ""] {
         match EnsembleAlgorithm::from_id(id) {
-            Err(EnsembleError::UnknownAlgorithm { id: echoed, supported }) => {
+            Err(EnsembleError::UnknownAlgorithm {
+                id: echoed,
+                supported,
+            }) => {
                 assert_eq!(echoed, id);
                 assert!(supported.contains("avg_wave") && supported.contains("median_wave"));
             }
@@ -282,8 +304,14 @@ fn vocal_balanced_has_the_documented_composition() {
     let preset = EnsemblePreset::builtin("vocal_balanced").expect("built-in preset");
     assert_eq!(preset.id, "vocal_balanced");
     assert_eq!(preset.algorithm, EnsembleAlgorithm::AvgWave);
-    assert_eq!(preset.weights, None, "equal weights are documented as `null`");
-    assert_eq!(preset.stems, vec!["vocals".to_string(), "instrumental".to_string()]);
+    assert_eq!(
+        preset.weights, None,
+        "equal weights are documented as `null`"
+    );
+    assert_eq!(
+        preset.stems,
+        vec!["vocals".to_string(), "instrumental".to_string()]
+    );
     let checkpoints: Vec<&str> = preset
         .models
         .iter()
@@ -291,10 +319,7 @@ fn vocal_balanced_has_the_documented_composition() {
         .collect();
     assert_eq!(
         checkpoints,
-        vec![
-            "model_bs_roformer_ep_317_sdr_12.9755.ckpt",
-            "voc_fv7.ckpt"
-        ],
+        vec!["model_bs_roformer_ep_317_sdr_12.9755.ckpt", "voc_fv7.ckpt"],
         "the preset is BS-RoFormer + MelBand, in application order"
     );
     for member in &preset.models {
@@ -341,7 +366,10 @@ stems: [vocals, instrumental]
         other => panic!("weight count must be rejected, got {other:?}"),
     }
 
-    let bad_role = good.replace("role: vocals\n  - checkpoint: b.ckpt", "role: other\n  - checkpoint: b.ckpt");
+    let bad_role = good.replace(
+        "role: vocals\n  - checkpoint: b.ckpt",
+        "role: other\n  - checkpoint: b.ckpt",
+    );
     match EnsemblePreset::from_yaml_str(&bad_role) {
         Err(EnsembleError::InvalidPreset(_)) => {}
         other => panic!("a role outside the stem set must be rejected, got {other:?}"),
@@ -417,7 +445,12 @@ fn empty_buffer_is_rejected_by_the_audio_validator() {
 #[cfg(test)]
 fn read_planar_f32(path: &std::path::Path) -> Vec<f32> {
     let bytes = std::fs::read(path).unwrap_or_else(|e| panic!("read {}: {e}", path.display()));
-    assert_eq!(bytes.len() % 4, 0, "{} is not a whole number of f32", path.display());
+    assert_eq!(
+        bytes.len() % 4,
+        0,
+        "{} is not a whole number of f32",
+        path.display()
+    );
     bytes
         .chunks_exact(4)
         .map(|c| f32::from_le_bytes([c[0], c[1], c[2], c[3]]))
@@ -427,7 +460,12 @@ fn read_planar_f32(path: &std::path::Path) -> Vec<f32> {
 #[cfg(test)]
 fn read_planar_f64(path: &std::path::Path) -> Vec<f64> {
     let bytes = std::fs::read(path).unwrap_or_else(|e| panic!("read {}: {e}", path.display()));
-    assert_eq!(bytes.len() % 8, 0, "{} is not a whole number of f64", path.display());
+    assert_eq!(
+        bytes.len() % 8,
+        0,
+        "{} is not a whole number of f64",
+        path.display()
+    );
     bytes
         .chunks_exact(8)
         .map(|c| f64::from_le_bytes([c[0], c[1], c[2], c[3], c[4], c[5], c[6], c[7]]))
@@ -463,7 +501,11 @@ fn ensemble_matches_audio_separator_reference() {
         let mut members = Vec::new();
         for index in 0..2 {
             let planar = read_planar_f32(&fixture.join(format!("inputs/member{index}_{stem}.f32")));
-            assert_eq!(planar.len(), frames * channels as usize, "{stem}: member {index} length");
+            assert_eq!(
+                planar.len(),
+                frames * channels as usize,
+                "{stem}: member {index} length"
+            );
             members.push(candle_roformer::AudioBuffer {
                 sample_rate,
                 channels,
@@ -499,7 +541,10 @@ fn ensemble_matches_audio_separator_reference() {
                 sq += d * d;
             }
             let rmse = (sq / expected.len() as f64).sqrt();
-            println!("{file}: max_abs={max_abs:.3e} rmse={rmse:.3e} samples={}", expected.len());
+            println!(
+                "{file}: max_abs={max_abs:.3e} rmse={rmse:.3e} samples={}",
+                expected.len()
+            );
 
             // Per channel too, so a channel-localized failure cannot hide in the mix.
             for ch in 0..channels as usize {
@@ -513,8 +558,14 @@ fn ensemble_matches_audio_separator_reference() {
                 }
                 let ch_rmse = (ch_sq / frames as f64).sqrt();
                 println!("{file}: channel {ch} max_abs={ch_max:.3e} rmse={ch_rmse:.3e}");
-                assert!(ch_max <= 1e-6, "{file} channel {ch}: max_abs {ch_max:e} > 1e-6");
-                assert!(ch_rmse <= 1e-7, "{file} channel {ch}: rmse {ch_rmse:e} > 1e-7");
+                assert!(
+                    ch_max <= 1e-6,
+                    "{file} channel {ch}: max_abs {ch_max:e} > 1e-6"
+                );
+                assert!(
+                    ch_rmse <= 1e-7,
+                    "{file} channel {ch}: rmse {ch_rmse:e} > 1e-7"
+                );
             }
             assert!(max_abs <= 1e-6, "{file}: max_abs {max_abs:e} > 1e-6");
             assert!(rmse <= 1e-7, "{file}: rmse {rmse:e} > 1e-7");

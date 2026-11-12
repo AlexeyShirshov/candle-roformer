@@ -10,8 +10,8 @@ pub mod device;
 pub mod dsp;
 pub mod ensemble;
 pub mod error;
-pub mod mel;
 pub mod mdx;
+pub mod mel;
 pub mod model;
 pub mod resample;
 pub mod separate;
@@ -29,11 +29,11 @@ pub use device::DeviceChoice;
 pub use ensemble::{ensemble_waveforms, separate_with_preset};
 pub use error::{
     AsrError, AssetError, AudioError, ConfigError, ConverterError, DecodeError, DeviceError,
-    DspError, EnsembleError, Error, MdxError, WavError,
+    DspError, EnsembleError, Error, MdxError, VrError, WavError,
 };
 pub use mdx::{uvr_mdx_net_inst_hq_3, MdxProfile, MdxSeparator};
 pub use mel::mel_bin_membership;
-pub use model::{BSRoformer, MelBandRoformer, RoformerModel};
+pub use model::{BSRoformer, MelBandRoformer, RoformerModel, VrProfile, VrSeparator};
 pub use separator::{Separator, Stems};
 pub use tensor_ops::{average_by_counts, gather_1d, scatter_add_1d};
 pub use wav::{AudioBuffer, AudioStreamReader, StreamingWavWriter};

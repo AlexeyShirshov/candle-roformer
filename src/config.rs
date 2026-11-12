@@ -186,6 +186,11 @@ impl SeparatorConfig {
             // checks above still apply. Inference runs through
             // `mdx::MdxSeparator`, which re-validates the profile.
             ModelFamily::MdxNet => {}
+            // VR Arch checkpoints carry their band table in the pinned
+            // `vr_pipeline::VrProfile` (the `4band_v2` model parameters), not in
+            // a RoFormer YAML profile. `VrProfile::from_separator_config`
+            // re-validates the STFT geometry against that table.
+            ModelFamily::VrArch => {}
         }
         if self.dim_head == 0 || self.heads == 0 {
             return Err(ConfigError::Invalid(
@@ -233,8 +238,21 @@ pub enum ModelFamily {
     MelBandRoformer,
     #[serde(rename = "bs_roformer", alias = "bsroformer", alias = "bs-roformer")]
     BSRoformer,
-    #[serde(rename = "mdx_net", alias = "MdxNet", alias = "mdxnet", alias = "mdx-net")]
+    #[serde(
+        rename = "mdx_net",
+        alias = "MdxNet",
+        alias = "mdxnet",
+        alias = "mdx-net"
+    )]
     MdxNet,
+    #[serde(
+        rename = "vr_arch",
+        alias = "VrArch",
+        alias = "vrarch",
+        alias = "vr_arch_uvr",
+        alias = "uvr"
+    )]
+    VrArch,
 }
 
 #[derive(Debug, Clone, PartialEq, serde::Deserialize)]
@@ -329,11 +347,38 @@ impl InferenceConfig {
         }
     }
 
+    /// VR Arch (UVR) architecture parameters as used by `audio-separator`
+    /// 0.48.0 for the `4band_v2` profile. The band table, window and ROI live in
+    /// the authoritative [`crate::model::VrProfile`]; this config carries the
+    /// user-facing level and segmentation choices for family dispatch.
+    pub fn vr_arch() -> Self {
+        Self {
+            segment_size: None,
+            // The VR pipeline does not chunk; it windows the magnitude
+            // spectrogram itself (512-frame window, 256-frame ROI). The value
+            // keeps `validate()` satisfied and matches the MelBand default.
+            chunk_hops: 800,
+            num_overlap: 2,
+            step_size: None,
+            overlap_size: None,
+            fade_size: None,
+            batch_size: 1,
+            pitch_shift: 0.0,
+            denoise: false,
+            tta: false,
+            sample_rate: 44100,
+            normalization: 0.9,
+            amplification: 0.0,
+            invert_spect: false,
+        }
+    }
+
     pub fn for_family(family: ModelFamily) -> Self {
         match family {
             ModelFamily::MelBandRoformer => Self::melband(),
             ModelFamily::BSRoformer => Self::bsroformer(),
             ModelFamily::MdxNet => Self::mdx(),
+            ModelFamily::VrArch => Self::vr_arch(),
         }
     }
 

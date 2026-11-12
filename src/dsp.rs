@@ -33,7 +33,11 @@ fn reflect_pad(input: &[f32], pad: usize) -> Vec<f32> {
         } else {
             let n_i = n as isize;
             let two_n_minus_2 = 2 * n_i - 2;
-            let idx = if r < n_i { r } else { (two_n_minus_2 - r).max(0).min(n_i - 1) };
+            let idx = if r < n_i {
+                r
+            } else {
+                (two_n_minus_2 - r).max(0).min(n_i - 1)
+            };
             idx as usize
         };
         let reflected = reflected.min(n.saturating_sub(1));
@@ -92,7 +96,8 @@ pub fn stft(
     if input.len() <= pad {
         return Err(DspError::InvalidParams(format!(
             "input too short for reflect padding: need length > {} (pad), got {}",
-            pad, input.len()
+            pad,
+            input.len()
         )));
     }
     let padded = reflect_pad(input, pad);
@@ -130,6 +135,76 @@ pub fn stft(
     })
 }
 
+/// STFT with librosa 1.x default padding (`pad_mode="constant"`).
+///
+/// The VR/UVR reference calls `librosa.stft` with its default `pad_mode`, which
+/// zero-pads `n_fft / 2` samples on both sides. [`stft`] reflects instead, which
+/// is what the RoFormer profiles need; the two are not interchangeable at the
+/// signal boundaries.
+pub fn stft_zeros(
+    input: &[f32],
+    n_fft: usize,
+    hop: usize,
+    win_length: usize,
+) -> Result<StftResult, DspError> {
+    if n_fft == 0 || n_fft % 2 != 0 {
+        return Err(DspError::InvalidParams(
+            "n_fft must be positive even".into(),
+        ));
+    }
+    if hop == 0 {
+        return Err(DspError::InvalidParams("hop must be > 0".into()));
+    }
+    if win_length == 0 || win_length > n_fft {
+        return Err(DspError::InvalidParams(
+            "win_length must be in 1..=n_fft".into(),
+        ));
+    }
+    if input.is_empty() {
+        return Err(DspError::InvalidParams("input must not be empty".into()));
+    }
+    if win_length != n_fft {
+        return Err(DspError::InvalidParams(
+            "this spike requires win_length == n_fft".into(),
+        ));
+    }
+
+    let pad = n_fft / 2;
+    let mut padded = vec![0.0f32; input.len() + 2 * pad];
+    padded[pad..pad + input.len()].copy_from_slice(input);
+    if padded.len() < n_fft {
+        return Err(DspError::InvalidParams("input too short".into()));
+    }
+    let frames = (padded.len() - n_fft) / hop + 1;
+    let bins = n_fft / 2 + 1;
+
+    let window = hann_window_periodic(win_length);
+    let mut re = vec![0.0f32; frames * bins];
+    let mut im = vec![0.0f32; frames * bins];
+
+    let mut planner = rustfft::FftPlanner::<f32>::new();
+    let fft = planner.plan_fft_forward(n_fft);
+
+    for frame in 0..frames {
+        let start = frame * hop;
+        let mut buf = vec![rustfft::num_complex::Complex::new(0.0f32, 0.0f32); n_fft];
+        for i in 0..n_fft {
+            buf[i] = rustfft::num_complex::Complex::new(padded[start + i] * window[i], 0.0);
+        }
+        fft.process(&mut buf);
+        for b in 0..bins {
+            re[frame * bins + b] = buf[b].re;
+            im[frame * bins + b] = buf[b].im;
+        }
+    }
+
+    Ok(StftResult {
+        re,
+        im,
+        frames,
+        bins,
+    })
+}
 pub fn istft(
     spec: &StftResult,
     n_fft: usize,
@@ -354,7 +429,6 @@ pub fn amplify(samples: &mut [f32], threshold: f32) {
 pub fn normalize(samples: &mut [f32], threshold: f32) {
     normalize_peak(samples, threshold)
 }
-
 
 #[cfg(test)]
 mod level_tests {

@@ -6,8 +6,13 @@ use crate::error::Error;
 use crate::mel::mel_bin_membership;
 
 pub mod bs_roformer;
+pub mod vr_arch;
+pub mod vr_pipeline;
+pub mod vr_resample;
 
 pub use bs_roformer::BSRoformer;
+pub use vr_arch::CascadedAsppNet as VrCascadedAsppNet;
+pub use vr_pipeline::{VrProfile, VrSeparator};
 
 // ---------- RMSNorm ----------
 
@@ -469,6 +474,9 @@ pub fn expected_key_shapes(cfg: &SeparatorConfig) -> Vec<(String, Vec<usize>)> {
         // MDX-Net is an ONNX graph with no safetensors key schema; it is loaded
         // by `crate::mdx::MdxSeparator`.
         ModelFamily::MdxNet => Vec::new(),
+        // VR Arch has a fixed `CascadedASPPNet` key schema; it is validated by
+        // `crate::model::vr_pipeline::VrSeparator` while loading.
+        ModelFamily::VrArch => Vec::new(),
     }
 }
 

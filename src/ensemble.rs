@@ -159,9 +159,8 @@ pub fn ensemble_waveforms(
                 for channel in 0..channels {
                     for frame in 0..frames {
                         let i = channel * frames + frame;
-                        out[i] =
-                            (out[i] as f64 + padded_sample(w, channel, frame) as f64 * weight)
-                                as f32;
+                        out[i] = (out[i] as f64 + padded_sample(w, channel, frame) as f64 * weight)
+                            as f32;
                     }
                 }
             }

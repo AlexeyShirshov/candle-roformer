@@ -128,18 +128,19 @@ fn stft_short_inputs_defined() {
 fn stft_boundary_lengths_reconstruct() {
     // Boundaries around 2*border (border = n_fft/2 = 1024).
     for &len in &[2047usize, 2048usize, 2049usize] {
-        let input: Vec<f32> = (0..len)
-            .map(|i| (i as f32 * 0.01).sin() * 0.5)
-            .collect();
+        let input: Vec<f32> = (0..len).map(|i| (i as f32 * 0.01).sin() * 0.5).collect();
         let spec = stft(&input, STFT_N_FFT_V7, STFT_HOP_V7, STFT_WIN_V7).unwrap();
         assert!(spec.frames > 0);
         let recon = istft(&spec, STFT_N_FFT_V7, STFT_HOP_V7, STFT_WIN_V7, input.len()).unwrap();
         assert_eq!(recon.len(), input.len());
-        let max_err = input.iter().zip(recon.iter()).map(|(a,b)|(a-b).abs()).fold(0.0f32, f32::max);
+        let max_err = input
+            .iter()
+            .zip(recon.iter())
+            .map(|(a, b)| (a - b).abs())
+            .fold(0.0f32, f32::max);
         assert!(max_err < 1e-3, "len={} max_err={}", len, max_err);
     }
 }
-
 
 #[test]
 #[should_panic(expected = "orphan frequency bin")]
