@@ -183,12 +183,47 @@ cargo build --release
 CUDA: `cargo build --release --features cuda` (NVIDIA + CUDA toolkit).
 Metal: `cargo build --release --features metal` (macOS).
 
+Both feature builds compile. Metal execution is verified on the host listed under
+"Status and limits" (one Apple Silicon host, BS-RoFormer, one fixture); CUDA and
+every other GPU family remain untested — see `docs/gpu-smoke-evidence/`.
+
 ## Status and limits
 
 - CPU inference works but is slow: on a machine without a GPU a
   MelBandRoformer 384/6 pass runs at roughly a quarter of real time.
-  `CANDLE_NUM_THREADS=8` uses more cores. CUDA/Metal execution has **not**
-  been tested here (no NVIDIA GPU, no macOS host).
+  `CANDLE_NUM_THREADS=8` uses more cores.
+- GPU (CUDA/Metal) execution:
+  - **Metal: tested and passing on one Apple Silicon host, for BS-RoFormer only.**
+    GitHub Actions `macos-15` (Apple M1 (Virtual), 3 vCPU, 7.5 GB, macOS 15),
+    commit `2a22721`, run
+    [43227797972](https://github.com/AlexeyShirshov/candle-roformer/actions/runs/43227797972):
+    `--features metal`, real ViperX 1297 BS-RoFormer checkpoint, 2 s stereo
+    fixture, 88,200-sample chunk. Metal vs CPU: vocals `max_abs 4.1e-6`, `RMSE
+    7.8e-8`, `SDR 114.5 dB`, corr `1.0000000`; instrumental `max_abs 1.9e-7`,
+    `RMSE 5.1e-9`, `SDR 159.0 dB`, corr `1.0000000`. Peak memory 2,577 MiB RSS
+    (baseline 987, delta 1,590 MiB; unified-memory proxy, not a driver-reported
+    device high-water mark); timing CPU 53.7 s vs Metal 41.6 s for the 2 s fixture.
+    This is the *entire* Metal claim: one host, one family, this fixture, f32.
+    MelBandRoformer, VR/UVR, MDX-Net and Whisper are **not tested** on Metal, and
+    neither are larger chunks. Evidence: `docs/gpu-smoke-evidence/`.
+  - **CUDA: not tested.** Windows, RTX 5070 Ti 16 GB (compute capability 12.0),
+    driver 610.88 (CUDA UMD 13.3), CUDA Toolkit 13.5: the crate builds and the
+    checkpoint loads onto the device, then the first kernel launch fails with
+    `CUDA_ERROR_UNSUPPORTED_PTX_VERSION`. `candle-kernels 0.11.1` ships PTX only;
+    nvcc 13.5 emits PTX ISA 9.1 while driver 610.88 accepts PTX ISA ≤ 9.0, so the
+    kernels cannot be JIT-compiled. No CUDA parity and no CUDA peak-memory number
+    exists; CUDA Toolkit ≤ 13.3 or a newer display driver is required.
+  - `DeviceChoice::Cuda`/`DeviceChoice::Metal` still fail with a typed
+    `DeviceError::Unavailable` instead of silently falling back to CPU.
+- Reduced precision (fp16) is **rejected for every supported family** in this
+  release. Evidence (`tests/fp16_decision.rs`, `docs/gpu-smoke-evidence/`):
+  the forward path has no dtype-generic branch — f16 weights fail immediately with
+  `dtype mismatch in mul, lhs: F32, rhs: F16` — and rounding the real intermediate
+  tensors through f16 costs 81.0 dB SDR on the STFT coefficients and 70.3 dB SDR
+  on the model's own mask, 20–30 dB worse than the f32 parity reported elsewhere in
+  this file. STFT/ISTFT, the mask multiplication, overlap-add accumulation and
+  RMSNorm therefore stay f32; a future fp16 path must keep exactly those in f32.
+
 - Numerical parity with the PyTorch reference on a frozen 8 s chunk of a real
   song (Kijai 384/6): the model pass matches at correlation 0.9999999 and
   max abs error 3.5e-4, inside the provisional gate (max abs ≤ 1e-3 when
@@ -196,7 +231,8 @@ Metal: `cargo build --release --features metal` (macOS).
   4 s step, so a written stem is not bit-identical to a single-pass reference
   run. Measured with the original Candle git revision and re-checked against
   crates.io `candle-core 0.11.1`: both builds produce byte-identical stems.
-  Hardware smoke tests (G2) remain open.
+  Hardware smoke tests (G2) remain open — see the CUDA/Metal entry above and
+  `docs/gpu-smoke-evidence/`.
 - Supported architecture families: MelBandRoformer (`voc_fv7` 256/12 and Kimberley 384/6),
   BS-RoFormer (`configs/bs_roformer_viperx_1297.yaml`, "Viperx 1297" 512/12, 62 bands), and
   MDX-Net (ONNX) via a caller-supplied checkpoint (`UVR-MDX-NET-Inst_HQ_3.onnx`, pinned SHA-256

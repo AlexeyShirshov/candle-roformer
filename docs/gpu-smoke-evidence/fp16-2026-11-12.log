@@ -1,0 +1,11 @@
+     Running tests\fp16_decision.rs (.pdca\open-issues-r5\rv1\item-11-gpu\target\release\deps\fp16_decision-1bc602fa59ab9325.exe)
+running 2 tests
+[fp16] stft_coefficients frames=201 bins=1025
+[fp16] mask=F:\sources\candle-roformer\.pdca\open-issues-r5\rv1\item-11-gpu\dump\bs_03_mask_3.f32 shape=[1, 1, 2050, 201, 2] values=824100
+[fp16] mask_multiplication (real mask, f16-rounded):
+[fp16] summary stft_coefficients_sdr_db=81.03 mask_multiply_sdr_db=70.27
+test f16_rounding_cost_on_stft_and_mask ... ok
+[fp16] f16_weights_forward_error=dtype mismatch in mul, lhs: F32, rhs: F16
+[fp16] structural=REJECTED (the f32 forward path has no dtype-generic branch)
+test f16_weights_are_rejected_by_the_current_forward_path ... ok
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.42s

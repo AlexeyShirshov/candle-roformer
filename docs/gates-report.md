@@ -54,9 +54,88 @@ CPU results:
 - DSP short-input fix: `src/dsp.rs` uses signed arithmetic in `reflect_pad` (no unsigned underflow) and `stft` refuses inputs with length <= pad (1024) with a typed `DspError::InvalidParams` instead of silently substituting padding.
 - Dependency license audit: `docs/dependency-audit.md` (191 third-party crates per `Cargo.lock`, per-crate evidence under `docs/dependency-audit-evidence/`).
 
-Blocked:
+Hardware (real-backend runs of `tests/gpu_smoke.rs`, 2026-11-12):
 
-- `BLOCKED — no NVIDIA GPU / no Metal host`: hardware smoke tests for `DeviceChoice::Cuda` and `DeviceChoice::Metal` on real CUDA/Metal backends were not run. On this Linux host `nvidia-smi` is unavailable and there is no macOS/Metal. `DeviceChoice::Cuda` and `DeviceChoice::Metal` deterministically return a typed `DeviceError::Unavailable` (checked by CPU unit tests) and never silently fall back to CPU. No `PASS` is claimed for CUDA or Metal execution.
+- Harness: `tests/gpu_smoke.rs` holds one opt-in (`#[ignore]`d) test per backend,
+  compiled only under `--features cuda` / `--features metal`. Each run loads a real
+  BS-RoFormer safetensors checkpoint (published UVR "Viperx 1297": `.ckpt`
+  639,331,213 B, converted to 639,109,056 B f32), separates a deterministic 2 s
+  stereo fixture on the CPU and on the backend, compares every stem
+  (`max_abs`, `RMSE`, `SDR`, correlation; floors 1e-3 / 1e-4 / 60 dB / 0.999) and
+  reports peak device memory. A missing checkpoint, an unavailable backend, a
+  silent stem or zero compared stems fails the run — it never skips green.
+- `CUDA — NOT VERIFIED` (Windows 11, RTX 5070 Ti, compute capability 12.0,
+  driver 610.88 = CUDA UMD 13.3, CUDA Toolkit 13.5 / nvcc 13.5.37):
+  - Command: `cargo build --release --features cuda --lib` → exit `0`, then
+    `cargo test --release --features cuda --test gpu_smoke -- --ignored --nocapture`
+    → exit `101`.
+  - Evidence: `docs/gpu-smoke-evidence/cuda-2026-11-12-smoke.log` and
+    `docs/gpu-smoke-evidence/cuda-2026-11-12-host.txt`.
+  - Result: the checkpoint loads and the model is materialised on the GPU, then the
+    first kernel launch fails with
+    `DriverError(CUDA_ERROR_UNSUPPORTED_PTX_VERSION, "the provided PTX was compiled with an unsupported toolchain.")`.
+    Cause: `candle-kernels 0.11.1` ships PTX only; nvcc 13.5 emits PTX ISA 9.1 while
+    driver 610.88 accepts PTX ISA ≤ 9.0, so `cuModuleLoadData` cannot JIT the kernels.
+    There is therefore no CUDA parity number and no CUDA peak-memory number, and no
+    CUDA support claim is made. Fixing it is an environment change (install CUDA
+    Toolkit ≤ 13.3 or a newer display driver), not a crate change.
+- `Metal — VERIFIED (one host, one family, this fixture)` (GitHub Actions
+  `macos-15`: Apple M1 (Virtual), 3 vCPU, 7.5 GB RAM, rustc 1.99.1
+  aarch64-apple-darwin):
+  - Command: `cargo build --release --locked --features metal` → exit `0`, then
+    `cargo test --release --locked --features metal --test gpu_smoke -- --ignored --nocapture`
+    → exit `0`, `1 passed; 0 failed`, run
+    [43227797972](https://github.com/AlexeyShirshov/candle-roformer/actions/runs/43227797972)
+    (commit `2a22721`).
+  - Evidence: `docs/gpu-smoke-evidence/metal-2026-11-12-macos-15.log` (artifact
+    `metal-smoke-macos-15`), host facts in
+    `docs/gpu-smoke-evidence/metal-2026-11-12-runner.txt`.
+  - Result, BS-RoFormer ViperX 1297 (`639,109,056 B` f32), 2 s stereo fixture,
+    88,200-sample chunk, CPU reference vs Metal:
+    | stem | samples | max_abs | RMSE | SDR | corr | peak |
+    |---|---:|---|---|---|---|---|
+    | vocals | 176,400 | 4.053e-6 | 7.773e-8 | 114.51 dB | 1.0000000 | 0.9000 / 0.9000 |
+    | instrumental | 176,400 | 1.937e-7 | 5.069e-9 | 158.99 dB | 1.0000000 | 0.9000 / 0.9000 |
+  - Peak memory (Metal): `peak_device_mib=2577`, baseline `987`, delta
+    `1590 MiB`, measured as process RSS — on Apple Silicon the GPU buffers live in
+    unified memory, so RSS is the available proxy; it is not a driver-reported
+    device-allocation high-water mark.
+  - Timing on that runner: CPU reference 53.72 s, Metal model load 2.15 s, Metal
+    separation 41.57 s for the 2 s fixture (3 vCPU virtual M1; a throughput figure,
+    not a speed claim).
+  - Scope of the claim: one Apple Silicon host, the BS-RoFormer family, this
+    fixture and chunk size, f32. It says nothing about MelBandRoformer, VR/UVR,
+    MDX-Net or Whisper on Metal, about larger chunks, or about fp16.
+  - Two prior runs of the same gate failed and are kept as evidence:
+    `metal-2026-11-12-macos-15-before-fix.log` (runs
+    [43219881846](https://github.com/AlexeyShirshov/candle-roformer/actions/runs/43219881846),
+    [43222506483](https://github.com/AlexeyShirshov/candle-roformer/actions/runs/43222506483))
+    failed with `MetalKernelError::MatMulNonContiguous`, because candle's Metal GEMM
+    only accepts contiguous operands and the model fed it narrow/squeeze views. The
+    fixes (commits `183e3d8`, `dec5f97`, `2a22721`) materialise those views with
+    `.contiguous()`; numerically identical, CPU suite unchanged.
+- CI coverage (`gpu-smoke` workflow, issue #11): `no-GPU sanity` is green on
+  `windows-latest` and `ubuntu-latest` (build + full CPU suite, no GPU assertions).
+  `macos-14` was dropped from the matrix: GitHub answered
+  `The configuration 'macos-14-arm64-us-default' is not supported`.
+
+Reduced precision (fp16) — **decision: rejected for every supported family**:
+
+- Evidence: `tests/fp16_decision.rs` (opt-in), log
+  `docs/gpu-smoke-evidence/fp16-2026-11-12.log`, run on the same real ViperX 1297
+  BS-RoFormer checkpoint and the same 2 s fixture.
+- Structural: the forward path has no dtype-generic branch. Building the network
+  from an f16 `VarBuilder` succeeds and the first forward fails with
+  `dtype mismatch in mul, lhs: F32, rhs: F16`; the STFT front end and the
+  overlap-add stage are host-side f32 by construction, so f16 would only touch the
+  matmul weights.
+- Numerical: rounding the real intermediate tensors through f16 (Candle's own
+  conversion) costs `SDR 81.03 dB` on the STFT coefficients and `SDR 70.27 dB` on
+  the model's own mask (real `bs_03_mask` dump, `1x1x2050x201x2`) after the mask
+  multiplication and resynthesis. Both are 20–30 dB worse than the f32 parity this
+  crate reports for its CPU paths (MDX-Net 118.9 dB, VR/UVR 112.8 dB).
+- Sensitive ops that must stay f32 in any future fp16 path: STFT/ISTFT, the complex
+  mask multiplication, overlap-add accumulation and RMSNorm. (All are f32 today.)
 
 ## Factory verification (G1-derived, N=3, r=4)
 

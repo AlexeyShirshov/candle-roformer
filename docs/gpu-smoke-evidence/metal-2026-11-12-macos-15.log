@@ -1,0 +1,141 @@
+warning: unused import: `crate::error::Error`
+ --> src/model/mod.rs:5:5
+  |
+5 | use crate::error::Error;
+  |     ^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `bands`
+   --> src/model/mod.rs:606:16
+    |
+606 |     let (b, t, bands, d) = cur.dims4()?;
+    |                ^^^^^ help: if this is intentional, prefix it with an underscore: `_bands`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `d`
+   --> src/model/mod.rs:606:23
+    |
+606 |     let (b, t, bands, d) = cur.dims4()?;
+    |                       ^ help: if this is intentional, prefix it with an underscore: `_d`
+
+warning: variable does not need to be mutable
+    --> src/model/mod.rs:1035:21
+     |
+1035 |                 let mut spec = crate::dsp::StftResult {
+     |                     ----^^^^
+     |                     |
+     |                     help: remove this `mut`
+     |
+     = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+warning: variable does not need to be mutable
+    --> src/model/mod.rs:1087:21
+     |
+1087 |                 let mut spec = crate::dsp::StftResult {
+     |                     ----^^^^
+     |                     |
+     |                     help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> src/separate.rs:126:9
+    |
+126 |     let mut all = separate_all_with_config(model, input, channels, cfg)?;
+    |         ----^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> src/separator.rs:441:21
+    |
+441 |                 let mut model_vocals = vocals_src;
+    |                     ----^^^^^^^^^^^^
+    |                     |
+    |                     help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> src/separator.rs:479:21
+    |
+479 |                 let mut mono_model: Vec<f32> = if channels == 1 {
+    |                     ----^^^^^^^^^^
+    |                     |
+    |                     help: remove this `mut`
+
+warning: value assigned to `frontier` is never read
+    --> src/separator.rs:1008:21
+     |
+1008 |                     frontier = up_to;
+     |                     ^^^^^^^^^^^^^^^^
+     |
+     = help: maybe it is overwritten before being read?
+     = note: `#[warn(unused_assignments)]` (part of `#[warn(unused)]`) on by default
+
+warning: variable does not need to be mutable
+   --> src/wav.rs:485:13
+    |
+485 |         let mut format = symphonia::default::get_probe()
+    |             ----^^^^^^
+    |             |
+    |             help: remove this `mut`
+
+warning: field `dim_inputs` is never read
+   --> src/model/mod.rs:393:5
+    |
+391 | pub struct MaskEstimator {
+    |            ------------- field in this struct
+392 |     to_freqs: Vec<Mlp>,
+393 |     dim_inputs: Vec<usize>,
+    |     ^^^^^^^^^^
+    |
+    = note: `MaskEstimator` has derived impls for the traits `Clone` and `Debug`, but these are intentionally ignored during dead code analysis
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: method `roi_size` is never used
+   --> src/model/vr_pipeline.rs:128:8
+    |
+ 63 | impl VrProfile {
+    | -------------- method in this implementation
+...
+128 |     fn roi_size(&self) -> usize {
+    |        ^^^^^^^^
+
+warning: field `phase` is never read
+   --> src/model/vr_pipeline.rs:251:5
+    |
+248 | struct Analysis {
+    |        -------- field in this struct
+...
+251 |     phase: Vec<f32>,
+    |     ^^^^^
+
+warning: `candle-roformer` (lib) generated 13 warnings (run `cargo fix --lib -p candle-roformer` to apply 9 suggestions)
+   Compiling candle-roformer v0.1.0 (/Users/runner/work/candle-roformer/candle-roformer)
+warning: variant `NvidiaSmi` is never constructed
+   --> tests/gpu_smoke.rs:176:5
+    |
+174 | enum MemProbe {
+    |      -------- variant in this enum
+175 |     /// NVIDIA device memory in use, whole device (`nvidia-smi`).
+176 |     NvidiaSmi,
+    |     ^^^^^^^^^
+    |
+    = note: `MemProbe` has a derived impl for the trait `Clone`, but this is intentionally ignored during dead code analysis
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: `candle-roformer` (test "gpu_smoke") generated 1 warning
+    Finished `release` profile [optimized] target(s) in 3.28s
+     Running tests/gpu_smoke.rs (target/release/deps/gpu_smoke-48e7082d8bd8d4ac)
+
+running 1 test
+[gpu-smoke] backend=Metal checkpoint=/Users/runner/.cache/candle-roformer-gpu/model_bs_roformer_ep_317_sdr_12.9755.safetensors bytes=639109056 config=configs/bs_roformer_viperx_1297.yaml profile_family_source=configs/bs_roformer_viperx_1297.yaml
+[gpu-smoke] fixture=synthetic-stereo sr=44100 channels=2 frames=88200 peak=0.4894 chunk=88200 family=BSRoformer stems=1
+test metal_bs_roformer_matches_cpu has been running for over 60 seconds
+[gpu-smoke] peak_device_mib=2577 baseline_mib=987 delta_mib=1590 source=ps -o rss (process RSS, MiB; unified memory proxy)
+[gpu-smoke] stem=vocals samples=176400 max_abs=4.053e-6 rmse=7.773e-8 sdr_db=114.51 corr=1.0000000 ref_peak=0.9000 cand_peak=0.9000
+[gpu-smoke] stem=instrumental samples=176400 max_abs=1.937e-7 rmse=5.069e-9 sdr_db=158.99 corr=1.0000000 ref_peak=0.9000 cand_peak=0.9000
+[gpu-smoke] timing cpu_seconds=53.72 backend_load_seconds=2.15 backend_seconds=41.57 stems_compared=2 result=PASS
+test metal_bs_roformer_matches_cpu ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 100.34s
+

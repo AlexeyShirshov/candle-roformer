@@ -1,0 +1,5 @@
+host: GitHub Actions macOS arm64 runner (macos-15), Cloud: MacCloud, region westus
+CPU/GPU: Apple M1 (Virtual), 3 vCPU, 7,516,192,768 B RAM
+Metal: device created by candle (system_profiler SPDisplaysDataType reports no display device in the VM)
+rustc: 1.99.1 (58cf8f9c3 2026-10-13), aarch64-apple-darwin
+workflow run: https://github.com/AlexeyShirshov/candle-roformer/actions/runs/43227797972 (commit 2a22721)

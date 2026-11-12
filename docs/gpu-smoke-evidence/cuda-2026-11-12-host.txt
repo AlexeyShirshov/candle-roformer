@@ -1,0 +1,8 @@
+host: Windows 11 x86_64, 16 logical CPUs
+date: 2026-11-12 (UTC 12:56)
+name, compute_cap, memory.total [MiB], driver_version
+NVIDIA GeForce RTX 5070 Ti, 12.0, 16303 MiB, 610.88
+Cuda compilation tools, release 13.5, V13.5.37
+Build cuda_13.5.r13.5/compiler.39125733_0
+CUDA toolkit: 13.5 (C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v13.5)
+toolchain: rustc/cargo stable MSVC 2022, CMake 3.31.8
