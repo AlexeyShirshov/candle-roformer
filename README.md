@@ -131,7 +131,8 @@ downmixed back to mono; stereo stays stereo.
 | Whisper | implemented (transcription) | `config.json` from the checkpoint | `model.safetensors` + `tokenizer.json` |
 | MDX-Net (ONNX) | implemented | built-in profile `mdx::uvr_mdx_net_inst_hq_3()` | `UVR-MDX-NET-Inst_HQ_3.onnx` as published (SHA-256 checked before inference) |
 | VR Arch / UVR (.pth) | implemented | built-in `4band_v2` profile (`VrProfile::four_band_v2()`, nn_arch 123812) | `2_HP-UVR.pth` converted offline with `tools/convert_vr_arch.py` (pinned SHA-256 and size) |
-| Demucs, MDX23C | not implemented | - | - |
+| HTDemucs (Demucs v4) | implemented | fixed `DemucsConfig::default()` profile; load with `Separator::load_demucs` | Pinned `.th` checkpoint converted offline with `tools/convert_demucs.py` (SHA-256 and tensor schema validated) |
+| MDX23C | not implemented | - | - |
 
 The family is selected from the profile: an explicit `family:` key (`mel_band_roformer` /
 `bs_roformer`), or, when absent, the config shape — `freqs_per_bands` selects BS-RoFormer,
@@ -246,8 +247,8 @@ see `docs/gpu-smoke-evidence/`.
   `317554b07fe1ea5279a77f2b1520a41ea4b93432560c4ffd08792c30fddf9adc`) on the CPU through the
   pure-Rust `tract-onnx` runtime. On a frozen 20 s stereo fixture the MDX-Net stems match
   `audio-separator` 0.48.0 at correlation 0.999999999999, max abs difference 1.4e-6 and RMSE 1.5e-7
-  (SDR 118.9 dB). `audio-separator` also covers VR/UVR, Demucs and MDX23C - those are not ported
-  yet. The MDX-Net checkpoint is user-supplied and is not downloaded, bundled or vendored; see
+  (SDR 118.9 dB). VR/UVR and HTDemucs have separate implementations in this crate; MDX23C is not
+  implemented. The MDX-Net checkpoint is user-supplied and is not downloaded, bundled or vendored; see
   `docs/dependency-audit.md` for the licence audit.
 - VR Arch (UVR) support: the published `2_HP-UVR.pth` (126,782,699 B, SHA-256
   `26d6400d2d2e90811ba2381828c8c3519196097375af524c3d0edd969acf5356`) is converted offline to

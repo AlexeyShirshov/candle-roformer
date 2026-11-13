@@ -1,6 +1,6 @@
 [package]
 name = "candle-roformer"
-version = "0.1.0"
+version = "1.0.0"
 edition = "2021"
 license = "MIT"
 description = "Offline Rust/Candle library for vocal/instrumental separation and vocal transcription"
@@ -8,7 +8,7 @@ readme = "README.md"
 repository = "https://github.com/AlexeyShirshov/candle-roformer"
 keywords = ["audio", "vocal-separation", "whisper", "machine-learning", "candle"]
 categories = ["multimedia::audio", "artificial-intelligence", "science"]
-exclude = ["/docs", "/tools/tests", "/AGENTS.md"]
+exclude = ["/docs", "/tools/tests", "/AGENTS.md", "/.pdca/**", "/.openidea/**"]
 
 [lib]
 name = "candle_roformer"
