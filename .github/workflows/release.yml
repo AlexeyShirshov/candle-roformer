@@ -1,0 +1,65 @@
+name: release
+
+# Publishes the crate to crates.io through Trusted Publishing (OIDC).
+#
+# There is no long-lived `CARGO_REGISTRY_TOKEN` secret: the
+# `rust-lang/crates-io-auth-action` step exchanges GitHub's OIDC token for a
+# short-lived crates.io token, and that token is revoked when the job ends.
+#
+# The crates.io crate settings (Settings -> Trusted Publishing) must list:
+#   Repository owner:  AlexeyShirshov
+#   Repository name:   candle-roformer
+#   Workflow filename: release.yml   (filename only, no `.github/workflows/`)
+#   Environment:       (empty)       (see the note below before filling it)
+#
+# If you later add a GitHub environment (e.g. `release` with required
+# reviewers), put the same name in the crates.io entry and add
+# `environment: release` to the `publish` job — the two must match exactly.
+#
+# Only tag pushes can publish; the job refuses a tag that does not match the
+# version in Cargo.toml, so a stray `v1.0.1` tag cannot publish 1.0.0 again.
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  # GitHub-hosted runners ship CMake 4.x, which refuses the
+  # `cmake_minimum_required(VERSION 2.8...)` line inside the vendored
+  # libsamplerate sources. Same workaround as gpu-smoke.yml.
+  CMAKE_POLICY_VERSION_MINIMUM: "3.5"
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      id-token: write # required to request the OIDC token
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Check tag matches Cargo.toml version
+        run: |
+          version="$(python3 -c 'import tomllib; print(tomllib.load(open("Cargo.toml", "rb"))["package"]["version"])')"
+          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "tag $GITHUB_REF_NAME does not match crate version v$version" >&2
+            exit 1
+          fi
+
+      - name: Install Linux build dependencies
+        run: sudo apt-get update && sudo apt-get install -y build-essential cmake pkg-config
+
+      - uses: rust-lang/crates-io-auth-action@v1
+        id: auth
+
+      - name: cargo publish
+        run: cargo publish --locked
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}
