@@ -13,9 +13,16 @@
 - status path: `.pdca/status/collection-open-issues-r5.md`
 - evidence root: `.pdca/open-issues-r5/rv1/`
 - baseline: `main @ 2d0be53`, tree clean except untracked `.openidea/` and `.pdca/status/collection-open-issues-r3.md` (observed; see §Git state)
-- phase: `PLAN` · record: `open` · outcome: `pending` — collection `open-issues-r5` is between items: items `#2`, `#8` and `#3` are **accepted, committed (`59fb1fb`, `a38bb7f`, `3130f55`) and finalized**, and all three GitHub issues were **closed as `COMPLETED` by the driver** (`#2` at `2026-11-11T06:18:29Z`, comment `6788661305`; `#8` at `2026-11-11T07:57:47Z`, comment `6790434030`; `#3` at `2026-11-12T07:22:14Z`, comment `6817426243`); completeness **`3/4 accepted`**; next item **`#4`** (HTDemucs); context rows `#1` and `#11` unchanged. Item history: §Current state, §ACT record, §General verification and recovery, §Progress log
+- phase: `ACT` · record: `completed` · outcome: `incomplete (STOP)` — final state, authoritative; see the
+  FINAL COLLECTION STATE bullet in §Current state (`2026-11-12T17:43Z`). Completeness
+  **`4/4 item goals accepted`** (items `#2`/`#8`/`#3`/`#4` accepted and committed `59fb1fb`/`a38bb7f`/
+  `3130f55`/`d042c26`, all four GitHub issues closed); integrated-tree verdict **`not accepted`**;
+  unresolved `INT-LIMITS` **`unmet`** and `INT-F02`/`INT-REGRESSION`/`INT-CROSS-ITEM` **`unverified`**;
+  no incomplete item; next authorized action = the two user decisions (§ACT record). No cleanup, merge,
+  revert, push or re-run was performed and all results are preserved. **Superseded header (kept as
+  history):** phase: `DO` · record: `open` · outcome: `pending` — collection `open-issues-r5` has all four items terminal: items `#2` (`59fb1fb`), `#8` (`a38bb7f`), `#3` (`3130f55`) and `#4` (`d042c26`) are **accepted, committed and finalized**; all three GitHub issues `#2`/`#8`/`#3` were **closed as `COMPLETED` by the driver** (`#2` at `2026-11-11T06:18:29Z`, comment `6788661305`; `#8` at `2026-11-11T07:57:47Z`, comment `6790434030`; `#3` at `2026-11-12T07:22:14Z`, comment `6817426243`), while the **GitHub `#4` closure is an external residual handed to the calling driver and NOT performed**; completeness **`4/4 accepted`**; the field `phase` is advanced from `PLAN` to `DO` because the collection's item executions are complete — **no collection integration `CHECK` and no collection `ACT` has run**, so `record: open` / `outcome: pending` stand and the collection is **not** declared complete. Next allowed step: **collection integration `CHECK`**. Context rows `#1` and `#11` unchanged. Item history: §Current state, §ACT record, §General verification and recovery, §Progress log
 - goal: implement GitHub issues #2, #3, #4 and #8 against their verbatim `Done when` clauses plus the user-approved numeric tolerances, with one atomic commit and GitHub issue closure per accepted item
-- criteria: `AC-2.1`–`AC-2.4` (item `#2`, contract revision `r2`, exact text in `.pdca/status/issue-2-r5.md` §PLAN record `r2`), `AC-3.1`–`AC-3.3`, `AC-4.1`–`AC-4.3`, `AC-8.1`–`AC-8.4` (exact text in §PLAN record `r1`; source: user criteria message 2026-11-10 and the approved addendum persisted at `.pdca/open-issues-r5/rv1/criteria-approval.md`), not retyped here
+- criteria: `AC-2.1`–`AC-2.4` (item `#2`, contract revision `r2`, exact text in `.pdca/status/issue-2-r5.md` §PLAN record `r2`), `AC-3.1`–`AC-3.3`, `AC-4.1`–`AC-4.3` (item `#4`, item-level contract revision `r2`, exact text in `.pdca/status/issue-4-r5.md` §PLAN record `### r2`), `AC-8.1`–`AC-8.4` (exact text in §PLAN record `r1`; source: user criteria message 2026-11-10 and the approved addendum persisted at `.pdca/open-issues-r5/rv1/criteria-approval.md`), not retyped here
 
 ## Current state
 
@@ -25,7 +32,11 @@
 - scope: `#2`, `#3`, `#4`, `#8` in group `G1`; context rows `#1` (accepted at `dc94520`, closed in GitHub) and `#11` (terminal `infeasible`) are recorded but outside this collection's execution
 - evidence root: `.pdca/open-issues-r5/rv1/`
 - goal: implement GitHub issues #2, #3, #4 and #8 against their verbatim `Done when` clauses plus the user-approved numeric tolerances, one atomic commit and GitHub closure per accepted item — §PLAN record and §Original task are authoritative
-- phase: `PLAN` · record: `open` · outcome: `pending` — **next item `#4`**: item `#3` is `done` / `finalized` with terminal outcome (cycle) `accepted` — `CHECK 3` (`r2`/`n1`) `accepted` (`AC-3.1` `met`, `AC-3.2` `met`), `AC-3.3` performed (commit `3130f55`, parent `1a164ae`, 33 files, `+3207/−68`, footer `Refs #3`; GitHub `#3` closed as `COMPLETED` at `2026-11-12T07:22:14Z`, comment `6817426243`); `#2` and `#8` are `done` / `finalized` with terminal outcome (cycle) `accepted` (`59fb1fb` / `a38bb7f`, GitHub `#2`/`#8` closed); completeness **`3/4 accepted`**; `#4` is `pending` / `ready` and untouched. **One record-closure blocker on `#3`**: the mandatory `pdca-check` retrospective report was not supplied with the ACT finalization brief, so `.pdca/status/issue-3-r5.md` keeps `record: open` with an explicit blocker in §Lessons learned (the accepted outcome, commit and GitHub closure are unaffected and not reopened). Superseded history (kept): item `#2` contract revision `r2` after `CHECK → PLAN`, attempts `r2`/`n1` and `r2`/`n2`, `CHECK 3` `accepted → ACT`; item `#8` `CHECK 1`/`CHECK 2` `not accepted`, revisions `r1→r2→r3`, `CHECK 3` (`r3`/`n1`) `accepted → ACT`, commit `a38bb7f`; item `#3` `CHECK 1` `not accepted → PLAN`, `CHECK 2` `not accepted` (`AC-3.1` `unverified`), revision `r2`, evidence-only `DO` `r2`/`n1` — full reports in `.pdca/status/issue-2-r5.md`, `.pdca/status/issue-8-r5.md`, `.pdca/status/issue-3-r5.md`. **Update (`2026-11-12T12:48Z`), superseding the "One record-closure blocker on `#3`" clause in this bullet:** the mandatory `pdca-check` retrospective was supplied and is recorded **verbatim** in `.pdca/status/issue-3-r5.md` §Lessons learned (completion signal `retrospective_complete`), so item `#3` is `done` / `finalized` / `accepted` with its record now **`completed`**; completeness stays **`3/4 accepted`**; the next authorized step remains **`DO item #4 (r1)`**; no criterion, verdict, counter, attempt, commit or GitHub closure changed or reopened.
+- phase: `ACT` · record: `completed` · outcome: `incomplete (STOP)` — see the FINAL COLLECTION STATE bullet at the
+  end of this section (authoritative). **Superseded phase field (kept as history):** `DO` · record: `open` · outcome: `pending` — **next item `#4`** (superseded: all four items are
+  now terminal, `#4` is `done` / `finalized`, completeness `4/4 accepted` and the next allowed step is
+  **collection integration `CHECK`** — see the final bullet of this section; this bullet's item history is
+  kept unchanged): item `#3` is `done` / `finalized` with terminal outcome (cycle) `accepted` — `CHECK 3` (`r2`/`n1`) `accepted` (`AC-3.1` `met`, `AC-3.2` `met`), `AC-3.3` performed (commit `3130f55`, parent `1a164ae`, 33 files, `+3207/−68`, footer `Refs #3`; GitHub `#3` closed as `COMPLETED` at `2026-11-12T07:22:14Z`, comment `6817426243`); `#2` and `#8` are `done` / `finalized` with terminal outcome (cycle) `accepted` (`59fb1fb` / `a38bb7f`, GitHub `#2`/`#8` closed); completeness **`3/4 accepted`**; `#4` is `pending` / `ready` and untouched. **One record-closure blocker on `#3`**: the mandatory `pdca-check` retrospective report was not supplied with the ACT finalization brief, so `.pdca/status/issue-3-r5.md` keeps `record: open` with an explicit blocker in §Lessons learned (the accepted outcome, commit and GitHub closure are unaffected and not reopened). Superseded history (kept): item `#2` contract revision `r2` after `CHECK → PLAN`, attempts `r2`/`n1` and `r2`/`n2`, `CHECK 3` `accepted → ACT`; item `#8` `CHECK 1`/`CHECK 2` `not accepted`, revisions `r1→r2→r3`, `CHECK 3` (`r3`/`n1`) `accepted → ACT`, commit `a38bb7f`; item `#3` `CHECK 1` `not accepted → PLAN`, `CHECK 2` `not accepted` (`AC-3.1` `unverified`), revision `r2`, evidence-only `DO` `r2`/`n1` — full reports in `.pdca/status/issue-2-r5.md`, `.pdca/status/issue-8-r5.md`, `.pdca/status/issue-3-r5.md`. **Update (`2026-11-12T12:48Z`), superseding the "One record-closure blocker on `#3`" clause in this bullet:** the mandatory `pdca-check` retrospective was supplied and is recorded **verbatim** in `.pdca/status/issue-3-r5.md` §Lessons learned (completion signal `retrospective_complete`), so item `#3` is `done` / `finalized` / `accepted` with its record now **`completed`**; completeness stays **`3/4 accepted`**; the next authorized step remains **`DO item #4 (r1)`**; no criterion, verdict, counter, attempt, commit or GitHub closure changed or reopened.
 - source: user request over the open GitHub issues of `AlexeyShirshov/candle-roformer` · context refs: `.pdca/status/collection-open-issues-r4.md`, `.pdca/open-issues-r4/`, `.pdca/open-issues-r5/rv1/plan.md`, `.pdca/open-issues-r5/rv1/criteria-approval.md`
 - schedule: one group `G1` on the current worktree `main`, one sequential lane (`plan_cap 1`, `lane_cap 1`), order by risk `#2 → #8 → #3 → #4`; single worktree, no branches/merges
 - next item: `#4` — **`DO item #4 (r1)`** is the next authorized collection step. Item `#3` is `done` / `finalized` / `accepted` (commit `3130f55`, GitHub `#3` closed at `2026-11-12T07:22:14Z`) with only the record-closure blocker of its mandatory retrospective outstanding; `#2` and `#8` are `done` / `finalized` with their GitHub issues closed by the driver (see the `2026-11-11` bullets below). Superseded history: the `#8` CHECK 1/CHECK 2 loop-backs, the `r3` revision and its `CHECK 3` acceptance stay in §CHECK record, §ACT record and `.pdca/status/issue-8-r5.md`; the `#3` `CHECK 1`/`CHECK 2` loop-backs, its revision `r2` and `CHECK 3` stay in §CHECK record, §ACT record and `.pdca/status/issue-3-r5.md`. **Update (`2026-11-12T12:48Z`), superseding the "record-closure blocker of its mandatory retrospective outstanding" clause in this bullet:** the retrospective is now recorded **verbatim** in `.pdca/status/issue-3-r5.md` §Lessons learned and that record is **`completed`** (outcome `accepted`), so item `#3` has no outstanding record obligation; the next authorized step stays **`DO item #4 (r1)`**.
@@ -45,7 +56,159 @@
 - **Completeness `2/4 accepted`** — `#2` and `#8` are `done` / `finalized` with terminal outcome (cycle) `accepted` (commits `59fb1fb` and `a38bb7f`; GitHub `#2` and `#8` closed as `COMPLETED`); `#3` and `#4` are `pending` / `ready` / `active`; `#1` (accepted at `dc94520`, closed in GitHub) and `#11` (`infeasible`) remain context rows outside this collection's execution.
 - **Record correction (one-writer rule, `2026-11-11`)** — this collection record had been left with a stale `#2` header (`phase: ACT · record: completed`) and contradictory `#8` item-row dispositions written by concurrent record writers during item `#8`; the header, §Current state, item rows `#2`/`#8` and §ACT record now carry the authoritative `2/4 accepted` disposition with both GitHub closures recorded. The record is written only by the driver's executor; competing blocks are kept and superseded, never deleted.
 - **`#3` `CHECK 2` returned `not accepted`; item-level revision `r2` recorded; `DO` `r2`/`n1` complete (`2026-11-12`)** — the `#3` `CHECK 1` lines and the "next allowed step: PLAN contract revision for `#3`" lines above are history, superseded by this bullet. `CHECK 2` (`r1`/`n1`) returned **`not accepted`** with `AC-3.2` **`met`** and `AC-3.1` **`unverified`** (`ref/reference.json` was missing and the reference log was truncated); **no product defect was reported** and no product change was requested. The planner's return is recorded as the item-level revision **`r2`**: `AC-3.1`/`AC-3.2`/`AC-3.3` unchanged, the **evidence plan** updated to require `ref/reference.json` with the recorded reference parameters, the completed reference log, the full gate logs `logs/30`–`34` and the snapshot `logs/35`/`36` (item record §PLAN record `### r2`). The driver closed the proof gap: `ref/gen_reference.py` was re-run to completion (exit `0`, `logs/40-reference-run-full.log`), producing `ref/reference.json` (class `VRSeparator`, `vr_model_param 4band_v2`, primary `Instrumental`, `window_size 512`, `batch_size 1`, `aggression 0.05` with `split_bin 85`, TTA/post-process/high-end `false`, `adjust_aggr.is_non_accom_stem=false`, `y_spec`/`v_spec` shapes `[2,673,1103]`, `api_cross_check`) and regenerated stems sha256 `7d732bfb…53cf` (primary) / `7b7fcf0e…ee1b` (secondary), and parity was re-measured against it (exit `0`, `logs/41-check-parity-after-reference-rerun.log`: primary ch0 `1.2814999e-6` / `3.38146e-8` / `112.80 dB` / `0.999999999998`, primary ch1 `1.2218952e-6` / `3.0912e-8` / `112.72 dB` / `0.999999999997`, secondary ch0 `1.4007092e-6` / `3.5573663e-8` / `124.13 dB` / `1.0`, secondary ch1 `1.2218952e-6` / `3.193839e-8` / `122.67 dB` / `1.0`). Item `#3` stays **`in-progress`**, `plan_revision 2`, attempts `2`; counters `N=1 · r=2 · n=1`; next allowed step **`CHECK item #3 (r2/n1)`** (CHECK 3); **no commit, no GitHub `#3` closure and no `done` is authorized**; completeness stays **`2/4 accepted`**; `#4` untouched.
-- **Update (`2026-11-12T17:51Z`) — `#3` record-closure blocker resolved; the item record is `record: completed`.** The mandatory `pdca-check` retrospective for item `#3` was recorded **verbatim** in `.pdca/status/issue-3-r5.md` §Lessons learned (completion signal `retrospective_complete`) and the item record now reads `phase: ACT · record: completed · outcome: accepted`; the accepted outcome, product commit `3130f55` and the GitHub `#3` closure are **unchanged and not reopened**, nothing was re-run, re-staged or re-verified, and no counter moved (`N=1 · r=2 · n=1`). This bullet supersedes the `#3` record-closure blocker sentence earlier in this section (kept as history, not rewritten). Completeness stays **`3/4 accepted`**, next item **`#4`** — `DO item #4 (r1)` is the next authorized collection step.
+- **Update (`2026-11-12T17:51Z`) — `#3` record-closure blocker resolved; the item record is `record: completed`.** The mandatory `pdca-check` retrospective for item `#3` was recorded **verbatim** in `.pdca/status/issue-3-r5.md` §Lessons learned (completion signal `retrospective_complete`) and the item record now reads `phase: ACT · record: completed · outcome: accepted`; the accepted outcome, product commit `3130f55` and the GitHub `#3` closure are **unchanged and not reopened**, nothing was re-run, re-staged or re-verified, and no counter moved (`N=1 · r=2 · n=1`). This bullet supersedes the `#3` record-closure blocker sentence earlier in this section (kept as history, not rewritten). Completeness stays **`3/4 accepted`**, next item **`#4`** - `DO item #4 (r1)` is the next authorized collection step.
+- **`#4` `DO` `r1`/`n1` in progress (`2026-11-12T15:17Z`)** — appends to the fields above and
+  supersedes none of them; this is a **continuation of the same attempt** (`r=1`, `n=1/3`, no attempt
+  increment). Item row `#4` is set `in-progress`, `plan_revision 1`, attempts `1`. State on disk:
+  `HEAD 8b03cfd` on `main`, nothing staged, no commit/push/GitHub write; `GRN-4` **fixed** (GroupNorm
+  variance over the whole group; test red exit `101` → green exit `0`), `CTR-4` **open**
+  (`Tensor::conv_transpose1d` is not the `ConvTranspose` definition for kernel > 1; the zero-insert +
+  flipped-kernel rewrite is applied but its unit test is still red exit `101`, and the
+  `one_hot_stride()` helper edit is **unverified — never compiled or tested**), `PAR-4` **still red**
+  after the `GRN-4` fix (`max_abs 0.62…1.09`, `SDR −41.7…+2.7 dB`, `logs/57`) with the first decoder
+  divergence at `decoder-0` (`logs/58`). The tree is mid-repair and **does not compile**; there is no
+  candidate. Next allowed step: **`finish CTR-4, re-run parity`** (`DO item #4 (r1/n1)` continues);
+  **no CHECK, no commit, no GitHub `#4` closure and no `done` is authorized**. Completeness stays
+  **`3/4 accepted`**; every earlier clause in this section that calls `#4` `pending`/`ready`/untouched
+  is history, superseded by this bullet.
+- **`#4` fix progress (`2026-11-12T16:01Z`)** — supersedes the `CTR-4`/`PAR-4` clauses of the bullet
+  above (that bullet is kept as history): `CTR-4` is **fixed and verified** (dead `OnceLock` stub and
+  `one_hot_stride()` deleted; zero insertion via `pad_with_zeros`, flipped-kernel `conv1d`;
+  `cargo test --release --lib model::demucs::tests` exit **`0`**, `5 passed; 0 failed`,
+  `logs/61-ctr4-lib-tests.log`) and the tree compiles. Parity re-measured against the unchanged frozen
+  reference: `cargo test --release --test demucs_parity -- --nocapture` exit **`0`**,
+  **`1 passed; 0 failed`**, all 8 stem × channel pairs inside `max_abs ≤ 3.5e-4` / `RMSE ≤ 1e-4` /
+  `SDR ≥ 80 dB` (worst `max_abs 8.583e-6`, `RMSE 1.774e-7`, lowest `SDR 84.36 dB`,
+  `logs/62-parity-after-ctr4.log`) — **a measurement, not a verdict; no acceptance is claimed here**.
+  Gates on the fixed bytes: `cargo build` exit **`0`** (`logs/63`), `cargo clippy --all-targets` exit
+  **`0`** (`logs/65`); the full `cargo test` gate is **in progress / unfinished**
+  (`logs/66-gate-test-full.log`, still running) and the converter tests have **not** been re-run after
+  the fix. Item `#4` stays `in-progress`, `plan_revision 1`, attempts `1`; next allowed step:
+  **`complete the full cargo test gate, then the converter tests on the fixed bytes, then record`**;
+  no CHECK, no commit, no GitHub `#4` closure and no `done` is authorized.
+- **`#4` `DO` `r1`/`n1` attempt complete — candidate ready for CHECK (`2026-11-12T16:15Z`)** — appends
+  to the fields above and supersedes the "in progress / no candidate" clauses of the two `#4` bullets
+  (kept as history): the attempt is **complete**, `PAR-4` is **closed on the measured candidate** (8/8
+  stem × channel rows inside the thresholds, worst `max_abs 8.583e-6` / `RMSE 1.774e-7` / `SDR
+  84.36 dB`, `logs/62`), the gates are green — `cargo build` exit `0` (`logs/63`), `cargo clippy
+  --all-targets` exit `0` (`logs/65`), full `cargo test` exit `0` — 144 passed / 0 failed / 4 ignored over 24 targets + doc-tests (`logs/66`), converter tests
+  `Ran 10 tests` `OK` exit `0` (`logs/68`) with the pinned checkpoint re-verified (`logs/69`) — and the
+  `AC-4.1` non-numeric clauses are measured (strict-load rejection `logs/75`; on-disk stem naming
+  `logs/80`/`logs/82`). Evidence pack written under `.pdca/open-issues-r5/rv1/item-4-demucs/`
+  (`manifest.json`, `index.md`, `snapshot*`, `metrics/parity.*`, `commands.txt`, `lint.txt`). Item row
+  `#4` stays `in-progress`, `plan_revision 1`, attempts `1`; counters `N=1 · r=1 · n=1/3`. Next
+  allowed step: **`CHECK item #4 (r1/n1)`**; no commit, no GitHub `#4` closure and no `done` is
+  authorized before an accepted CHECK. Completeness stays **`3/4 accepted`**.
+- **`#4` item-level contract revision `r1 → r2` recorded; `DO` `r2`/`n1` complete — candidate ready for
+  CHECK (`2026-11-12T16:48Z`)** — appends to the fields above and supersedes the "`plan_revision 1`" /
+  "next allowed step `CHECK item #4 (r1/n1)`" clauses of the `#4` bullets (kept as history). `CHECK 1`
+  (`r1`/`n1`) returned **`not accepted → PLAN`**: `AC-4.1` `met`, `AC-4.2` `met`, `AC-4.3` `unmet`,
+  finding `ORD-4` (blocking, confirmed — acceptance ordering of `AC-4.3` against the collection's
+  pre-`CHECK` commit prohibition). The planner's item-level `r2` preserves `AC-4.1`/`AC-4.2` verbatim and
+  partitions `AC-4.3` into `AC-4.3(1)` (pre-acceptance `CHECK` gate) and `AC-4.3(2)` (post-acceptance
+  `ACT` commit + GitHub `#4` closure); **no requirement, threshold or scope was added, narrowed or
+  weakened**, and the collection plan stays `r1` (see §PLAN record pointer). The `CHECK → PLAN`
+  transition consumed no new attempt; `r2` starts at attempt `n=1/3`. `DO` `r2`/`n1` did exactly the
+  planner's re-anchor scope: `HEAD 8b03cfda15a485b115f8b694d07c03e98fcdf685` on `main`, index empty,
+  the 8 product paths **8/8** equal to `snapshot-sha256.txt` (`0` missing, `0` mismatch), delta
+  isolated to item `#4`'s product files, **no product byte edited**, no premature commit/push and **no
+  GitHub `#4` read or write** (`logs/83-reanchor-r2n1.log`, exit `0`). Item row `#4` → `plan_revision 2`,
+  status `in-progress`, disposition `active`, attempts `1`; counters `N=1 · r=2 · n=1/3`. Next allowed
+  step: **`CHECK item #4 (r2/n1)`**; the atomic commit and the GitHub `#4` closure stay `ACT` work under
+  `AC-4.3(2)` and are not authorized before an accepted CHECK. Completeness stays **`3/4 accepted`**.
+- **`#4` `GH-4-PRE` evidence round complete (`2026-11-12T16:57Z`, `r2` / `n=1/3`, no product change)** —
+  appends to the fields above and supersedes, in the "no GitHub `#4` read or write" bullet above, only
+  the *read* clause (that bullet is kept as history; the next step is unchanged in name). `CHECK 2`
+  routed `GH-4-PRE` (major, unverified, `AC-4.3(1)`) back to `DO` for evidence only: one read-only,
+  unauthenticated observation of `AlexeyShirshov/candle-roformer#4` was made at `2026-11-12T16:57:05Z` —
+  `HTTP 200` on both endpoints, `state=open`, `state_reason=null`, `closed_at=null`, timeline `0`
+  `closed` / `0` `reopened` (one `milestoned` event, no `rel="next"` page); **no premature closure
+  exists**, so none can predate this cycle's CHECK. Evidence persisted under `item-4-demucs/github/` +
+  `logs/84-github-issue-4-observation.log`; `manifest.json` (root `github_issue` block + `AC-4.3(1)`
+  sub-record), `index.md` and `commands.txt` updated by reference. No product byte, no gate re-run, no
+  commit/staging/push and **no GitHub write of any kind**; item row `#4` stays `in-progress`,
+  `plan_revision 2`, attempts `1`; counters `N=1 · r=2 · n=1/3`; completeness stays `3/4 accepted`.
+  Next allowed step: **`CHECK item #4 (r2/n1)` — CHECK 3**; the atomic commit and the GitHub `#4`
+  closure stay `ACT` work under `AC-4.3(2)`.
+- **`#4` `ACT` post-acceptance closure performed (`2026-11-12T17:06Z`, contract `r2` / attempt `n=1/3`)** —
+  appends to the fields above and supersedes their "next allowed step `CHECK item #4 (r2/n1)`" and
+  "not authorized before an accepted CHECK" clauses (kept as history): `CHECK 3` (`r2`/`n1`) returned
+  **`accepted → ACT`** (recorded as returned in `.pdca/status/issue-4-r5.md` §CHECK record `### CHECK 3 -
+  r2/n1`; its complete original report was not supplied as a persisted artefact and is recorded as
+  absent, not reconstructed). `AC-4.3(2)` **commit performed**: `d042c2628edb52deab42118e18ac69974e5ad75d`
+  (`d042c26`) on `main`, parent `8b03cfda15a485b115f8b694d07c03e98fcdf685`, **8 files changed,
+  `+3767/−4`**, subject `#4: HTDemucs 4-stem separation with audio-separator 0.48.0 parity`, footer
+  `Refs #4` (no `Closes`/`Fixes`/auto-close keyword), **not pushed**, no branch switch, no amend/rebase,
+  no tag; the index is empty, `git diff --name-only HEAD -- <8 paths>` is empty and the commit carries no
+  `.pdca/**`, `.openidea/**`, weight, audio/fixture, log or status path. **GitHub `#4` closure = external
+  residual handed to the calling driver** — no PDCA phase performs a GitHub write in this collection, so
+  the issue is **not** recorded as closed here. Item row `#4` stays `in-progress`, `plan_revision 2`,
+  attempts `1` until the mandatory retrospective is recorded; counters `N=1 · r=2 · n=1/3`; completeness
+  stays **`3/4 accepted`**. Next allowed step: **`ACT item #4 — retrospective`** (a `pdca-check`
+  `retrospective` dispatch for cycle `issue-4-r5`, then persist its raw report verbatim), after which the
+  collection's integration CHECK follows.
+- **`#4` finalized — all four items terminal (`2026-11-12T17:13Z`, contract `r2` / attempt `n=1/3`)** —
+  appends to the fields above and supersedes their `1/3`-complete / `#4 in-progress` / "next allowed
+  step `ACT item #4 — retrospective`" clauses and **every earlier `next allowed step` line in this
+  section** (kept as history): the mandatory `pdca-check`
+  `retrospective` report for cycle `issue-4-r5` (`N=1`, `r=2`, `n=1`) was routed by the calling driver in
+  `mode: retrospective` and is persisted **verbatim** in `.pdca/status/issue-4-r5.md` §Lessons learned
+  (26-line report block + the dispatch's own notes outside it), completion signal
+  `retrospective_complete`. That item record now reads **`phase: ACT · record: completed · outcome:
+  accepted`**; item row `#4` → `done` / `finalized`, `plan_revision 2`, attempts `1`; its `AC-4.3(2)`
+  commit `d042c26` stays performed and the **GitHub `#4` closure stays an external residual handed to the
+  calling driver — NOT performed here and never recorded as "issue closed"**. Counters unchanged
+  `N=1 · r=2 · n=1/3`; **completeness `4/4 accepted`**. The collection itself is **not** complete: no
+  integration `CHECK` and no collection `ACT` has run, the collection-level §Lessons learned stays
+  `pending` (its own step after the integration CHECK), and the header `phase` field moves `PLAN → DO`
+  (item executions done) with `record: open` / `outcome: pending`. Next allowed step: **collection
+  integration `CHECK`**.
+
+- **Completeness `4/4 accepted`; all four GitHub closures now performed (`2026-11-12T17:26Z`)** - appends
+  to the fields above and supersedes their `3/4 accepted`, their "GitHub `#4` closure = external residual
+  / NOT performed" and their `next allowed step: collection integration CHECK` clauses (all kept as
+  history, none rewritten): the four items `#2` (`59fb1fb`), `#8` (`a38bb7f`), `#3` (`3130f55`) and `#4`
+  (`d042c26`) are each `done` / `finalized` with terminal outcome (cycle) `accepted`, and **all four
+  GitHub issues are closed as `completed`** - `#2` at `2026-11-11T06:18:29Z` (comment `6788661305`),
+  `#8` at `2026-11-11T07:57:47Z` (comment `6790434030`), `#3` at `2026-11-12T07:22:14Z` (comment
+  `6817426243`) and `#4` at `2026-11-12T17:26:06Z` (comment `6830882059`, read back unauthenticated as
+  `state=closed` / `state_reason=completed`, timeline 1 `closed` / 0 `reopened`). Counters
+  `N=1 · r=2` (collection plan still `r1`; item-level revisions are per item); **completeness
+  `4/4 accepted`**. The collection itself is **not** complete and no verdict is stated here: the
+  integration `CHECK` is being **re-checked** against the round's evidence (`INT-F01`-`INT-F03`,
+  `INT-CROSS-ITEM`, §General verification and recovery) and **no collection `ACT` has run**, so the
+  collection-level §Lessons learned stays `pending` and is written only after the integration CHECK
+  passes. Next allowed step: **collection integration `CHECK` (re-check)** -> collection `ACT`.
+
+- **FINAL COLLECTION STATE (`2026-11-12T17:43Z`) — authoritative; supersedes every earlier `phase`,
+  `next allowed step`, completeness and verdict clause in this section and in the header (all kept as
+  history, none rewritten).** `phase: ACT` · `record: completed` · `outcome: incomplete (STOP)`.
+  **Counters:** collection `N=1` · `r=1` (the collection plan stayed `r1`; the item-level revisions are
+  per item — `#2` `r=2`, `#8` `r=3`, `#3` `r=2`, `#4` `r=2` — and stay as recorded); collection attempts
+  `n=0`, item attempts as recorded in §Item table (`#2` 2, `#8` 1, `#3` 2, `#4` 1). This ACT created **no**
+  new attempt, counter or revision.
+  **Completeness: `4/4 item goals accepted`** — `#2` (`59fb1fb`), `#8` (`a38bb7f`), `#3` (`3130f55`),
+  `#4` (`d042c26`), each accepted, committed on `main` and finalized, with **all four GitHub issues
+  closed** (`#2` `2026-11-11T06:18:29Z` comment `6788661305`; `#8` `2026-11-11T07:57:47Z` comment
+  `6790434030`; `#3` `2026-11-12T07:22:14Z` comment `6817426243`; `#4` `2026-11-12T17:26:06Z` comment
+  `6830882059`). **No item is incomplete**; the context rows `#1` (accepted, closed) and `#11`
+  (`infeasible`) are unchanged and outside this collection.
+  **Integrated-tree verdict: `not accepted`** — the parent integration CHECK, after the mandatory expert
+  review, returned the terminal routing `not accepted → ACT`; the integrated tree cannot be accepted.
+  **Unresolved requirements, stated explicitly:** `INT-LIMITS` **`unmet`** (irreversible `--amend` breach
+  of the recorded "no history rewrite" constraint); `INT-F02` **`unverified`**, `INT-REGRESSION`
+  **`unverified`**, `INT-CROSS-ITEM` **`unverified`** (the full gate's run-time input tree was never
+  captured; the single permitted evidence round is used). **No criteria defect was found**; no further
+  attempt, evidence round or revision is authorized.
+  **Next authorized action — two user decisions:** (a) accept or reject the `--amend` that produced
+  `3130f55` as a deviation from the recorded "no history rewrite" constraint; (b) authorize or decline
+  **one** verification-only `cargo test` run on a clean `d042c26`, capturing `HEAD`, `write-tree`, the
+  full `git status`, per-path hashes and the toolchain before/after. Neither decision changes any item
+  acceptance; **(a) alone determines whether `INT-LIMITS` can be waived**.
+  **Nothing was cleaned up:** no worktree or branch was removed (none exists), no merge, no revert, no
+  push, no issue reopen, no deletion or rewrite of any record or evidence — every result stays preserved
+  as recorded (§CHECK record, §ACT record, §General verification and recovery, §Git state, §Lessons
+  learned `retrospective_complete`).
 
 ## Original task
 
@@ -126,6 +289,14 @@ Item-level pointer (not a collection revision — the collection's own revision 
 
 Item-level pointer (not a collection revision — the collection's own revision stays `r1`): item `#8` received a further item-level contract revision **`r3`** from `CHECK 2 → PLAN` on 2026-11-11T07:27:43Z (`AC-8.3` revised to the `r1` gate semantics, `AC-8.4(1)` refined to the stored read-only GitHub observation); its complete report is recorded verbatim in `.pdca/status/issue-8-r5.md` §PLAN record `### r3`, together with the revised `AC-8.1`–`AC-8.4` text. It is not pasted here.
 
+Item-level pointer (not a collection revision — the collection's own revision stays `r1`): item `#4`
+received an item-level contract revision **`r2`** from `CHECK 1 → PLAN` on `2026-11-12T16:48Z`
+(`AC-4.1`/`AC-4.2` preserved verbatim; `AC-4.3` partitioned into `AC-4.3(1)` pre-acceptance `CHECK`
+gate and `AC-4.3(2)` post-acceptance `ACT` commit + GitHub `#4` closure, resolving finding `ORD-4`
+without changing any user requirement or numeric threshold); its complete report is recorded verbatim
+in `.pdca/status/issue-4-r5.md` §PLAN record `### r2`, together with the revised `AC-4.1`–`AC-4.3`
+text. It is not pasted here.
+
 ## Approval record
 
 - Criteria addendum approved by the user, verbatim message (source: user message, recorded 2026-11-10T18:01:54Z):
@@ -147,7 +318,7 @@ Item-level pointer (not a collection revision — the collection's own revision 
 | #2 | G1 | main | done | ready | cycle | pdca | pdca-coder | issue-2-r5 | .pdca/status/issue-2-r5.md | 2 | finalized | execution | 2 | order 1 (risk-first): MDX-Net ONNX separation on CPU from a locally supplied, checksum-verified published `.onnx`; accepted by `CHECK 3` (`r2`/`n2`: `AC-2.1`–`AC-2.4` `met`, `AC-2.4` on its pre-acceptance component with the commit action performed); attempts `n=1/3` and `n=2/3` under contract `r2`; product commit `59fb1fb` (parent `2d0be53`, 13 files, `+1750/-23`, footer `Refs #2`) on `main`, not pushed; **GitHub `#2` closed as `COMPLETED` by the driver at `2026-11-11T06:18:29Z`** (comment `6788661305`); terminal outcome (cycle) `accepted`; full item history in `.pdca/status/issue-2-r5.md` §CHECK record, §ACT record, §Lessons learned |
 | #8 | G1 | main | done | ready | cycle | pdca | pdca-coder | issue-8-r5 | .pdca/status/issue-8-r5.md | 3 | finalized | execution | 1 | order 2: ensemble operators `avg_wave`/`median_wave` plus preset `vocal_balanced` on a real CC0 song; item-level contract revisions `r1→r2→r3` (item detail, the collection plan stays `r1`); accepted by `CHECK 3` (`r3`/`n1`: `AC-8.1`, `AC-8.2`, `AC-8.3`, `AC-8.4(1)` `met`); product commit `a38bb7f` (parent `59fb1fb`, 7 files, `+1368/-2`, footer `Refs #8`) on `main`, not pushed; **GitHub `#8` closed as `COMPLETED` by the driver at `2026-11-11T07:57:47Z`** (comment `6790434030`); terminal outcome (cycle) `accepted`; full item history in `.pdca/status/issue-8-r5.md` §CHECK record, §ACT record, §Lessons learned |
 | #3 | G1 | main | done | ready | cycle | pdca | pdca-coder | issue-3-r5 | .pdca/status/issue-3-r5.md | 2 | finalized | execution | 2 | order 3: **accepted by `CHECK 3` (`r2`/`n1`)** — `AC-3.1` `met`, `AC-3.2` `met`; terminal outcome (cycle) **`accepted`** (the `terminal` column carries the plan-terminal cause `execution`, as for `#2`/`#8`); `AC-3.3` performed: product commit **`3130f55`** (parent `1a164ae`, 33 files, `+3207/−68`, footer `Refs #3`, not pushed, no weights/`.pdca`/`.openidea`) and **GitHub `#3` closed as `COMPLETED` by the driver at `2026-11-12T07:22:14Z`** (comment `6817426243`); same-commit note: `src/dsp.rs` (`stft_zeros`) plus formatting-only `src/ensemble.rs`, `src/wav.rs`, `tests/ensemble.rs`, `tests/s1_spikes.rs`; final measured parity primary `1.2814999e-6` / `3.38146e-8` / `112.80 dB` / `0.999999999998`, secondary `1.4007092e-6` / `3.5573663e-8` / `124.13 dB` / `1.0`; **record-closure blocker:** the mandatory `pdca-check` retrospective report was not supplied with the ACT brief, so `.pdca/status/issue-3-r5.md` keeps `record: open` with the explicit blocker (accepted outcome, commit and closure unaffected, nothing reopened). Superseded history: order 3: real VR/UVR checkpoint with pinned checksum, conversion plus audio-separator parity at window_size=512/aggression=5 with no post-processing; `DO` `r1`/`n1` complete (converter `tools/convert_vr_arch.py`, artifact `47a6e24f…4b8d`, Rust `src/model/vr_arch.rs` + `vr_pipeline.rs` + `vr_resample.rs`, converter tests `Ran 8 tests` `OK`, `cargo test` 135 passed / 0 failed / 2 ignored); `CHECK 1` `not accepted → PLAN` (dispatch/contract drift plus evidence gaps — no product defect); item-level contract revision **`r2`** recorded (same `AC-3.1`–`AC-3.3`, evidence plan requires `ref/reference.json`, the completed reference log, gate logs `logs/30`–`34` and the snapshot `logs/35`/`36`); `CHECK 2` (`r1`/`n1`) `not accepted` with `AC-3.2` `met` and `AC-3.1` `unverified` (`ref/reference.json` missing, reference log truncated) — no product defect; `DO` `r2`/`n1` complete, evidence-only, **no product change**: reference re-run exit `0` (`logs/40-reference-run-full.log`), `ref/reference.json` recorded (`VRSeparator`, `4band_v2`, `Instrumental`, `window_size 512`, `batch_size 1`, `aggression 0.05`/`split_bin 85`, TTA/post-process/high-end `false`, `adjust_aggr.is_non_accom_stem=false`, `y_spec`/`v_spec` `[2,673,1103]`, `api_cross_check`), stems sha256 `7d732bfb…53cf` / `7b7fcf0e…ee1b`, parity re-measured exit `0` (`logs/41-check-parity-after-reference-rerun.log`) — full r2 evidence in `.pdca/status/issue-3-r5.md` §PLAN record `### r2`, §DO result `### r2 / n1`, §CHECK record `### CHECK 2 — r1/n1`; counters `N=1 · r=2 · n=1`; next allowed step: **`CHECK item #3 (r2/n1)`**; no commit, no GitHub `#3` closure. **Update (`2026-11-12T12:48Z`), superseding the "record-closure blocker" clause in this cell:** the mandatory `pdca-check` retrospective was supplied and is recorded **verbatim** in `.pdca/status/issue-3-r5.md` §Lessons learned (completion signal `retrospective_complete`), so that record now reads `phase: ACT · record: completed · outcome: accepted` and item `#3` has no outstanding record obligation; accepted outcome, commit `3130f55` and the GitHub `#3` closure unchanged. |
-| #4 | G1 | main | pending | ready | cycle | pdca | pdca-coder | issue-4-r5 | .pdca/status/issue-4-r5.md | 1 | active | execution | 0 | order 4: HTDemucs strict validation and 4-stem parity (drums/bass/other/vocals) at shifts=0 with equal segment/overlap |
+| #4 | G1 | main | done | ready | cycle | pdca | pdca-coder | issue-4-r5 | .pdca/status/issue-4-r5.md | 2 | finalized | execution | 1 | order 4: HTDemucs strict validation and 4-stem parity (drums/bass/other/vocals) at shifts=0 with equal segment/overlap; `DO` `r1`/`n1` **in progress** (continuation of the same attempt, no attempt increment): `GRN-4` fixed (red exit `101` → green exit `0`) and `CTR-4` fixed (unit test red exit `101` → green exit `0`, tree compiles); parity **re-measured green** (`logs/62`, exit `0`, `1 passed`, 8/8 stem × channel inside the thresholds, worst `max_abs 8.583e-6` / `RMSE 1.774e-7` / `SDR 84.36 dB`) — a measurement, **not** a verdict; gates `cargo build` exit `0`, `clippy --all-targets` exit `0`, full `cargo test` **in progress**; no candidate recorded yet; details `.pdca/status/issue-4-r5.md` §DO result. **Update (`2026-11-12T16:15Z`): `DO` `r1`/`n1` attempt COMPLETE — candidate ready for CHECK** (continuation 3, no counter increment, no product byte edited): `PAR-4` **closed on the measured candidate** (8/8 stem × channel rows inside `max_abs ≤ 3.5e-4` / `RMSE ≤ 1e-4` / `SDR ≥ 80 dB`; worst `max_abs 8.583e-6`, `RMSE 1.774e-7`, lowest `SDR 84.36 dB`, `logs/62`, `metrics/parity.json`); gates `cargo build` exit `0`, `clippy --all-targets` exit `0`, full `cargo test` exit `0` — 144 passed / 0 failed / 4 ignored over 24 targets + doc-tests (`logs/66`), converter tests `Ran 10 tests` `OK` exit `0` (`logs/68`) with the pinned checkpoint re-verified (`8726e21a…faa8b4`, 84,141,911 B, 533 F32 tensors, `logs/69`); `AC-4.1` strict-load rejection measured for missing/unexpected/mis-shaped/non-f32 (`logs/75`, exit `101` ×4) and the four stems written on disk under exactly `drums`/`bass`/`other`/`vocals` with an independent read-back (`logs/80`, `logs/82`, exit `0`); evidence pack `manifest.json` + `index.md` + `snapshot*` (8/8) + `metrics/parity.{json,csv}` + `commands.txt` + `lint.txt`; next allowed step **`CHECK item #4 (r1/n1)`**, no commit/staging/GitHub `#4` closure/`done`; details `.pdca/status/issue-4-r5.md` §DO result. **Update (`2026-11-12T16:48Z`, item-level contract revision `r1 → r2` — the collection plan stays `r1`):** `CHECK 1` (`r1`/`n1`) returned **`not accepted → PLAN`** (`AC-4.1` `met`, `AC-4.2` `met`, `AC-4.3` `unmet` — finding `ORD-4`, blocking, confirmed: acceptance ordering); the planner's `r2` keeps `AC-4.1`/`AC-4.2` verbatim and splits `AC-4.3` into `AC-4.3(1)` (pre-acceptance `CHECK` gate) and `AC-4.3(2)` (post-acceptance `ACT` commit + GitHub `#4` closure) without changing any requirement or threshold, and the transition consumed no new attempt. `DO` `r2`/`n1` then re-anchored the unchanged 8-path candidate **8/8** against `snapshot-sha256.txt` (`0` missing, `0` mismatch) on `HEAD 8b03cfd`, index empty, no premature commit or push and no GitHub `#4` read or write — `AC-4.3(1)` readiness confirmed, no product byte edited (`logs/83-reanchor-r2n1.log`, exit `0`); next allowed step **`CHECK item #4 (r2/n1)`**, still no commit, no GitHub `#4` closure and no `done` before an accepted CHECK. **Update (`2026-11-12T17:06Z`): `CHECK 3` (`r2`/`n1`) `accepted → ACT`; post-acceptance commit `d042c26` performed** (parent `8b03cfd`, 8 files, `+3767/−4`, subject `#4: HTDemucs 4-stem separation with audio-separator 0.48.0 parity`, footer `Refs #4`, **not pushed**, index empty, `git diff --name-only HEAD -- <8 paths>` empty, no `.pdca/**`/`.openidea/**`/weight/audio/log/status path in the commit); **GitHub `#4` closure = external residual of the calling driver** (no PDCA phase writes to GitHub; the issue is never recorded as closed here); the item record stays `record: open` pending the mandatory retrospective, so this row stays `in-progress`, `plan_revision 2`, attempts `1`. **Update (`2026-11-12T17:13Z`): item `#4` FINALIZED — `done` / `finalized`, terminal outcome (cycle) `accepted`, `plan_revision 2`, attempts `1`.** The mandatory `pdca-check` `retrospective` report (`mode: retrospective`, cycle `issue-4-r5`, `N=1`/`r=2`/`n=1`) is persisted **verbatim** in `.pdca/status/issue-4-r5.md` §Lessons learned (completion signal `retrospective_complete`) and that record now reads `phase: ACT · record: completed · outcome: accepted`; `AC-4.3(2)` = commit `d042c26` performed, **GitHub `#4` closure handed to the calling driver and NOT performed** (never recorded as closed); counters `N=1 · r=2 · n=1/3`; evidence root `.pdca/open-issues-r5/rv1/item-4-demucs/`; **Update (`2026-11-12T17:26Z`): `AC-4.3(2)` is now performed in BOTH components** - commit `d042c26` **plus** GitHub `#4` **closed as `completed` at `2026-11-12T17:26:06Z`** (comment id `6830882059`; read-only unauthenticated `GET` read-back `state=closed`, `state_reason=completed`, timeline 1 `closed` / 0 `reopened`; raw `item-4-demucs/github/issue-4-observation-closed.json`, `logs/89`, `logs/90`), which **supersedes the earlier sentence in this cell "GitHub `#4` closure handed to the calling driver and NOT performed"** (kept as history, not rewritten); the `2026-11-12T17:26:13Z` stale `state=open` read is recorded as a read-lag notice in the item record, not hidden. Row state unchanged: `done` / `finalized`, `terminal` `execution`, `plan_revision 2`, attempts `1` |
 | #1 | — | — | done | pending | cycle | pdca | pdca-coder | issue-1-r4 | .pdca/status/issue-1-r4.md | 1 | finalized | execution | 2 | context row: accepted at dc94520 and closed in GitHub; not part of this collection's execution |
 | #11 | — | — | incomplete | pending | cycle | pdca | pdca-coder | — | — | — | finalized | infeasible | 0 | context row: terminal infeasible, unchanged from r4; requires both a real CUDA and an Apple Silicon host |
 
@@ -483,7 +654,108 @@ for CHECK. Details in `.pdca/status/issue-3-r5.md` §DO result `### r2 / n1` and
   reference re-run and this recording); `HEAD 1a164ae`, index empty, no commit, no push, no GitHub
   write. Counters `N=1 · r=2 · n=1`. Next allowed step: **`CHECK item #3 (r2/n1)`**.
 
+Item `#4` — DO attempt `r1`/`n1` **in progress** (continuation of the same attempt; no candidate, no
+verdict). Details in `.pdca/status/issue-4-r5.md` §DO result and the evidence root
+`.pdca/open-issues-r5/rv1/item-4-demucs/`.
+
+- Fresh baseline on the unchanged tree: converter tests `Ran 10 tests` / `OK` exit **`0`**; `cargo
+  build --release` exit **`0`**; parity exit **`101`**, `0 passed; 1 failed`, `max_abs 2.6e3…4.0e3`
+  (`logs/50`, `logs/51`, `logs/52`).
+- `GRN-4` **fixed** — `GroupNorm` now pools mean and variance over the whole group; the unit test went
+  red exit `101` → green exit `0` (`3 passed`); the bisection boundary moved from
+  `encoder.0.dconv.layers.0-norm1` to the decoder (`logs/53`–`56`, `logs/57`).
+- `CTR-4` **open** — transposed convolution for kernel > 1; `FreqConvTranspose::forward` rewritten as
+  zero-insert + flipped-kernel `conv1d`, unit test still red exit `101`; the `one_hot_stride()` helper
+  edit is **unverified — never compiled or tested** (`logs/59`, `logs/60`).
+- `PAR-4` **still red**: `max_abs 6.2e-1…1.09`, `RMSE 1.3e-2…5.3e-2`, `SDR −41.7…+2.7 dB`, exit
+  **`101`** after the `GRN-4` fix (`logs/57`), first decoder divergence at `decoder-0`
+  (`max_abs 8.14`, `corr 0.031`, `logs/58`).
+- `HEAD 8b03cfd`, nothing staged, no commit, no push, no GitHub write. Counters `N=1 · r=1 · n=1/3`.
+  Next allowed step: **`finish CTR-4, re-run parity`**.
+- **Update (`2026-11-12T16:01Z`) — the `CTR-4`/`PAR-4` bullets above are history; measured now:**
+  `CTR-4` fixed (lib tests exit **`0`**, `5 passed`, `logs/61`), parity **exit `0`**, `1 passed`, all
+  8 stem × channel pairs inside the thresholds (worst `max_abs 8.583e-6`, `RMSE 1.774e-7`, lowest
+  `SDR 84.36 dB`; `logs/62`); gates `cargo build` exit `0` (`logs/63`), `clippy --all-targets` exit `0`
+  (`logs/65`), full `cargo test` **unfinished** (`logs/66`), converter tests **not re-run** after the
+  fix. `HEAD 8b03cfd`, index empty, nothing staged, no commit, no push, no GitHub write. Next allowed
+  step: **`complete the full cargo test gate, then the converter tests on the fixed bytes, then
+  record`**. No acceptance, no verdict, no candidate claim.
+- **`#4` `DO` `r1`/`n1` — attempt complete, candidate ready for CHECK (`2026-11-12T16:15Z`,
+  continuation 3, no counter increment; the bullet above is kept as history and its "full `cargo test`
+  unfinished / converter tests not re-run / no candidate" clauses are superseded here).** No product
+  byte was edited by this continuation. Measured on the same bytes `logs/62` measured:
+  - **Full-suite gate:** `cargo test` (debug, whole workspace) exit **`0`** — **144 passed / 0 failed / 4 ignored** over 24 targets + doc-tests (lib 42; bs_roformer 8+1 ignored; core_tests 22; demucs_parity 1; ensemble 22+1 ignored; fp16_decision 0+2 ignored; gpu_smoke 1; library_api 12; s1_spikes 11; streaming_chunked 8; vr_arch 1; vr_pipeline_parity 1; vr_resample 1; vr_roundtrip 1; vr_samplerate 1; vr_stage_band_specs 1; vr_stage_bands 1; vr_stage_combined 1; vr_stage_mag 1; vr_stage_mask 1; vr_stage_waves 1; vr_stage_yspec 1; vr_stft_roundtrip 1; whisper_tests 3; doc-tests 1), 41m54s wall, launcher `EXIT=0` (`logs/66-gate-test-full.log`).
+  - **Converter tests on the fixed bytes:** `Ran 10 tests` `OK`, exit **`0`** (`logs/68`), and the
+    pinned checkpoint re-verified by the converter itself — source sha256 `8726e21a…faa8b4`,
+    84,141,911 B, 533 `F32` tensors (`logs/69`).
+  - **`AC-4.1` strict-load rejection:** four canonically rebuilt mutants of the real artifact, each
+    rejected by `HTDemucs::validate_state` — missing / unexpected / mis-shaped / non-f32, exit
+    **`101`** each (`logs/75`); the two earlier probe rounds are kept as history (`logs/71`, `logs/73`).
+  - **`AC-4.1` per-stem naming, on disk:** the pipeline wrote exactly `drums.wav`, `bass.wav`,
+    `other.wav`, `vocals.wav` (4 × 3,528,044 B, 441,000 frames × 2 ch @ 44,100 Hz, all finite) and an
+    independent RIFF read-back confirmed names/format/length/finiteness, exit **`0`** (`logs/80`,
+    `logs/82`).
+  - **`PAR-4` closed on the measured candidate:** 8/8 stem × channel rows inside `max_abs ≤ 3.5e-4`,
+    `RMSE ≤ 1e-4`, `SDR ≥ 80 dB`; worst `max_abs 8.583e-6`, worst `RMSE 1.774e-7`, lowest `SDR
+    84.36 dB` (`logs/62`, `metrics/parity.json`) — measurement only, **no verdict**.
+  - **Evidence pack:** `manifest.json`, `index.md`, `snapshot/` + `snapshot-sha256.txt` (8/8) +
+    `snapshot.diff` (148,596 B), `metrics/parity.{json,csv}`, `commands.txt`, `lint.txt` in
+    `.pdca/open-issues-r5/rv1/item-4-demucs/`.
+  - `HEAD 8b03cfd`, index empty, nothing staged, no commit, no push, no GitHub write; counters
+    `N=1 · r=1 · n=1/3`, attempts `1`. Next allowed step: **`CHECK item #4 (r1/n1)`**; no commit, no
+    GitHub `#4` closure and no `done` before an accepted CHECK.
+
+Item `#4` — **item-level contract revision `r2` recorded; `DO` `r2`/`n1` complete**, candidate
+unchanged and ready for CHECK (no verdict recorded here). Details in `.pdca/status/issue-4-r5.md`
+§PLAN record `### r2` and §DO result `### Attempt r2 / n1`; evidence root
+`.pdca/open-issues-r5/rv1/item-4-demucs/`.
+
+- `CHECK 1` (`r1`/`n1`) returned `not accepted → PLAN` (`AC-4.1` `met`, `AC-4.2` `met`, `AC-4.3`
+  `unmet`; finding `ORD-4`, blocking, confirmed). The outgoing attempt `r1`/`n1` is booked first, then
+  the item-level revision `r2` — `AC-4.1`/`AC-4.2` verbatim, `AC-4.3` partitioned into `AC-4.3(1)`
+  (pre-acceptance `CHECK` gate) and `AC-4.3(2)` (post-acceptance `ACT` commit + GitHub `#4` closure);
+  no user requirement or threshold changed, collection plan unchanged at `r1`, transition consumed no
+  attempt (`N=1 · r=2 · n=1/3`).
+- Re-anchor, no product edit: `HEAD 8b03cfda15a485b115f8b694d07c03e98fcdf685` on `main`;
+  `git diff --cached --name-only` empty (**nothing staged**); the 8 item product paths **8/8** equal to
+  `snapshot-sha256.txt` and to their `snapshot/` copies (`0` missing, `0` mismatch); no drift, so no
+  gate was re-run and the `CHECK 1` measurements stay bound to the same bytes (`logs/83-reanchor-r2n1.log`,
+  exit **`0`**).
+- `AC-4.3(1)` readiness: the delta is isolated to item `#4`'s 8 product files, no out-of-scope product
+  path is dirty, no `.pdca/` artefact is in that set, and no commit, push, staging, amend or tag was
+  performed. **No GitHub `#4` write of any kind** — and no GitHub read either.
+- Item row `#4` → `plan_revision 2`, status `in-progress`, disposition `active`, attempts `1`. Next
+  allowed step: **`CHECK item #4 (r2/n1)`**; the atomic commit and the GitHub `#4` closure remain
+  `ACT` work under `AC-4.3(2)`.
+
+Item `#4` — **`GH-4-PRE` evidence round under `r2`/`n1` complete** (evidence only, no product change, no
+verdict). Details in `.pdca/status/issue-4-r5.md` §DO result `### Evidence round r2 / n1`; evidence
+`.pdca/open-issues-r5/rv1/item-4-demucs/github/`, `logs/84-github-issue-4-observation.log`,
+`manifest.json`, `index.md`, `commands.txt`.
+
+- Routed by `CHECK 2 → DO`: `GH-4-PRE` — major, unverified, `AC-4.3(1)`: «отсутствует независимое
+  наблюдение отсутствия преждевременного закрытия GitHub `#4`. Это пробел доказательств, **не
+  установленное нарушение**.» Only evidence gathering was authorized; no criterion or product change.
+- One read-only, unauthenticated observation at `2026-11-12T16:57:05Z`: `GET …/issues/4` **`HTTP 200`**
+  (4,635 B, sha256 `c9734a32…f18117`) — `state=open`, `state_reason=null`, `closed_at=null`,
+  `created_at=2026-11-08T06:43:20Z`; `GET …/issues/4/timeline?per_page=100` **`HTTP 200`** (1,329 B,
+  sha256 `9087d84f…93848f`) — 1 event (`milestoned 1.0`), **`0` `closed` / `0` `reopened`**, no
+  `rel="next"` page. No token read, sent or stored; **no GitHub write of any kind**.
+- **Fact (no verdict):** the issue is `open` and its history contains no closure at all, so **no
+  premature closure exists** and none can predate this cycle's CHECK. Whether `AC-4.3(1)` is satisfied
+  remains a `CHECK` decision.
+- Stage unchanged: `HEAD 8b03cfd`, index empty, the same 8-path product delta, no gate re-run, no
+  commit/staging/push; counters `N=1 · r=2 · n=1/3`, item `#4` `in-progress` / `plan_revision 2` /
+  attempts `1`. Next allowed step: **`CHECK item #4 (r2/n1)` — CHECK 3**.
+
 ## CHECK record
+
+`Correction (2026-11-12T16:48Z) — the "items #3 and #4 … still pending and unstarted" clause of the
+paragraph below is superseded and kept as history:` item `#4`'s **`CHECK 1` (`r1`/`n1`) ran and
+returned `not accepted → PLAN`** — `AC-4.1` `met`, `AC-4.2` `met`, `AC-4.3` `unmet`, finding `ORD-4`
+(blocking, confirmed: acceptance ordering) — and the item-level contract revision `r2` is recorded. The
+item-level report is recorded in `.pdca/status/issue-4-r5.md` §CHECK record `### CHECK 1 — r1/n1`;
+nothing is claimed here as an acceptance and no `#4` verdict exists yet for contract `r2`.
 
 `not run` for items `#3` and `#4` — both are still `pending` and unstarted. Item `#8` ran three CHECK
 events (CHECK 1, CHECK 2 and — accepted — CHECK 3, all summarized below); item `#2` ran three CHECKs.
@@ -682,6 +954,29 @@ accepted verdict) ran on the frozen 7-file delta at `main @ 59fb1fb` and returne
   post-acceptance closure only — ACT then created commit `a38bb7f` and handed the GitHub `#8` closure
   to the calling driver (see §ACT record).
 
+Final collection integration `CHECK` (the parent integration CHECK, after the mandatory expert review),
+recorded as returned — terminal routing **`not accepted → ACT`**:
+
+- **Verdict / matrix, exactly as it returned them:** `INT-LIMITS` **`unmet`**; `INT-F02`
+  **`unverified`**; `INT-REGRESSION` **`unverified`**; `INT-CROSS-ITEM` **`unverified`**; `INT-F01`
+  **`refuted`**; `INT-F04` **`refuted`**; `INT-CLOSURE-STATE` **`met`**. Reason for the integrated-tree
+  verdict: the integrated tree **cannot be accepted** — an irreversible `--amend` breach of the recorded
+  "no history rewrite" constraint (`INT-LIMITS`) plus three integration rows that cannot be verified
+  because the full gate's run-time input tree was never captured, with the single permitted evidence
+  round already used. **No criteria defect was found**; no further attempt and no further round was
+  authorized, and this ACT requested none.
+- **Notice — verification/permission limitation, recorded not hidden:** in that dispatch the CHECK could
+  **not** directly read the `.pdca` artefacts, because the host denied `read`/`glob` to it, so its rows
+  rest on what it could otherwise obtain. This limitation is recorded here as an explicit `Notice`; none
+  of its findings is reconstructed, softened or upgraded, and this dispatch performed **no** substitute
+  read on CHECK's behalf.
+- **Routing:** terminal `not accepted → ACT`. ACT finalized the collection as `incomplete (STOP)`; the
+  item goals are unaffected — all four items remain accepted, committed and closed (§ACT record).
+- **Earlier integration rows (unchanged, not re-graded):** `INT-REQUIREMENTS-COVERAGE`, `INT-COMMIT-SET`,
+  `INT-SNAPSHOT-IDENTITY` and `INT-ACCEPTED-DELTA` **stand as the first integration CHECK recorded
+  them**; the terminal report did not retract or re-derive them, and their text is **not** restated here
+  because it was not supplied to this ACT — it is not reconstructed.
+
 ## ACT record
 
 Item `#2` — **outcome `accepted`, finalized**. CHECK 3 (`r2`/`n2`) accepted the frozen candidate
@@ -809,6 +1104,148 @@ issues no new verdict.
   `2026-11-12T07:22:14Z`), completeness stays **`3/4 accepted`**.
 - **Handoff / next authorized action:** **`DO item #4 (r1)`** — `#4` stays `pending` / `ready` and
   untouched by this recording; nothing for item `#3` remains.
+
+Item `#4` — **`CHECK 3` (`r2`/`n1`) `accepted → ACT`; post-acceptance closure performed; record stays
+`open` pending the mandatory retrospective** (`2026-11-12T17:06Z`). ACT records only what the ending
+phase determined and performs the closure it owns; it issues no new verdict.
+
+- **Accepted snapshot identity:** `HEAD 8b03cfda15a485b115f8b694d07c03e98fcdf685` (`8b03cfd`) + the
+  8-path product delta — modified `src/config.rs`, `src/model/mod.rs`, `src/separator.rs`; new
+  `src/model/demucs.rs`, `src/model/demucs_pipeline.rs`, `tests/demucs_parity.rs`,
+  `tools/convert_demucs.py`, `tools/tests/test_convert_demucs.py` — frozen as
+  `.pdca/open-issues-r5/rv1/item-4-demucs/snapshot/` + `snapshot-sha256.txt` (8/8).
+- **Pre-stage re-anchor:** worktree == `snapshot/` copy == `snapshot-sha256.txt`, **matched=8,
+  mismatched=0, missing=0**, verifier exit **`0`**; `HEAD` still `8b03cfd`, branch `main`,
+  `git diff --cached --name-only` empty, so **no drift** and staging proceeded
+  (`item-4-demucs/logs/86-act-reanchor-r2n1.log`).
+- **`AC-4.3(2)` commit — performed.** One atomic commit `d042c2628edb52deab42118e18ac69974e5ad75d`
+  (`d042c26`) on `main`, parent `8b03cfda15a485b115f8b694d07c03e98fcdf685`, **8 files changed,
+  `+3767/−4`**, subject `#4: HTDemucs 4-stem separation with audio-separator 0.48.0 parity`, footer
+  `Refs #4` (no `Closes`/`Fixes`); exactly the 8 item paths staged (`git add -- <8 paths>`, never
+  `git add -A`), identity `Alexey Shirshov <alex.shirshov@vk.com>` supplied per command with `git -c`
+  (no `git config` write); no `--amend`, no push, no branch switch, no tag, no rebase. The commit carries
+  **no** `.pdca/**`, **no** `.openidea/**`, no weight, audio/fixture, log or status path
+  (`item-4-demucs/logs/87-act-commit-verify.log`).
+- **State after the commit:** `HEAD d042c26`, `git diff --name-only HEAD -- <8 paths>` empty,
+  `git diff --cached --name-only` empty, worktree still 8/8 against the snapshot, **not pushed**
+  (`origin/main` is still `8b03cfd`). `core.autocrlf=true` produced LF/CRLF warnings on six paths with no
+  byte divergence in Git's comparison — recorded as a **`Notice` (cosmetic, no identity drift)**, nothing
+  amended.
+- **Remaining work / external residual:** the **GitHub `#4` closure by the calling driver** — no PDCA
+  phase performs a GitHub write in this collection, so `AC-4.3(2)`'s closure component is an external
+  residual: **not performed here** and never recorded as "issue closed".
+- **Closure blocker (explicit):** the mandatory `pdca-check` `retrospective` report for cycle
+  `issue-4-r5` has not been supplied, so `.pdca/status/issue-4-r5.md` keeps `record: open` and its
+  §Lessons learned `pending`; no fallback analysis was written and none is authorized. No criterion,
+  verdict, counter or commit is affected.
+- **Handoff / next authorized action:** **`ACT item #4 — retrospective`** — dispatch `pdca-check` in
+  `retrospective` mode for cycle `issue-4-r5` (`N=1`, `r=2`, `n=1`) and persist its raw report verbatim in
+  the item record, which may then be marked `completed` (outcome `accepted`); then the collection's
+  integration CHECK. Item row `#4` stays `in-progress`, `plan_revision 2`, attempts `1`; counters
+  `N=1 · r=2 · n=1/3`; completeness **`3/4 accepted`**.
+
+**Item `#4` — finalized (`2026-11-12T17:13Z`; the block above is kept as history and superseded only in
+its `record: open` / `in-progress` / `3/4` clauses).** Outcome `accepted` (from `CHECK 3`, not
+re-derived); ACT performed the post-acceptance closure and issued no new verdict.
+
+- **Retrospective recorded verbatim:** the mandatory `pdca-check` `retrospective` report for cycle
+  `issue-4-r5` (`N=1`, `r=2`, `n=1`) is persisted in `.pdca/status/issue-4-r5.md` §Lessons learned
+  (26-line report block, 3 lessons with categories / "next time" / evidence pointers, limits and
+  uncertainty, completion signal `retrospective_complete`); the dispatch's own recording notes stay
+  outside the quoted block. It adds no verdict, criteria result, counter, attempt or verification.
+- **Record state:** `.pdca/status/issue-4-r5.md` = `phase: ACT · record: completed · outcome: accepted`;
+  item row `#4` = `done` / `finalized`, `plan_revision 2`, attempts `1`.
+- **Closure components:** `AC-4.3(2)` commit `d042c2628edb52deab42118e18ac69974e5ad75d` performed
+  (parent `8b03cfd`, 8 files, `+3767/−4`, footer `Refs #4`, not pushed); **GitHub `#4` closure = external
+  residual handed to the calling driver, NOT performed** — no PDCA phase writes to GitHub in this
+  collection and the issue is never recorded as closed.
+- **Remaining work:** none inside item `#4` except that external residual. **Handoff / next authorized
+  action:** the calling driver closes GitHub `#4`; inside the collection the next step is the
+  **collection integration `CHECK`** (all four item commits are `59fb1fb`, `a38bb7f`, `3130f55`,
+  `d042c26`; one group, no merge). The collection itself is not complete: no integration `CHECK` and no
+  collection `ACT` has run and the collection-level §Lessons learned stays `pending`.
+- **Counters:** `N=1 · r=2 · n=1/3`; item `#4` attempts `1` — unchanged; completeness
+  **`4/4 accepted`**.
+
+- **ACT record - item `#4`, `CHECK 3` (`r2`/`n1`) `accepted`; `AC-4.3(2)` performed in both components
+  (append-only block, `2026-11-12T17:36Z`).** `CHECK 3` (`r2`/`n1`) returned `accepted -> ACT` (its
+  verdict line is recorded in `.pdca/status/issue-4-r5.md` §CHECK record `### CHECK 3 - r2/n1`; the
+  complete CHECK 3 report was not supplied as a separate persisted artefact and is recorded as absent,
+  **not** reconstructed). `AC-4.3(2)` - post-acceptance commit **plus** GitHub closure - is now
+  **performed in both components**:
+  - **Commit (component 1):** `d042c2628edb52deab42118e18ac69974e5ad75d` (`d042c26`) on `main`, parent
+    `8b03cfda15a485b115f8b694d07c03e98fcdf685` (`8b03cfd`), **8 files changed, `+3767/−4`**, subject
+    `#4: HTDemucs 4-stem separation with audio-separator 0.48.0 parity`, footer `Refs #4`; index empty,
+    the commit carries no `.pdca/**`, `.openidea/**`, weight, audio/fixture, log or status path
+    (`logs/87-act-commit-verify.log`).
+  - **GitHub closure (component 2):** `#4` **closed as `completed` at `2026-11-12T17:26:06Z`**, comment
+    id `6830882059`, performed through the authorized GitHub CLI closure
+    (`gh issue close 4 --repo AlexeyShirshov/candle-roformer --reason completed --comment <file>`,
+    exit `0`, `logs/89-github-issue-4-close.log`); no credential value was read, printed or recorded. The
+    closure was **verified by a read-only unauthenticated `GET`** of the issue and its timeline:
+    `HTTP 200`, `state=closed`, `state_reason=completed`, `closed_at=2026-11-12T17:26:06Z`,
+    `comment_count=1`, timeline **1 `closed` / 0 `reopened`**
+    (`item-4-demucs/github/issue-4-observation-closed.json`,
+    `item-4-demucs/logs/90-github-issue-4-observation-closed.log`); the comment text is persisted as
+    `item-4-demucs/github/issue-4-close-comment.md` and the observation records it **byte-identical** to
+    the text sent (sha256 prefix `da4be8f5…4167`).
+  - **Notice - read lag, recorded not hidden:** the first post-write issue read at
+    `2026-11-12T17:26:13Z` returned a **stale `state=open` body** (byte-identical to the pre-write
+    observation) while the comments endpoint already carried the closure comment; a
+    `Cache-Control: no-cache` re-read at `2026-11-12T17:26:24Z` returned `state=closed`. Both reads and
+    their raw bodies are persisted, and the closed-state read is the authoritative one.
+  - **Superseded history:** the earlier sentences in this section - "GitHub `#4` closure = external
+    residual handed to the calling driver, NOT performed" and "no PDCA phase writes to GitHub in this
+    collection" - held before `17:26Z` and are **superseded by this block**, kept as history and not
+    rewritten. No criterion, threshold, verdict, counter or attempt changed, and nothing was reopened.
+  - **State:** item `#4` `done` / `finalized`, outcome (cycle) `accepted`, `plan_revision 2`, attempts
+    `1`; counters `N=1 · r=2 · n=1/3`; completeness **`4/4 accepted`**. The **collection** stays open:
+    the integration `CHECK` is being re-checked and no collection `ACT` has run; the collection-level
+    §Lessons learned stays `pending` (its own step, only after the integration CHECK passes). Next
+    allowed step: **collection integration `CHECK` (re-check)** -> collection `ACT`.
+
+- **COLLECTION CLOSURE — `incomplete (STOP)` (append-only block, `2026-11-12T17:43Z`; supersedes every
+  earlier "the collection stays open / next step is the integration `CHECK`" clause in this section,
+  kept as history).** Terminal collection ACT after the parent integration CHECK's routing
+  `not accepted → ACT` (§CHECK record). This block closes the collection record; it issues no new
+  verdict, no waiver and no approval.
+
+  - **Outcome:** `incomplete (STOP)`.
+  - **Completed and preserved:** all four item goals are **accepted, committed and closed** — `#2`
+    (`59fb1fb`, GitHub `#2` closed), `#8` (`a38bb7f`, GitHub `#8` closed), `#3` (`3130f55`, GitHub `#3`
+    closed), `#4` (`d042c26`, GitHub `#4` closed); the collection integration evidence was staged and
+    re-verified at **43/43** files matched / 0 mismatched / 0 missing
+    (`integration/logs/verify-snapshot-rerun.log`); the first integration CHECK rows
+    `INT-REQUIREMENTS-COVERAGE`, `INT-COMMIT-SET`, `INT-SNAPSHOT-IDENTITY` and `INT-ACCEPTED-DELTA` stand
+    as recorded; the final integration CHECK **refuted `INT-F01` and `INT-F04`** and returned
+    `INT-CLOSURE-STATE` **`met`**.
+  - **Remains unmet / unverified:** `INT-LIMITS` **`unmet`** — the irreversible `--amend` that produced
+    `3130f55` from the now-dangling `b15beb2` breached the recorded "no history rewrite" constraint;
+    `INT-F02`, `INT-REGRESSION` and `INT-CROSS-ITEM` **`unverified`** — the full gate's run-time input
+    tree was never captured and the single permitted evidence round is used. No criteria defect was
+    found; nothing was reopened and no criterion was changed.
+  - **Expert-review decision reference:** the mandatory expert review closed the collection as
+    **`blocked` / STOP-incomplete**; it granted **no** accepted exception for the `--amend`, authorized
+    **no** extra gate run, and handed **two user decisions** to the user — (a) accept or reject the amend
+    as a deviation from the recorded constraint, and (b) authorize or decline **one** verification-only
+    `cargo test` run on a clean `d042c26`, capturing `HEAD`, `write-tree`, the full `git status`,
+    per-path hashes and the toolchain before/after. Neither decision alters any item acceptance;
+    **(a) alone determines whether `INT-LIMITS` can be waived**. The expert review's own report is
+    referenced as delivered by the driving role; it was **not** supplied to this ACT as a persisted
+    artefact, so it is recorded **by that reference only** and is **not** reconstructed here.
+  - **Preserved results and paths:** commits `59fb1fb` (`#2`), `a38bb7f` (`#8`), `3130f55` (`#3`) and
+    `d042c26` (`#4`) on `main`; item evidence roots `.pdca/open-issues-r5/rv1/item-2-mdx-onnx/`,
+    `.pdca/open-issues-r5/rv1/item-8-ensembles/`, `.pdca/open-issues-r5/rv1/item-3-vr-uvr/` and
+    `.pdca/open-issues-r5/rv1/item-4-demucs/`; integration evidence
+    `.pdca/open-issues-r5/rv1/integration/` (`facts.md`, `snapshot/` 43 files, `snapshot-sha256.txt`,
+    `evidence/`, `scripts/`, `logs/`, `lint.txt`); item records `.pdca/status/issue-2-r5.md`,
+    `issue-8-r5.md`, `issue-3-r5.md`, `issue-4-r5.md`; this collection record.
+  - **Explicitly NOT performed:** **no** cleanup of worktrees or branches (none exists), **no** merge,
+    **no** revert, **no** push, **no** issue reopen, **no** deletion or rewrite of any earlier record or
+    evidence, **no** product edit, **no** staging, **no** commit, **no** amend.
+  - **State:** item rows unchanged (`done` / `finalized`); counters `N=1 · r=1` (collection) with the
+    item counters as recorded; completeness **`4/4 item goals accepted`**; integrated-tree verdict
+    **`not accepted`**. **Next authorized action: the two user decisions above.**
 
 ## General verification and recovery
 
@@ -1030,8 +1467,145 @@ issues no new verdict.
   produced and none is reconstructed).
 - **next allowed step: `DO item #4 (r1)`** — `#4` is the only remaining collection item, `pending` /
   `ready` and untouched by this recording; nothing for `#3` remains except its retrospective recording.
-- **completeness: `3/4 accepted`** — `#2` (`59fb1fb`), `#8` (`a38bb7f`) and `#3` (`3130f55`) are
+- **completeness: `3/4 accepted`** - `#2` (`59fb1fb`), `#8` (`a38bb7f`) and `#3` (`3130f55`) are
   accepted, committed, finalized and closed in GitHub; `#4` is `pending` (`3/4 closed in GitHub`).
+- **verification state, item `#4` (`2026-11-12T16:15Z`, DO attempt `r1`/`n1` complete, no verdict):**
+  parity is **measured on the fixed bytes** — `cargo test --release --test demucs_parity` exit `0`,
+  `1 passed; 0 failed`, 8/8 stem × channel rows inside `max_abs ≤ 3.5e-4` / `RMSE ≤ 1e-4` /
+  `SDR ≥ 80 dB` (worst `max_abs 8.583e-6`, worst `RMSE 1.774e-7`, lowest `SDR 84.36 dB`), projected to
+  `item-4-demucs/metrics/parity.json` + `.csv`; `AC-4.1` strict-load rejection measured on four
+  canonically rebuilt mutants (`item-4-demucs/logs/75`, exit `101` ×4) and the four stems written on
+  disk under exactly `drums`/`bass`/`other`/`vocals` with an independent read-back
+  (`item-4-demucs/logs/80`, `logs/82`, exit `0`); gates on the same bytes `build` exit `0`
+  (`logs/63`), `clippy --all-targets` exit `0` (`logs/65`), full `cargo test` exit `0` — 144 passed / 0 failed / 4 ignored over 24 targets + doc-tests (`logs/66`),
+  converter tests `Ran 10 tests` `OK` exit `0` (`logs/68`) with the pinned checkpoint re-verified
+  (`logs/69`). Evidence pointers: `.pdca/open-issues-r5/rv1/item-4-demucs/{manifest.json,index.md,
+  snapshot-sha256.txt,snapshot.diff,commands.txt,lint.txt,metrics/,out/stems-candidate/}`. No
+  acceptance is claimed; `#4` stays `in-progress` and awaits `CHECK item #4 (r1/n1)`.
+- **next allowed step: `CHECK item #4 (r1/n1)`** — supersedes the `DO item #4 (r1)` line above (kept as
+  history); no commit, no GitHub `#4` closure and no `done` is authorized before an accepted CHECK.
+- **verification state, item `#4` `GH-4-PRE` evidence round (`2026-11-12T16:57Z`, evidence only):** the
+  read-only GitHub observation is readable at
+  `.pdca/open-issues-r5/rv1/item-4-demucs/github/{issue-4-observation.json,issue-4__2026-11-12T16-57-05Z.json,issue-4-timeline__2026-11-12T16-57-05Z.json}`
+  with the producer log `logs/84-github-issue-4-observation.log` (exit `0`): both requests **`HTTP 200`**,
+  `state=open`, `state_reason=null`, `closed_at=null` at `2026-11-12T16:57:05Z`, timeline **`0` `closed` /
+  `0` `reopened`** and no `rel="next"` page. No product byte changed, no gate was re-run (the 8-path
+  product snapshot has not drifted), no commit/staging/push and no GitHub write. `AC-4.3(1)` is **not**
+  graded here — its decision belongs to CHECK.
+- **next allowed step: `CHECK item #4 (r2/n1)` (CHECK 3)** — supersedes the line above in that the missing
+  `AC-4.3(1)` observation evidence is now stored; nothing else changed, and no commit, GitHub `#4`
+  closure or `done` is authorized.
+- **verification state, item `#4` — accepted and finalized (`2026-11-12T17:13Z`, recorded, not
+  re-verified):** `CHECK 3` (`r2`/`n1`) `accepted → ACT`; `AC-4.3(2)` commit `d042c26` performed
+  (parent `8b03cfd`, 8 files, `+3767/−4`, footer `Refs #4`, not pushed); the mandatory
+  `pdca-check` retrospective is recorded verbatim in `.pdca/status/issue-4-r5.md` §Lessons learned
+  (`retrospective_complete`); that record is `phase: ACT · record: completed · outcome: accepted`. No new
+  run, gate, hash recomputation or GitHub read/write was performed by this recording.
+- **completeness: `4/4 accepted`** — `#2` (`59fb1fb`), `#8` (`a38bb7f`), `#3` (`3130f55`) and `#4`
+  (`d042c26`) are accepted, committed and finalized; GitHub `#2`/`#8`/`#3` are closed by the driver and
+  **GitHub `#4` closure is handed to the calling driver, NOT performed**; item records: `#2`
+  `record: completed`, `#8` `record: completed`, `#3` `record: completed`, `#4` `record: completed`.
+  The **collection** record stays `record: open` / `outcome: pending` with its own §Lessons learned
+  `pending` — no collection retrospective has been produced and none is reconstructed.
+- **integration candidate staged (`2026-11-12T17:16Z`)** — the union of the four items' committed product
+  files (**43 paths**) is copied under `.pdca/open-issues-r5/rv1/integration/snapshot/` with its own
+  `snapshot-sha256.txt`, `facts.md`, `index.md` and verifier log; product originals stay in place, nothing
+  was moved, staged in Git or committed. See `.pdca/open-issues-r5/rv1/integration/index.md`.
+- **next allowed step: collection integration `CHECK`** — supersedes every `CHECK item #4` line above
+  (kept as history); no collection `ACT`, no collection `## Lessons learned` write and no declaration
+  that the collection is complete is authorized before that CHECK.
+- **record lint (final bytes, `2026-11-12T17:15Z`):** `.pdca/status/collection-open-issues-r5.md` exit
+  **`0`** and `.pdca/status/issue-4-r5.md` exit **`0`** (`status_lint.py`); runs appended to
+  `.pdca/open-issues-r5/rv1/integration/lint.txt`.
+
+- **Integration evidence round - outcomes (`2026-11-12T17:36Z`; facts and pointers only, no verdict).**
+  The four round verifiers were re-run read-only on `main @ d042c2628edb52deab42118e18ac69974e5ad75d`
+  and their artefacts persisted under `.pdca/open-issues-r5/rv1/integration/` (`facts.md` §7-§11,
+  `evidence/`, `logs/`):
+  - **`INT-F01` - accepted delta vs commit: matched.** `scripts/verify_f01_accepted_delta.py` exit
+    **`0`** (`logs/f01-accepted-delta.log`): **37 accepted ledger rows, 37 matched, 0 mismatched,
+    0 missing** (`#2` 13/13, `#8` 7/7, `#3` 9/9, `#4` 8/8), with only CRLF/LF normalisation applied and
+    each row cross-checked against a byte copy whose sha256 equals the ledger row
+    (`evidence/int-f01-ledger-vs-commit.tsv`, `int-f01-summary.json`). **Coverage limit, stated plainly:**
+    `#3`'s accepted ledger covers **9 of its 33 committed paths**, so **24 `#3` paths have no
+    accepted-hash row** (the untracked `tests/vr_*.rs` family plus its edits to shared files); for those
+    the evidence is the commit identity and `worktree == HEAD`, not a pre-commit hash match. Per accepted
+    row, touches after that item's commit are **21 `none` / 13 a later accepted item's commit /
+    3 `unrecorded`** (`README.md`, `src/model/mod.rs` - all three explained by recorded `#11` commits).
+  - **`INT-F02` - regression gate bound to the final tree: bound.** `scripts/verify_f02_gate_binding.py`
+    exit **`0`**, `RESULT BOUND` (`logs/f02-gate-binding.log`): `d042c26^` = `8b03cfd` with **1** commit in
+    between; `git diff --name-status 8b03cfd..d042c26` = **exactly 8 changed paths** (the `#4` file
+    list); **0** tree entries differ outside those 8 and **309** other tracked entries are identical
+    (of 310 in `d042c26`); the 8 accepted bytes equal the **committed blobs** (8/8, 2 byte-identical,
+    6 CRLF-normalised); gate `item-4-demucs/logs/66-gate-test-full.log` = **144 passed / 0 failed /
+    4 ignored**, 25 `test result` blocks, final line **`EXIT=0`**; `logs/63` build `EXIT=0`, `logs/65`
+    clippy `EXIT=0`; re-anchor chain `logs/83` (8 matched), `logs/86` (`matched=8 mismatched=0 missing=0`),
+    `logs/87` post-commit 8/8. **CRLF caveat carried:** `d042c26` stores LF blobs while at gate time 6 of
+    the 8 files were CRLF on disk (4 mixed); compilation and linking do not depend on the line-ending
+    form and the LF form of each file is exactly the committed blob, but these are recorded hashes and
+    links, not a re-run of the gate.
+  - **`INT-F03` - record correction (push / rewrite facts).** `scripts/verify_f03_no_push.py` exit
+    **`0`** (`logs/f03-no-push.log`, raw `evidence/int-f03-no-push-reflog.txt`):
+    `git merge-base --is-ancestor <sha> origin/main` returns exit **`0`** for `#2` (`59fb1fb`), `#8`
+    (`a38bb7f`) and `#3` (`3130f55`) - so all three **are published** as ancestors of
+    `refs/heads/main @ 8b03cfd` on `origin` at observation time (`git ls-remote origin` returns exactly
+    `HEAD` and `refs/heads/main`, both `8b03cfd`, exit `0`) - while `d042c26` returns exit **`1`** and is
+    **the only unpushed commit**. **Therefore every earlier "not pushed" / "nothing was pushed" statement
+    in this record is superseded for `#2`/`#8`/`#3`** (kept as history, not rewritten); it remains true
+    only for `d042c26` and for this evidence round, which pushed nothing. The reflogs additionally show
+    `3130f55` produced by `commit (amend)` at `2026-11-12T12:22:05+05:00` from the now-dangling `b15beb2`
+    (the amend added exactly the 5 recorded same-commit paths, `+211/−62`) and a
+    `reset: moving to origin/main` at `2026-11-12T18:45:02+05:00` that discarded `9f2e927` (`#11`).
+    These are **recorded as observed facts with their limits** (local reflogs expire, never cover another
+    checkout or a server-side push, and attribute no push to any PDCA phase) - **not** as defects of the
+    accepted product (`3130f55` remains the accepted sha and an ancestor of `8b03cfd`).
+  - **`INT-CROSS-ITEM` - shared surfaces and combined-state coverage.** `scripts/verify_cross_item.py`
+    exit **`0`** (`logs/cross-item.log`, `evidence/int-cross-item.tsv`,
+    `int-cross-item-summary.json`): **12** union paths are touched by more than one item, with the last
+    touch per path recorded (`src/config.rs`, `src/separator.rs`, `src/model/mod.rs` last touched by
+    `d042c26`; `src/lib.rs`, `src/error.rs`, `Cargo.toml`, `Cargo.lock`,
+    `docs/dependency-audit.md`, `src/dsp.rs`, `src/ensemble.rs`, `tests/ensemble.rs` by `3130f55`;
+    `README.md` by `8b03cfd` (`#11`, not an item commit)). The combined Rust state **is covered by one
+    run** - `logs/66` executes the lib tests plus `demucs_parity`, `vr_pipeline_parity`, `vr_arch`,
+    `ensemble`, `s1_spikes`, `library_api`, `streaming_chunked`, `bs_roformer`, `core_tests` and
+    doc-tests (24 targets + doc-tests, `144 passed / 0 failed / 4 ignored`, `EXIT=0`) and is bound to
+    `d042c26` by `INT-F02`. **Not covered together:** the **Python converter suites**
+    (`tools/tests/*`) - each item ran only its own suite and no single run executed `tools/tests` at
+    `d042c26` - and a combined CLI smoke across the three families. These are stated as coverage limits,
+    not as failures; no verdict is issued here.
+- **record lint after this round:** see §Progress log - both status files re-linted on their final bytes,
+  runs and counts appended to `.pdca/open-issues-r5/rv1/integration/lint.txt`.
+- **Final verification state (`2026-11-12T17:43Z`): `unverified`** — the closing state of the collection,
+  **not** a pass. Blocking reason: a **confirmed constraint breach** plus an **unverifiable integration
+  regression binding**. The breach: the irreversible `--amend` that produced `3130f55`, against the
+  recorded "no history rewrite" constraint (`INT-LIMITS` `unmet`). The binding: `INT-F02`,
+  `INT-REGRESSION` and `INT-CROSS-ITEM` are `unverified` because the full gate's run-time input tree was
+  never captured, and the **single permitted evidence round is used**. No further round is authorized.
+- **Final evidence pointers:** `.pdca/open-issues-r5/rv1/integration/` — `facts.md`, `index.md`,
+  `snapshot-sha256.txt` with `snapshot/` (43 files), `evidence/int-f01-ledger-vs-commit.tsv` +
+  `int-f01-summary.json`, `evidence/int-f02-tree-binding.tsv` + `int-f02-summary.json`,
+  `evidence/int-f03-no-push-reflog.txt` + `int-f03-summary.json`, `evidence/int-cross-item.tsv` +
+  `int-cross-item-summary.json`, `logs/f01-accepted-delta.log`, `logs/f02-gate-binding.log`,
+  `logs/f03-no-push.log`, `logs/cross-item.log`, `logs/verify-snapshot.log`,
+  `logs/verify-snapshot-final.log`, `logs/verify-snapshot-rerun.log`, `lint.txt`; the gate log
+  `item-4-demucs/logs/66-gate-test-full.log` (`144 passed / 0 failed / 4 ignored`, final line `EXIT=0`);
+  the four item evidence roots `item-2-mdx-onnx/`, `item-8-ensembles/`, `item-3-vr-uvr/`,
+  `item-4-demucs/`.
+- **Open note — the `317`-versus-`310` HEAD-entry count (unresolved, recorded as observed, not
+  reconciled):** the `INT-F02` prose above states that **309** other tracked entries are identical **"of
+  310 in `d042c26`"**, while the round's own machine summary records
+  `"tracked paths in 8b03cfd=312, in d042c26=317, identical blob ids=309"`
+  (`evidence/int-f02-summary.json`), and a recount during this ACT gives **317** tracked entries at
+  `HEAD` (`git ls-tree -r HEAD` = 317; parent `8b03cfd` = 312). The `310` figure is therefore a
+  **counting discrepancy in the record prose**, not a measurement about the 8 changed paths, and it is
+  left **open**: reconciling it would need a fresh measurement, which this ACT does not perform and is
+  not authorized to perform.
+- **Next allowed step — the user decides:** (a) **accept or reject** the `--amend` of `3130f55` as a
+  deviation from the recorded "no history rewrite" constraint; (b) **authorize or decline one**
+  verification-only `cargo test` run on a clean `d042c26`, capturing `HEAD`, `write-tree`, the full
+  `git status`, per-path hashes and the toolchain before/after. Neither decision changes the item
+  acceptances; **(a) alone determines whether `INT-LIMITS` can be waived**. Any further work from here is
+  a new authorized PLAN, never an automatic reopening of this collection.
 
 ## Revision history
 
@@ -1055,6 +1629,16 @@ stays `r1`.
 - 2026-11-11 | item `#8` `r1 → r2 → r3` (item level only; the **collection plan is not rewritten and stays `r1`**) → two genuine item contract revisions inside the item cycle: `r1 → r2` from `CHECK 1 → PLAN` (acceptance-order defect `F-8-acceptance-order` plus the `F-8-song-licence` evidence obligation) and `r2 → r3` from `CHECK 2 → PLAN` (`F-8-ac3-contract-drift` — `AC-8.3` revised to the `r1` gate semantics — and `F-8-issue-open-evidence` — `AC-8.4(1)` refined to the stored read-only observation). Complete reports: `.pdca/status/issue-8-r5.md` §PLAN record `r2` and `### r3`. This row is a pointer, not a collection replan and not a new group or lane.
 
 - 2026-11-12 | item `#3` contract revision **`r1 → r2`** (item level only; the **collection plan is not rewritten and stays `r1`**) → `AC-3.1`/`AC-3.2`/`AC-3.3` are unchanged and the **evidence plan** was revised to require `ref/reference.json` with the recorded reference parameters, the completed reference log, the full gate logs `logs/30`–`34` and the snapshot `logs/35`/`36`; cause `CHECK 2` (`r1`/`n1`) `not accepted` — `AC-3.2` `met`, `AC-3.1` `unverified` (`ref/reference.json` missing, reference log truncated), **no product defect**. Item `#3` is at `r=2`, attempt `n=1` (DO complete, CHECK 3 next). Complete report: `.pdca/status/issue-3-r5.md` §PLAN record `### r2`. This row is a pointer, not a collection replan and not a new group or lane.
+
+- 2026-11-12T16:48Z | item `#4` contract revision **`r1 → r2`** (item level only; the **collection plan
+  is not rewritten and stays `r1`**) → cause `CHECK 1` (`r1`/`n1`) `not accepted → PLAN`, finding
+  `ORD-4` (blocking, confirmed: `AC-4.3` stated as a flat `CHECK`-acceptance condition against the
+  collection's pre-`CHECK` commit prohibition). `AC-4.1`/`AC-4.2` are unchanged; `AC-4.3` is
+  partitioned into `AC-4.3(1)` (pre-acceptance `CHECK` gate) and `AC-4.3(2)` (post-acceptance `ACT`
+  commit + GitHub `#4` closure). Outgoing attempt `r1`/`n1` (DO complete, parity passing, `CHECK 1`
+  `not accepted → PLAN`) is booked first and the transition consumed no new attempt, so item `#4` is at
+  `r=2`, attempt `n=1/3`. Complete report: `.pdca/status/issue-4-r5.md` §PLAN record `### r2`. This row
+  is a pointer, not a collection replan and not a new group or lane.
 
 ## Defect history
 
@@ -1090,10 +1674,47 @@ fixes applied 0) — both **open**, routed `CHECK → PLAN`, no escalation (atte
   `F-3-status-stale` (**refuted at `CHECK 2`**, fixes applied 1). No product defect was reported at any
   `#3` CHECK; no key recurs without a new measure and no escalation (`n=1` of `r2`, ceiling `3`).
   Item `#4` has none.
+- **Update for item `#4` (`2026-11-12T15:17Z`)** — append-only; the "Item `#4` has none" clause above is
+  history. Item `#4` now carries three item-level keys in `.pdca/status/issue-4-r5.md` §Defect history:
+  `GRN-4` (`GroupNorm` pooled the variance over trailing dims only — **fixed**, 1 fix, red exit `101`
+  `logs/55` → green exit `0` `logs/56`), `CTR-4` (`Tensor::conv_transpose1d` is not the `ConvTranspose`
+  definition for kernel > 1 — **open**, 1 attempted fix, unit test still red exit `101` `logs/59`/`logs/60`,
+  and the `one_hot_stride()` edit is **unverified/uncompiled**) and `PAR-4` (four-stem parity — **red**,
+  0 fixes, `max_abs 0.62…1.09` `logs/57`); all three are also listed in the item's own §Defect history
+  with their observed revisions/attempts (`r1`/`n1`) and evidence pointers. No escalation (`n=1` of `3`).
+- **Update for item `#4` (`2026-11-12T16:01Z`)** — append-only; supersedes the `CTR-4`/`PAR-4` state
+  clauses of the bullet above. `CTR-4`: **fixed** (2 fixes applied — the zero-insert rewrite, then the
+  verified `pad_with_zeros` form; green `logs/61` exit `0`, `5 passed`); the deleted
+  `one_hot_stride()`/`OnceLock` edit had been **unverified — never compiled or tested**. `PAR-4`:
+  re-measured **exit `0`**, `1 passed`, 8/8 stem × channel inside the approved thresholds (`logs/62`) —
+  a measurement, with the acceptance verdict left to CHECK. `GRN-4` stays fixed (1 fix). No escalation
+  (`n=1` of `3`).
+- **Update for item `#4` (`2026-11-12T16:48Z`, contract `r2`)** — append-only. `ORD-4`
+  (**planner-created phase-ordering contradiction**: `AC-4.3` as a flat `CHECK`-acceptance condition
+  against the collection's pre-`CHECK` commit/closure prohibition) was opened by `CHECK 1` (`r1`/`n1`,
+  `AC-4.3` `unmet`, blocking, confirmed) and is **closed by the item-level contract revision `r1 → r2`**
+  — fixes applied **1** (the contract split into `AC-4.3(1)` / `AC-4.3(2)`), evidence §PLAN record
+  `### r2` §4 and `.pdca/open-issues-r5/rv1/plan.md:9,11`. `GRN-4` (1 fix), `CTR-4` (2 fixes) and
+  `PAR-4` (closed on the measured candidate) are **carried unchanged into `r2`**: the `r2`/`n1`
+  re-anchor edited no product byte (`logs/83-reanchor-r2n1.log`, exit `0`, 8/8, no drift), so no
+  recurrence and no new measure. No key is open against the code, none recurs without a new measure,
+  and no escalation (`n=1` of `3`). Full per-key rows: `.pdca/status/issue-4-r5.md` §Defect history.
 
 ## Changed files
 
 - `.pdca/status/collection-open-issues-r5.md` → created (this collection record).
+- `.pdca/status/collection-open-issues-r5.md` → **modified `2026-11-12T15:17Z` (item `#4` `DO`
+  `r1`/`n1` in-progress recording)**: §Current state bullet, §Item table row `#4` (`in-progress`,
+  attempts `1`), §DO result item `#4` block, §Defect history update, §Changed files, §Git state,
+  §Progress log. No product, test, tool, config or doc byte changed by this recording.
+- `.pdca/status/issue-4-r5.md` → **modified `2026-11-12T15:17Z**: §Current state known-state line,
+  §DO result in-progress block, §Defect history `GRN-4`/`CTR-4`, §Changed files, §Git state,
+  §Progress log.
+- `src/model/demucs.rs` (item `#4` product, untracked in Git) → **modified by item `#4` `DO` `r1`/`n1`**
+  (not by this recording): `GroupNorm` variance over the whole group; `FreqConvTranspose` zero-insert +
+  flipped-kernel rewrite (**unverified/uncompiled**); three new unit tests. Not staged, not committed.
+- `.pdca/open-issues-r5/rv1/item-4-demucs/logs/50…60-*.log`, `probe-r5/`, `probe-r5b/` → created as the
+  attempt's evidence.
 - `.pdca/open-issues-r5/rv1/plan.md` → created (PLAN record r1).
 - `.pdca/open-issues-r5/rv1/criteria-approval.md` → created (user message and approved addendum, verbatim).
 - `.pdca/open-issues-r5/rv1/git-state.txt` → created (HEAD, branch, porcelain at creation).
@@ -1279,6 +1900,40 @@ fixes applied 0) — both **open**, routed `CHECK → PLAN`, no escalation (atte
   §Changed files, §Git state, §Progress log); `.pdca/open-issues-r5/rv1/item-3-vr-uvr/lint.txt`
   appended. No commit, no staging, no push, no GitHub write; item `#4` untouched.
 
+- **`#4` `DO` `r1`/`n1` attempt-complete recording (`2026-11-12T16:15Z`)** - status records plus the
+  item's evidence pack, **no product change**: `.pdca/status/collection-open-issues-r5.md` (§Current
+  state, §Item table row `#4`, §DO result, §General verification and recovery, §Changed files, §Git
+  state, §Progress log) and `.pdca/status/issue-4-r5.md` (§Current state, §DO result, §Defect history,
+  §Changed files, §Git state, §Progress log); `.pdca/open-issues-r5/rv1/item-4-demucs/` gained
+  `manifest.json`, `index.md`, `snapshot/` (8 files), `snapshot-sha256.txt`, `snapshot.diff`,
+  `metrics/parity.json` + `.csv`, `commands.txt`, `lint.txt`, `scripts/{make_strict_load_mutants.py,
+  stem_names_e2e.rs, check_stem_names.py, extract_parity_metrics.py}`, `logs/68`–`logs/82` and
+  `out/stems-candidate/{drums,bass,other,vocals}.wav` (4 × 3,528,044 B). No product, test, tool or
+  config byte was edited by this recording; the product delta is unchanged in identity
+  (`snapshot-sha256.txt`, 8/8 worktree == snapshot). No commit, no staging, no push, no GitHub write.
+
+- **`#4` finalization + collection integration staging (`2026-11-12T17:13Z`) — status records and
+  `.pdca/` evidence only, no product change.** `.pdca/status/issue-4-r5.md` (§Current state header +
+  finalization bullet, §ACT record, §Lessons learned — the raw `pdca-check` retrospective verbatim,
+  §Changed files, §Git state, §Progress log) and `.pdca/status/collection-open-issues-r5.md` (§Current
+  state header + final bullet, §Item table row `#4` → `done` / `finalized`, §ACT record `#4`
+  finalization, §General verification and recovery, §Changed files, §Git state, §Progress log).
+  `.pdca/open-issues-r5/rv1/integration/` → **created**: `facts.md`, `snapshot/` (43 files, the union of
+  the four items' committed product files), `snapshot-sha256.txt`, `index.md`, `lint.txt`, `scripts/`,
+  `logs/`. No product byte edited, nothing moved, **no `git add`/commit/push/branch switch/amend/tag and
+  no GitHub read or write**; the collection-level §Lessons learned was **not** touched.
+
+- **Collection ACT bookkeeping (`2026-11-12T17:43Z`) — status record only, no product change.**
+  `.pdca/status/collection-open-issues-r5.md` → updated append-only: header `phase` field (now
+  `ACT` · `completed` · `incomplete (STOP)`, old value kept as superseded history), §Current state final
+  bullet (authoritative state), §CHECK record (terminal integration CHECK + the read/glob permission
+  `Notice`), §ACT record (collection closure), §General verification and recovery (final `unverified`
+  state, evidence pointers, the open `317`/`310` count note, next step), §Changed files (this bullet),
+  §Git state (terminal refresh), §Lessons learned (retrospective verbatim, `retrospective_complete`),
+  §Progress log (four rows). `.pdca/status/issue-4-r5.md` → **read and re-linted only, not written**.
+  No product, test, tool, config or evidence byte was edited, created or deleted, and nothing was
+  staged, committed, pushed, amended or reopened.
+
 ## Git state
 
 - status path: `.pdca/status/collection-open-issues-r5.md` — created this cycle · untracked (durable on disk, not committed).
@@ -1428,10 +2083,90 @@ fixes applied 0) — both **open**, routed `CHECK → PLAN`, no escalation (atte
   **empty** (`git diff --cached --name-only` prints nothing): not staged, not committed, no push, no
   branch switch, no amend, no tag, no GitHub write. The evidence root stays ignored by `/.pdca/*`; the
   earlier "untracked" statements above are history, superseded by this bullet.
+- **Item `#4` `DO` `r1`/`n1` in-progress recording, refreshed `2026-11-12T15:17Z`** — `HEAD`
+  `8b03cfda15a485b115f8b694d07c03e98fcdf685` (`8b03cfd`) on `main`; `git diff --cached --stat` **empty**
+  (nothing staged); `git status --porcelain` shows the pre-existing item `#4` set — ` M src/config.rs`,
+  ` M src/model/mod.rs`, ` M src/separator.rs`, `?? src/model/demucs.rs`, `?? src/model/demucs_pipeline.rs`,
+  `?? tests/demucs_parity.rs`, `?? tools/convert_demucs.py`, `?? tools/tests/test_convert_demucs.py` —
+  plus the pre-existing untracked `.openidea/` and `.pdca/status/collection-open-issues-r3.md`. The
+  item's product delta is **not indexed and not claimed as staged**; the two status files are
+  **modified in the worktree only** (durable on disk). No `git add`, no staging, no commit, no push, no
+  branch switch, no amend, no tag, **no GitHub read or write**; the evidence root stays ignored by
+  `/.pdca/*`.
+- **`#4` `DO` `r1`/`n1` attempt-complete refresh (`2026-11-12T16:15Z`) - with one earlier imprecision
+  corrected:** `HEAD 8b03cfda15a485b115f8b694d07c03e98fcdf685` (`8b03cfd`) on `main`; index **empty**
+  (`git diff --cached --name-only` prints nothing, nothing staged, nothing committed). Tracked state
+  of the two status files, read from `git status --porcelain`: `.pdca/status/issue-4-r5.md` is
+  **untracked** (`?? .pdca/status/issue-4-r5.md` - created this cycle, never committed) while
+  `.pdca/status/collection-open-issues-r5.md` is **tracked and modified** (` M`); the earlier wording
+  that called both "modified in the worktree only" is imprecise and is corrected here. Task-owned
+  product delta unchanged: ` M src/config.rs`, ` M src/model/mod.rs`, ` M src/separator.rs`,
+  `?? src/model/demucs.rs`, `?? src/model/demucs_pipeline.rs`, `?? tests/demucs_parity.rs`,
+  `?? tools/convert_demucs.py`, `?? tools/tests/test_convert_demucs.py`; every hash in
+  `.pdca/open-issues-r5/rv1/item-4-demucs/snapshot-sha256.txt`, worktree == snapshot 8/8. Untouched
+  and unclaimed: `.openidea/`, `.pdca/status/collection-open-issues-r3.md`, item `#11`, every other
+  record. No `git add`, no staging, no commit, no push, no branch switch, no amend, no tag, **no
+  GitHub read or write**; the evidence root stays local (`/.pdca/*` ignored).
+
+- **`#4` `ACT` post-acceptance commit (`2026-11-12T17:06Z`) — `HEAD` moved by this item's own commit only:**
+  `HEAD = d042c2628edb52deab42118e18ac69974e5ad75d` (`d042c26`) on `main`, parent
+  `8b03cfda15a485b115f8b694d07c03e98fcdf685`; **index clean** (`git diff --cached --name-only` prints
+  nothing); **not pushed** (`origin/main` is still `8b03cfd`; `git merge-base --is-ancestor d042c26
+  origin/main` exit `1`); no branch switch, no amend, no rebase, no tag. `git status --porcelain` now shows
+  only ` M .pdca/status/collection-open-issues-r5.md`, `?? .pdca/status/issue-4-r5.md` and the
+  pre-existing `?? .openidea/`, `?? .pdca/status/collection-open-issues-r3.md` — **no product path is
+  dirty** and `git diff --name-only HEAD -- <8 item paths>` is empty. The two status files are durable on
+  disk only (collection record tracked-and-modified, item record untracked) and were **not** staged or
+  committed by this dispatch; `.openidea/`, `.pdca/status/collection-open-issues-r3.md` and item `#11`
+  stay untouched and unclaimed. `core.autocrlf=true` LF/CRLF warnings on six paths produced no byte
+  divergence (`Notice`, cosmetic). **No GitHub traffic at all** — no read and no write.
+
+- **Refreshed at `2026-11-12T17:17Z` (after the `#4` finalization and the integration staging):**
+  `HEAD = d042c2628edb52deab42118e18ac69974e5ad75d` (`d042c26`) on `main`; **index empty**
+  (`git diff --cached --name-only` prints nothing); **not pushed** (`origin/main = 8b03cfd`, ancestor
+  check exits `1`). `git status --porcelain` is exactly four lines — ` M
+  .pdca/status/collection-open-issues-r5.md`, `?? .pdca/status/issue-4-r5.md`, plus the **pre-existing
+  and untouched** `?? .openidea/` and `?? .pdca/status/collection-open-issues-r3.md`; the integration
+  staging under `.pdca/open-issues-r5/rv1/integration/` is inside the ignored `/.pdca/*` tree, so it adds
+  no Git state. **No product path is dirty** (`git diff --name-only HEAD` over the 43-file union is
+  empty). No `git add`, no staging, no commit, no push, no branch switch, no amend, no tag, no rebase;
+  **no GitHub traffic** — no read and no write, and the `#4` closure stays the calling driver's external
+  action.
+
+- **Refreshed at `2026-11-12T17:43Z` (collection ACT, terminal) — observed, not changed.** `HEAD =
+  d042c2628edb52deab42118e18ac69974e5ad75d` (`d042c26`) on `main`; **index clean**
+  (`git diff --cached --name-only` prints nothing); `git status --porcelain` is exactly four lines —
+  ` M .pdca/status/collection-open-issues-r5.md`, `?? .pdca/status/issue-4-r5.md`, and the pre-existing,
+  untouched `?? .openidea/` and `?? .pdca/status/collection-open-issues-r3.md`. **`origin/main` =
+  `8b03cfda15a485b115f8b694d07c03e98fcdf685` (`8b03cfd`), so `d042c26` is unpublished**
+  (`git merge-base --is-ancestor d042c26 origin/main` exit `1`). `git log --oneline` confirms the four
+  product commits on `main`.
+- **The four product commits and their state:** `59fb1fb` (`#2`) — **published** (ancestor of
+  `origin/main @ 8b03cfd` at observation time); `a38bb7f` (`#8`) — **published**; `3130f55` (`#3`) —
+  **published**; `d042c26` (`#4`) — **unpublished**. Each is one atomic commit for its own item, footer
+  `Refs #<n>`, no auto-close keyword, no `.pdca/**`/`.openidea/**`/weight/audio/log/status path inside.
+- **Recorded as observed Git facts (with their limits):** `3130f55` was produced by **`commit (amend)`**
+  from the now-dangling `b15beb2` (`2026-11-12T12:22:05+05:00`), and one **`reset: moving to
+  origin/main`** at `2026-11-12T18:45:02+05:00` discarded `9f2e927` (commit `#11`, **outside** this
+  collection — not touched, not reopened). Source:
+  `integration/evidence/int-f03-no-push-reflog.txt:31–33`. Limits: local reflogs expire, never cover
+  another checkout or a server-side push, and attribute no push to any PDCA phase.
+- **Superseded claims, kept and marked (not rewritten):** every earlier **"no push"** statement holds for
+  `d042c26` and for this dispatch but is **superseded for `#2`/`#8`/`#3`** (published as ancestors of
+  `origin/main @ 8b03cfd`), and every earlier **"no amend"** statement is **superseded** by the amend of
+  `3130f55` recorded above.
+- **Status files' tracked state:** `.pdca/status/collection-open-issues-r5.md` — **tracked and modified**
+  in this cycle (durable on disk; the working-tree edit was not staged); `.pdca/status/issue-2-r5.md`,
+  `issue-8-r5.md`, `issue-3-r5.md` — **tracked**; `.pdca/status/issue-4-r5.md` — **untracked**;
+  `.openidea/` and `.pdca/status/collection-open-issues-r3.md` — pre-existing, **untracked and
+  unclaimed**.
+- **No staging, no commit, no push by this dispatch:** no `git add`, no commit, no `--amend`, no `push`,
+  no branch switch, no tag, no rebase, no revert, no worktree or branch removal, **no GitHub read or
+  write**. The evidence tree stays invisible to `git status` via `.gitignore:5` (`/.pdca/*`).
 
 ## Lessons learned
 
-`pending: collection retrospective not yet conducted` — the collection has not closed (completeness
+`pending: collection retrospective not yet conducted` - the collection has not closed (completeness
 `2/4 accepted`). The first closed cycle is item `#2`: its mandatory `pdca-check` retrospective was
 recorded **verbatim** in `.pdca/status/issue-2-r5.md` §Lessons learned (3 lessons — criteria coverage
 and phase ordering, observability/traceability, reproducibility and change confinement — plus limits
@@ -1470,6 +2205,72 @@ yet, and none is reconstructed here.
   dispatch (the commit existed before it started). Both status files stay untracked/durable on disk.
 
 - **refreshed `2026-11-11T07:53Z` by the reconciliation dispatch** — status-record writes only (no product byte, no staging, no commit, no push, no GitHub write): `git rev-parse HEAD` = `a38bb7fd969dc0ebb36ca74957af93b6b4b20a19`, `git diff --cached --stat` **empty** (0 staged), `git status --porcelain` shows only the pre-existing untracked `.openidea/` and `.pdca/status/*` (`collection-open-issues-r3.md`, `collection-open-issues-r5.md`, `issue-2-r5.md`, `issue-8-r5.md`) — no product change left. Both status files stay **untracked** and durable on disk.
+
+**Superseded (kept as history, `2026-11-12T17:43Z`):** the `pending: collection retrospective not yet
+conducted` line at the top of this section, together with the three item-source bullets that follow it
+(`#2`, `#8`, `#3`) and the two `refreshed` Git notes at its end, are **superseded** by the collection
+retrospective recorded below. Nothing above was deleted, rewritten or reordered; the item-source bullets
+remain the recorded item-level sources the report refers to.
+
+### Ретроспектива коллекции `open-issues-r5` — записана дословно
+
+Источник: сырой отчёт `pdca-check` в режиме `retrospective` для коллекции `open-issues-r5` (`N=1`,
+`r=1`), переданный ведущей ролью. Записан ниже **дословно**, в исходном языке, без анализа, замены или
+сокращения; он не добавляет вердикта, критерия, счётчика, попытки или новой проверки. Единственное
+механическое изменение — внешний ограничитель в четыре обратные кавычки, чтобы собственные заголовки
+отчёта не образовали конкурирующие разделы записи (`references/act.md` §Status file); ни один символ
+текста не изменён.
+
+````text
+## Ретроспектива коллекции `open-issues-r5`
+
+Область анализа — только родительская оркестрация. Результаты реализации и дочерние уроки не оценивались; замороженный исход не пересматривается.
+
+### Что сработало
+- Декомпозиция и одна последовательная полоса обоснованы общими поверхностями; отсутствие жёстких зависимостей отделено от необходимости сериализации.
+- Интеграционная упаковка сохранила проверяемый снимок: **43/43**, без пропусков и расхождений (`integration/logs/verify-snapshot-rerun.log:1–8`).
+- Противоречащие записи и ограничения доказательств сохранялись, а не скрывались.
+
+### Дефекты и переносимые уроки
+
+**1. Общая ошибка фазового порядка устранялась локально, но продолжала передаваться следующим элементам.**  
+**Категория:** планирование, контракты и handoff.
+
+- **Доказательства:** родительский PLAN одновременно требует commit/closure в критериях и запрещает commit до положительного CHECK (`collection-open-issues-r5.md:243–245`). Повторения зафиксированы для `#2`, `#8`, `#4` (`724–727`, `804–819`, `1498–1506`); для `#3` закрытие трактовалось как последующее обязательство (`764–767`).
+- **Эффект:** повторные контрактные возвраты и неодинаковое толкование одного родительского требования.
+- **Урок / предлагаемое изменение:** при составлении коллекции явно разделять проверяемую готовность и последующие обязательства закрытия, сохраняя пользовательские требования целиком. После обнаружения общего дефекта учитывать его в ещё не исполненных handoff через уполномоченную процедуру.
+- **Предел:** повторение доказано; дефект установлен в применении процесса, а не обязательно в тексте установленного skill.
+
+**2. Одна полоса не обеспечила единственного активного исполнителя и однозначного состояния.**  
+**Категория:** координация, восстановление, учёт статуса.
+
+- **Доказательства:** дублирующие dispatch меняли общую рабочую область и записи (`415–422`, `553–591`); противоположные `done` и полнота `1/4`/`2/4` сохранялись даже после сверок (`2128–2139`). Для `#3` запись появилась только после CHECK (`733–740`). Полные отчёты CHECK терялись при передаче (`775–777`, `2178`).
+- **Эффект:** повторная работа, восстановительные сверки, неоднозначные указания следующего действия; `done` использовался при незакрытом внешнем обязательстве.
+- **Урок / предлагаемое изменение:** связывать каждый dispatch с текущей ревизией, владельцем и состоянием предыдущего исполнителя; до продолжения подтверждать его завершение. Поддерживать одно актуальное представление состояния отдельно от истории, сохранять исходные фазовые отчёты и различать «результат принят», «закрытие выполнено», «запись завершена».
+- **Предел:** точная хронология отдельных коллизий ограничена смешением часов. Исчерпание бюджета само по себе не доказывает ошибку; проблема — недостаточный контроль передачи состояния.
+
+**3. Родительская проверка интеграции опиралась на восстановленную, а не зафиксированную при запуске идентичность.**  
+**Категория:** доказательства, интеграция, соблюдение ограничений.
+
+- **Доказательства:** `integration/facts.md:153–171` выводит привязку полного gate из последующих снимков; сам документ допускает незамеченное изменение с возвратом. Родительский учёт также обещал `no amend`, тогда как сохранённый reflog прямо показывает создание `3130f55` через amend (`integration/evidence/int-f03-no-push-reflog.txt:31–33`). Исправления этих заявлений появились поздно (`collection-open-issues-r5.md:1443–1457`).
+- **Эффект:** удачный запуск невозможно надёжно связать с интегрированным состоянием; нарушение ограничения истории обнаружено уже после совершения действия.
+- **Урок / предлагаемое изменение:** заранее определять, какой запуск станет интеграционным доказательством, и фиксировать его входное дерево непосредственно при запуске. Передавать ограничения Git всем участникам, включая драйвер; различать «этот dispatch не выполнял push» и состояние публикации всей коллекции. Единственный раунд дополнения доказательств не заменяет исходную фиксацию.
+- **Предел:** reflog подтверждает операции, но не устанавливает их исполнителя или фазу; вывод о дефекте контроля границы не является персональной атрибуцией.
+
+### Ограничения
+Использованы существующие записи и сохранённые свидетельства; новых запусков и пересчётов не было. Полные финальные интеграционный CHECK и экспертный STOP-отчёт в прочитанной записи отсутствуют: итог предоставлен dispatch, но независимо здесь не воспроизводился. Предложения относятся к будущим коллекциям и не добавляют работу в закрываемую.
+
+**Сигнал завершения:** `retrospective_complete`
+````
+
+- **Recording notes of this ACT dispatch (`2026-11-12T17:43Z`), outside the recorded report.** The block
+  above is the raw `pdca-check` `retrospective` report for the collection `open-issues-r5` (`N=1`,
+  `r=1`), routed by the driving role, recorded as delivered: wording, punctuation, headings, bullets,
+  hard line breaks, quoted paths and the closing signal `retrospective_complete` unchanged. It adds no
+  verdict, no criteria result, no counter, no attempt and no new verification, and it reopens nothing.
+- **Originating outcome preserved unchanged:** the integrated-tree verdict stays `not accepted` and the
+  collection outcome stays `incomplete (STOP)`; all four item goals stay accepted, committed and closed.
+  The retrospective is analysis of the closed collection and overrides none of that.
 
 ## Progress log
 
@@ -1598,3 +2399,535 @@ yet, and none is reconstructed here.
 - 2026-11-12T17:51Z | ACT | r2 | n=1 | item `#3` **record-closure blocker resolved**: the mandatory `pdca-check` report in `mode: retrospective` was recorded **verbatim** in `.pdca/status/issue-3-r5.md` §Lessons learned (completion signal `retrospective_complete`) and the item record now reads `phase: ACT · record: completed · outcome: accepted`; the accepted outcome, product commit `3130f55` and the GitHub `#3` closure are unchanged and not reopened (no re-run, no staging, no commit, no GitHub write, no counter moved: `N=1 · r=2 · n=1`); completeness stays **`3/4 accepted`**, next item **`#4`** | `.pdca/status/issue-3-r5.md` §Lessons learned, §ACT record; `.pdca/status/collection-open-issues-r5.md` §Current state
 - 2026-11-12T12:52Z | ACT | r2 | n=1 | item `#3` **mandatory `pdca-check` retrospective recorded verbatim by this dispatch** — the Russian report routed with the closure brief is persisted in `.pdca/status/issue-3-r5.md` §Lessons learned (block "Ретроспектива `pdca-check`", completion signal `retrospective_complete`); the item record is `phase: ACT · record: completed · outcome: accepted`; completeness **`3/4 accepted`**; next authorized step **`DO item #4 (r1)`**; no criterion, verdict, counter, attempt, commit or GitHub closure changed | .pdca/status/issue-3-r5.md §Lessons learned
 - 2026-11-12T12:52Z | ACT | r2 | n=1 | **Notice — concurrent ACT writers on the same item (reconciled):** two executor dispatches ran the same record-closure bookkeeping concurrently; both retrospective reports (this dispatch's Russian report and the concurrent dispatch's English report) are kept, each labelled and verbatim, in `.pdca/status/issue-3-r5.md` §Lessons learned, and both §ACT record bullets are kept. The state is agreed — `phase: ACT · record: completed · outcome: accepted`, counters `N=1 · r=2 · n=1`, completeness `3/4 accepted`, next step `DO item #4 (r1)`. Record-writer collision, not a defect of the work: no STOP, no counter change, no attempt, no verification, no staging, no commit, no push, no GitHub write. The concurrent rows are stamped `2026-11-12T17:5xZ` from the local clock while this dispatch's rows use UTC; no common chronology is inferred | both status files §Progress log
+- 2026-11-12T15:17:10Z | DO | r1 | n=1 | item `#4` **`DO` `r1`/`n1` in progress (continuation of the same attempt, no attempt increment)** — fresh baseline: converter tests `Ran 10 tests` `OK` exit `0`, `cargo build --release` exit `0`, parity exit `101` (`0 passed; 1 failed`, `max_abs 2.6e3…4.0e3`); `GRN-4` fixed (red exit `101` → green exit `0`), `CTR-4` open (unit test still red exit `101`; `one_hot_stride()` edit unverified/uncompiled), `PAR-4` still red (`max_abs 0.62…1.09`, `logs/57`); tree mid-repair, no candidate; next allowed step `finish CTR-4, re-run parity`; item row `#4` → `in-progress`, attempts `1`; counters `N=1 · r=1 · n=1/3` | `.pdca/status/issue-4-r5.md` §DO result, §Defect history; `.pdca/open-issues-r5/rv1/item-4-demucs/logs/50`–`60`
+- 2026-11-12T15:17:10Z | DO | r1 | n=1 | item `#4` durable-state recording written **before any further code change**, then `status_lint.py` run on both status files with their exit codes recorded in the item record | `.pdca/scripts/status_lint.py`
+- 2026-11-12T16:01:20Z | DO | r1 | n=1 | item `#4` `CTR-4` **fixed and verified** (helper + `OnceLock` stub removed, `pad_with_zeros` zero insertion, flipped-kernel `conv1d`): lib tests exit **`0`**, `5 passed; 0 failed` (red exit `101` before); **parity re-measured exit `0`**, `1 passed; 0 failed`, 8/8 stem × channel inside `max_abs ≤ 3.5e-4` / `RMSE ≤ 1e-4` / `SDR ≥ 80 dB` (worst `8.583e-6` / `1.774e-7` / `84.36 dB`) — measurement only, no verdict; gates `cargo build` exit `0`, `clippy --all-targets` exit `0`, full `cargo test` **in progress**, converter tests **not re-run**; counters unchanged `N=1 · r=1 · n=1/3`; item row stays `in-progress`, attempts `1` | `.pdca/open-issues-r5/rv1/item-4-demucs/logs/61`,`62`,`63`,`65`,`66`
+- 2026-11-12T16:15:00Z | DO | r1 | n=1 | item `#4` **full-suite gate:** `cargo test` (debug, whole workspace) exit **`0`** — `144 passed / 0 failed / 4 ignored` over 24 targets + doc-tests, 41m54s wall; launcher log ends with `EXIT=0` (`logs/66-gate-test-full.log`); the earlier attempt killed by the command timeout after `vr_stage_waves` is history (`logs/64`) and was never counted as a pass | `.pdca/open-issues-r5/rv1/item-4-demucs/logs/66-gate-test-full.log`
+- 2026-11-12T16:15:00Z | DO | r1 | n=1 | item `#4` converter tests on the fixed bytes exit **`0`** — `Ran 10 tests in 9.090s`, `OK`; pinned checkpoint re-verified by the converter itself (`--check-only` exit **`0`**): source sha256 `8726e21a…faa8b4`, 84,141,911 B, 533 `F32` tensors, key-set `33ddc01d…5fbe` | `item-4-demucs/logs/68`, `logs/69`
+- 2026-11-12T16:15:00Z | DO | r1 | n=1 | item `#4` **`AC-4.1` strict-load rejection measured**: missing / unexpected / mis-shaped / non-f32 mutants of the real artifact each rejected by `HTDemucs::validate_state`, exit **`101`** ×4 (`0 passed / 1 failed`); two earlier probe rounds kept as history (`logs/71` container-level rejection, `logs/73` probe-script shallow-copy bug) | `item-4-demucs/logs/75`, `scripts/make_strict_load_mutants.py`
+- 2026-11-12T16:15:00Z | DO | r1 | n=1 | item `#4` **`AC-4.1` per-stem naming measured end to end on disk**: exactly `drums.wav`, `bass.wav`, `other.wav`, `vocals.wav` (4 × 3,528,044 B, 441,000 frames × 2 ch @ 44,100 Hz, all finite), independent RIFF read-back exit **`0`** | `item-4-demucs/logs/80`, `logs/82`, `out/stems-candidate/`
+- 2026-11-12T16:15:00Z | DO | r1 | n=1 | item `#4` **evidence pack written** (no product byte edited): `manifest.json`, `index.md`, `snapshot/` + `snapshot-sha256.txt` (8/8 worktree == snapshot) + `snapshot.diff` (148,596 B), `metrics/parity.json` + `.csv` (8 rows, all inside), `commands.txt`, `lint.txt` | `.pdca/open-issues-r5/rv1/item-4-demucs/`
+- 2026-11-12T16:15:00Z | DO | r1 | n=1 | item `#4` **`DO` `r1`/`n1` attempt complete - candidate ready for CHECK**; `HEAD 8b03cfd`, index empty, nothing staged, no commit/push/GitHub write; item row `#4` stays `in-progress`, `plan_revision 1`, attempts `1`; counters `N=1 · r=1 · n=1/3`; next allowed step **`CHECK item #4 (r1/n1)`**; completeness `3/4 accepted` | `.pdca/status/issue-4-r5.md` §DO result, `.pdca/status/collection-open-issues-r5.md` §DO result
+- 2026-11-12T16:46:00Z | DO | r1 | n=1 | item `#4` `status_lint.py` on both records after the attempt-complete write: item `status-lint: OK (.pdca\status\issue-4-r5.md: 4 tables, 24 rows)` exit **`0`**; collection `status-lint: OK (.pdca\status\collection-open-issues-r5.md: 2 tables, 7 rows)` exit **`0`**; both re-linted on their final bytes, runs appended to `item-4-demucs/lint.txt` | `.pdca/open-issues-r5/rv1/item-4-demucs/lint.txt`
+- 2026-11-12T16:48Z | DO | r1 | n=1 | **Notice - two concurrent executor dispatches on the same attempt (reconciled):** the `16:15`/`16:46` rows are the other dispatch's; this dispatch's rows are stamped `15:17`-`16:42`. Both agree on every measured number (lib `5 passed`; parity exit `0`, 8/8 stem x channel inside threshold; `cargo test` `144 passed / 0 failed / 4 ignored` exit `0`; converter `Ran 10 tests` `OK`; `HEAD 8b03cfd`, index empty, nothing staged) and neither changed a product byte after the `CTR-4` fix (`src/model/demucs.rs` sha256 `b1e04d0f.40d07`). **Attribution:** the evidence pack, the harness scripts, `snapshot/`, `metrics/` and `out/stems-candidate/` were created by the other dispatch, **not** by this one. Append order is not chronology; no counter, attempt, criterion or verdict changed and no earlier row was rewritten | both status files Progress log; `.pdca/open-issues-r5/rv1/item-4-demucs/logs/61`-`82`
+- 2026-11-12T16:48Z | CHECK | r1 → r2 | n=1 | item `#4` **`CHECK 1` (`r1`/`n1`) `not accepted → PLAN`** — `AC-4.1` `met`, `AC-4.2` `met`, `AC-4.3` `unmet`; finding `ORD-4` (blocking, confirmed: acceptance ordering of `AC-4.3` against the collection's pre-`CHECK` commit/closure prohibition); non-blocking notes on hash recomputation, ignored tests, GPU behaviour, inputs beyond the approved fixture and the unverified live GitHub `#4` state; full CHECK report not supplied as a separate artefact and the recorded elements are stated as such | `.pdca/status/issue-4-r5.md` §CHECK record `### CHECK 1 — r1/n1`; §PLAN record `### r2` §5/§8
+- 2026-11-12T16:48Z | PLAN | r1 → r2 | n=1/3 | item `#4` **outgoing attempt booked first** (`DO` `r1`/`n1` complete, parity passing; `CHECK 1` `not accepted → PLAN`; attempts consumed `1`, transition consumed none) then **Replanned: CHECK→PLAN acceptance-ordering contract (r 1→2)** — `AC-4.1`/`AC-4.2` verbatim, `AC-4.3` split into `AC-4.3(1)` pre-acceptance `CHECK` gate and `AC-4.3(2)` post-acceptance `ACT` commit + GitHub `#4` closure; item level only, collection plan stays `r1`; item row `#4` → `plan_revision 2`, counters `N=1 · r=2 · n=1/3` | `.pdca/status/issue-4-r5.md` §PLAN record `### r2`; §Current state; §Revision history; item row `#4`
+- 2026-11-12T16:48Z | DO | r2 | n=1 | item `#4` **`DO` `r2`/`n1` complete** (re-anchor only, no product edit): `HEAD 8b03cfda15a485b115f8b694d07c03e98fcdf685` on `main`, `git diff --cached --name-only` empty, 8/8 product hashes equal to `snapshot-sha256.txt` (`0` missing, `0` mismatch), delta isolated to item `#4`'s 8 product paths, no `.pdca/` artefact in the product set, no premature commit/push, **no GitHub `#4` read or write**, no gate re-run (no drift), no evidence-pack rebuild, no criterion change; run exit `0`; next allowed step **`CHECK item #4 (r2/n1)`** | `.pdca/open-issues-r5/rv1/item-4-demucs/logs/83-reanchor-r2n1.log`; `.pdca/status/issue-4-r5.md` §DO result `### Attempt r2 / n1`; §Git state
+- 2026-11-12T16:48Z | DO | r2 | n=1 | item `#4` **`status_lint.py` after the `r2` write:** item `status-lint: OK (.pdca\status\issue-4-r5.md: 5 tables, 28 rows)` exit **`0`**; collection `status-lint: OK (.pdca\status\collection-open-issues-r5.md: 2 tables, 7 rows)` exit **`0`**; both files re-linted on their post-write bytes with the same exit codes | `.pdca/scripts/status_lint.py`
+- 2026-11-12T16:57:05Z | CHECK | r2 | n=1 | item `#4` **`CHECK 2` routed `GH-4-PRE` (`AC-4.3(1)`) back to `DO`, evidence only** — recorded as supplied by the dispatch brief, verbatim: «GH-4-PRE — major, unverified; AC-4.3(1): отсутствует независимое наблюдение отсутствия преждевременного закрытия GitHub `#4`. Это пробел доказательств, **не установленное нарушение**.» next transition → `DO`; no attempt consumed, counters stay `N=1 · r=2 · n=1/3`; the complete `CHECK 2` report was **not** supplied to this write as a separate persisted artefact and is not reconstructed | dispatch brief; `.pdca/status/issue-4-r5.md` §DO result `### Evidence round r2 / n1`
+- 2026-11-12T16:57:05Z | DO | r2 | n=1 | item `#4` **read-only GitHub `#4` observation (GH-4-PRE evidence):** `GET https://api.github.com/repos/AlexeyShirshov/candle-roformer/issues/4` → **`HTTP 200`**, 4,635 B, sha256 `c9734a32…f18117` — `state=open`, `state_reason=null`, `closed_at=null`, `created_at=2026-11-08T06:43:20Z`; `GET …/issues/4/timeline?per_page=100` → **`HTTP 200`**, 1,329 B, sha256 `9087d84f…93848f` — 1 event (`milestoned 1.0`), **`0` `closed` / `0` `reopened`**, no `rel="next"` page; no token read/sent/stored, **no GitHub write of any kind**; exit `0`; **fact: no premature closure exists** (issue open, no closure in history) | `item-4-demucs/github/issue-4-observation.json`, `item-4-demucs/github/issue-4__2026-11-12T16-57-05Z.json`, `item-4-demucs/github/issue-4-timeline__2026-11-12T16-57-05Z.json`, `item-4-demucs/logs/84-github-issue-4-observation.log`
+- 2026-11-12T16:58Z | DO | r2 | n=1 | item `#4` **`GH-4-PRE` evidence round complete (evidence only, no product change, no verdict):** observation referenced in `manifest.json` (root `github_issue` block + `AC-4.3(1)`/`AC-4.3(2)` sub-records), `index.md` and `commands.txt`; `HEAD 8b03cfd`, index empty, no commit/staging/push, no gate re-run; item row `#4` stays `in-progress`, `plan_revision 2`, attempts `1`; counters `N=1 · r=2 · n=1/3`; completeness `3/4 accepted`; next allowed step **`CHECK item #4 (r2/n1)` — CHECK 3** | `.pdca/open-issues-r5/rv1/item-4-demucs/{manifest.json,index.md,commands.txt}`; `.pdca/status/issue-4-r5.md`
+- 2026-11-12T16:59Z | DO | r2 | n=1 | item `#4` **`status_lint.py` after the `GH-4-PRE` write:** this collection record exit **`0`** (`status-lint: OK`) and the item record `.pdca/status/issue-4-r5.md` exit **`0`** (`status-lint: OK`); the final-byte re-lint, with counts, is appended to `item-4-demucs/lint.txt`; counters `N=1 · r=2 · n=1/3`; next allowed step **`CHECK item #4 (r2/n1)` — CHECK 3** | `.pdca/scripts/status_lint.py`, `.pdca/open-issues-r5/rv1/item-4-demucs/lint.txt`
+- 2026-11-12T17:06Z | ACT | r2 | n=1 | item `#4` **`CHECK 3` (`r2`/`n1`) returned `accepted → ACT`** — recorded as returned by the ACT dispatch brief (verdict line only; the complete CHECK 3 report was **not** supplied as a persisted artefact and is recorded as absent, not reconstructed). Accepted snapshot: `HEAD 8b03cfd` + the 8-path product delta frozen in `item-4-demucs/snapshot/` + `snapshot-sha256.txt` (8/8); only the post-acceptance closure of `AC-4.3(2)` moves to ACT; counters unchanged `N=1 · r=2 · n=1/3` | `.pdca/status/issue-4-r5.md` §CHECK record `### CHECK 3 - r2/n1`
+- 2026-11-12T17:06:04Z | ACT | r2 | n=1 | item `#4` **pre-stage re-anchor OK** — worktree == `snapshot/` copy == `snapshot-sha256.txt`, **matched=8, mismatched=0, missing=0 of 8**, verifier exit **`0`**; `HEAD 8b03cfda15a485b115f8b694d07c03e98fcdf685` unchanged, branch `main`, `git diff --cached --name-only` empty → no drift, staging allowed | `item-4-demucs/logs/86-act-reanchor-r2n1.log`
+- 2026-11-12T17:06:17Z | ACT | r2 | n=1 | item `#4` **`AC-4.3(2)` commit performed — one atomic commit** — exactly the 8 item paths staged (`git add -- <8 paths>`, staged list verified = 8 before committing, never `git add -A`), then **`d042c2628edb52deab42118e18ac69974e5ad75d`** (`d042c26`), parent `8b03cfda15a485b115f8b694d07c03e98fcdf685`, **8 files changed, `+3767/−4`**, subject `#4: HTDemucs 4-stem separation with audio-separator 0.48.0 parity`, footer `Refs #4` (no `Closes`/`Fixes`), identity `Alexey Shirshov <alex.shirshov@vk.com>` via `git -c` (no `git config` write); no `--amend`, no push, no branch switch, no tag, no rebase | `item-4-demucs/logs/87-act-commit-verify.log`
+- 2026-11-12T17:06:17Z | ACT | r2 | n=1 | item `#4` **commit verified after creation** — `HEAD d042c26`; `git show --name-only --format='' HEAD` = exactly the 8 item paths (`file_count=8`); **foreign-path scan: none** (no `.pdca/**`, no `.openidea/**`, no weight, audio/fixture, log or status path); `git diff --name-only HEAD -- <8 paths>` **empty**; `git diff --cached --name-only` **empty**; post-commit worktree re-hash **8/8**; **not pushed** (`origin/main` = `8b03cfd`) | `item-4-demucs/logs/87-act-commit-verify.log`
+- 2026-11-12T17:06Z | ACT | r2 | n=1 | item `#4` **record stays `open`; GitHub `#4` closure handed to the calling driver** — the mandatory `pdca-check` `retrospective` report was not supplied with this brief, so `.pdca/status/issue-4-r5.md` keeps `record: open` with its §Lessons learned `pending` and an explicit closure blocker (no fallback analysis written). The GitHub `#4` closure is an **external residual**: no PDCA phase performs a GitHub write in this collection and the issue is **not** recorded as closed. Item row `#4` stays `in-progress`, `plan_revision 2`, attempts `1`; counters `N=1 · r=2 · n=1/3`; completeness **`3/4 accepted`**; next allowed step **`ACT item #4 — retrospective`**, then the collection integration CHECK | both status records §ACT record, §Current state
+- 2026-11-12T17:08Z | ACT | r2 | n=1 | item `#4` **record lint after the ACT write:** this collection record exit **`0`** (`status-lint: OK (.pdca\status\collection-open-issues-r5.md: 2 tables, 7 rows)`) and the item record `.pdca/status/issue-4-r5.md` exit **`0`** (`status-lint: OK (.pdca\status\issue-4-r5.md: 5 tables, 29 rows)`); both re-linted on their final bytes with the same exit codes, runs and counts appended to `item-4-demucs/lint.txt` | `.pdca/scripts/status_lint.py`
+- 2026-11-12T17:13Z | ACT | r2 | n=1 | item `#4` **mandatory `pdca-check` retrospective recorded verbatim** — raw report, `mode: retrospective`, cycle `issue-4-r5` (`N=1`, `r=2`, `n=1`), persisted in `.pdca/status/issue-4-r5.md` §Lessons learned as a 26-line block (3 lessons with categories, "next time" and evidence pointers; limits and uncertainty; closing signal `retrospective_complete`), wording/punctuation/line breaks unchanged, headings only shifted one level deeper, dispatch notes kept outside the quoted block; no verdict, counter, attempt or new verification | `.pdca/status/issue-4-r5.md` §Lessons learned
+- 2026-11-12T17:13Z | ACT | r2 | n=1 | item `#4` **FINALIZED — `done` / `finalized`, outcome `accepted`** (from `CHECK 3` `r2`/`n1`): item record `phase: ACT · record: completed · outcome: accepted`; item row `#4` → `done` / `finalized`, `plan_revision 2`, attempts `1`; `AC-4.3(2)` commit `d042c26` performed, **GitHub `#4` closure handed to the calling driver, NOT performed and never recorded as closed**; counters `N=1 · r=2 · n=1/3`; **completeness `4/4 accepted`**; the collection itself stays open — no integration CHECK, no collection ACT, collection §Lessons learned `pending` | `.pdca/status/collection-open-issues-r5.md` §Item table, §ACT record, §Current state
+- 2026-11-12T17:16Z | DO | r2 | n=1 | **collection integration candidate staged** (no product edit, no git staging): `.pdca/open-issues-r5/rv1/integration/` created with `facts.md`, `snapshot/` (**43** files = union of the four items' committed product files from `git show --name-only` of `59fb1fb`, `a38bb7f`, `3130f55`, `d042c26`), `snapshot-sha256.txt`, `index.md`, `lint.txt`, `scripts/`, `logs/`; re-verification against the worktree: **matched=43, mismatched=0, missing=0**, verifier exit **`0`**; products stay in place; no commit, no push, no GitHub write | `.pdca/open-issues-r5/rv1/integration/index.md`, `logs/verify-snapshot.log`
+- 2026-11-12T17:17Z | DO | r2 | n=1 | state after the staging: `HEAD d042c2628edb52deab42118e18ac69974e5ad75d` on `main`, index **empty**, not pushed (`origin/main = 8b03cfd`), `git status --porcelain` four lines (two status records + the pre-existing `?? .openidea/`, `?? .pdca/status/collection-open-issues-r3.md`), no product path dirty; **next allowed step: collection integration `CHECK`**; no verdict stated | `git status --porcelain`, `git rev-parse HEAD`
+- 2026-11-12T17:19Z | DO | r2 | n=1 | **final `status_lint.py` on both final bytes:** `.pdca/status/collection-open-issues-r5.md` exit **`0`** (`status-lint: OK (.pdca\status\collection-open-issues-r5.md: 2 tables, 7 rows)`) and `.pdca/status/issue-4-r5.md` exit **`0`** (`status-lint: OK (.pdca\status\issue-4-r5.md: 5 tables, 29 rows)`); exact runs in `.pdca/open-issues-r5/rv1/integration/lint.txt` | `.pdca/scripts/status_lint.py`, `.pdca/open-issues-r5/rv1/integration/lint.txt`
+- 2026-11-12T17:34Z | ACT | r2 | n=1 | **line endings normalised on the item record (record hygiene only, no content change):** the three appended progress lines of `.pdca/status/issue-4-r5.md` carried CRLF among LF lines - only those 3 CR bytes were removed; before **118,102 B**, sha256 `B306DDC9B5866B9137B4E064449107B3FC0C52C12B0ADA2B2CCDCACAA903FE56`; after **118,099 B**, sha256 `D4B554B3E308381B2820AD4486FE7386971DB703D1789FC4186A53C45712D6D8`; byte-for-byte equality to the pre-edit content with the 3 CR bytes stripped is proven, 1,090 lines before and after, 0 CR bytes remain, and no other file was written by the normalisation | `.pdca/status/issue-4-r5.md`
+- 2026-11-12T17:36Z | ACT | r2 | n=1 | item `#4` **GitHub `#4` closed as `completed` at `2026-11-12T17:26:06Z`** (comment `6830882059`; authorized `gh issue close 4 --reason completed --comment <file>`, exit `0`; verified by a read-only unauthenticated `GET`: `state=closed`, `state_reason=completed`, timeline **1 `closed` / 0 `reopened`**) - **`AC-4.3(2)` is now performed in both components** (commit `d042c26` + closure); the first post-write read at `17:26:13Z` returning a stale `state=open` body is recorded as a **read-lag notice**, not hidden; no product change, no commit on this row, no new attempt, counters unchanged `N=1 · r=2 · n=1/3` | `item-4-demucs/github/issue-4-observation-closed.json`, `item-4-demucs/github/issue-4-close-comment.md`, `item-4-demucs/logs/89-github-issue-4-close.log`, `item-4-demucs/logs/90-github-issue-4-observation-closed.log`
+- 2026-11-12T17:38Z | ACT | r2 | n=1 | **record correction (`INT-F03`):** `#2` (`59fb1fb`), `#8` (`a38bb7f`) and `#3` (`3130f55`) are **ancestors of `refs/heads/main @ 8b03cfd` on `origin`** at observation time and are therefore **published** - every earlier "not pushed" statement in this record is **superseded for those three** (kept as history, not rewritten) - while **`d042c26` is the only unpushed commit** (`merge-base --is-ancestor` exit `1`, no remote ref); reflog facts recorded as observed with their limits (`3130f55` produced by `commit (amend)` from dangling `b15beb2`; `reset: moving to origin/main` discarding `9f2e927` (`#11`)) and explicitly **not** as defects of the accepted product | `.pdca/open-issues-r5/rv1/integration/evidence/int-f03-no-push-reflog.txt`, `evidence/int-f03-summary.json`, `logs/f03-no-push.log`
+- 2026-11-12T17:39Z | ACT | r2 | n=1 | **collection integration evidence round recorded:** `INT-F01` **37/37** accepted ledger rows matched (0 mismatched, 0 missing; `#2` 13/13, `#8` 7/7, `#3` 9/9, `#4` 8/8) **with the stated coverage limit that `#3`'s ledger covers 9 of its 33 commit paths**; `INT-F02` gate **bound** to the final tree (parent `8b03cfd`, exactly 8 changed paths, 309 other tree entries identical, 8/8 accepted bytes = committed blobs, gate `144/0/4`, `EXIT=0`, CRLF caveat stated); `INT-CROSS-ITEM` **12** shared paths, combined Rust state covered by `logs/66`, Python converters not covered together. Sections appended: §ACT record `#4` block, item row `#4` note, §Current state, §General verification and recovery; **completeness `4/4 accepted`**; **next allowed step: collection integration `CHECK` (re-check) -> collection `ACT`**; collection §Lessons learned **not** written, no verdict, no completion claim | `.pdca/status/collection-open-issues-r5.md` §ACT record, §Current state, §General verification and recovery, §Progress log; `.pdca/open-issues-r5/rv1/integration/facts.md` §7-§11
+- 2026-11-12T17:43Z | CHECK | r1 | n=0 | **expert-review escalation resolved** — the mandatory expert review of the collection integration returned the terminal routing `not accepted → ACT`: closed `blocked` / STOP-incomplete, **no** accepted exception for the `--amend` of `3130f55`, **no** extra gate run, **two user decisions** handed to the user; no criteria defect found, no further attempt and no further evidence round authorized; counters unchanged `N=1 · r=1` | `.pdca/status/collection-open-issues-r5.md` §CHECK record, §ACT record
+- 2026-11-12T17:43Z | CHECK | r1 | n=0 | **final collection integration CHECK recorded as returned (terminal `not accepted`)** — matrix exactly as returned: `INT-LIMITS` `unmet`, `INT-F02` `unverified`, `INT-REGRESSION` `unverified`, `INT-CROSS-ITEM` `unverified`, `INT-F01` `refuted`, `INT-F04` `refuted`, `INT-CLOSURE-STATE` `met`; **Notice — verification/permission limitation:** that dispatch could not directly read the `.pdca` artefacts because the host denied `read`/`glob` to it (recorded, not hidden, not reconstructed); earlier rows `INT-REQUIREMENTS-COVERAGE` / `INT-COMMIT-SET` / `INT-SNAPSHOT-IDENTITY` / `INT-ACCEPTED-DELTA` stand as the first integration CHECK recorded them | `.pdca/status/collection-open-issues-r5.md` §CHECK record
+- 2026-11-12T17:43Z | ACT | r1 | n=0 | **collection retrospective recorded verbatim** — raw `pdca-check` `retrospective` report (Russian; 3 defects/lessons with evidence, effects, proposed changes and limits) persisted in §Lessons learned with the completion signal `retrospective_complete`; the earlier `pending: collection retrospective not yet conducted` line and the item-source notes are marked superseded and kept as history; no verdict, counter or attempt added | `.pdca/status/collection-open-issues-r5.md` §Lessons learned
+- 2026-11-12T17:43Z | ACT | r1 | n=0 | **collection ACT closed: `incomplete (STOP)`** — completeness **`4/4 item goals accepted`** (all four items accepted, committed `59fb1fb`/`a38bb7f`/`3130f55`/`d042c26`, all four GitHub issues closed), integrated-tree verdict **`not accepted`**; unresolved `INT-LIMITS` `unmet` and `INT-F02`/`INT-REGRESSION`/`INT-CROSS-ITEM` `unverified`; next authorized action = the two user decisions (accept/reject the amend; authorize/decline one verification-only `cargo test` on a clean `d042c26`); nothing cleaned up, merged, reverted, pushed or reopened — all results preserved; counters `N=1 · r=1` | `.pdca/status/collection-open-issues-r5.md` §Current state, §ACT record, §General verification and recovery, §Git state
+
+## Superseding Collection Closure Record (Cycle N=7 — Caveated Closure)
+
+**Pre-verdict status of this block — not an acceptance.** This section was appended at EOF by the `DO`
+phase of cycle `N=7` (`cycle-open-issues-r5-int-followup-r7` · `N=7` · `r=1` · `n=1`), after the previous
+end of file (byte `323,295`; `2,439` lines), as the **candidate** superseding closure record submitted
+for the independent `N=7` `CHECK`. It asserts no acceptance, no verdict and no closure on its own
+authority: it becomes authoritative only if the independent `N=7` `CHECK` accepts this cycle and the
+ratification sub-block `### N=7 ACT Terminal Ratification (Post-CHECK)` is appended below it. Every byte
+above this block is preserved unchanged — including the stale `N=1` final block, which stays as history
+and is superseded, never deleted and never rewritten.
+
+**User authority for this closure (quoted verbatim, unchanged):**
+
+> `caveated closure — append-only record that historical immutability of the N=4 and N=5 status files is not established, and close the collection with that caveat rather than making a false verified claim.`
+
+**The caveat, stated plainly.** Two of the ten recorded identity comparisons have no pre-`N=6` baseline:
+`.pdca/status/cycle-open-issues-r5-int-followup-r4.md` (sha256 `1de1cde5…`, `75,238` B) and
+`.pdca/status/cycle-open-issues-r5-int-followup-r5.md` (sha256 `151072ae…`, `85,411` B). Their
+**historical immutability is therefore not established**. That row is recorded as `unverified`, it is
+**never** recorded as `met`, and it is non-blocking **only** because the user explicitly instructed a
+caveated closure instead of a verified claim. A fresh hash of the current bytes cannot create a
+historical baseline, and no frozen artifact holds a recorded pre-`N=6` digest or an independent immutable
+copy of those two files; the gap is exactly `F-R6-FROZEN-BASELINE`. No mutation of those files is
+established either — this is an evidence gap, not a proven defect.
+
+**Criterion matrix of this closure: `8 met` / `0 unmet` / `2 unverified` (caveated, non-blocking by
+explicit user instruction).**
+
+| Criterion | Outcome | Evidence pointer |
+|---|---|---|
+| `INT-BUILD-TESTS` | `met` | `N=3` run log `.pdca/cycle-open-issues-r5-int-followup-r3/logs/cargo-test-d042c26.log`: `cargo test` at the pinned tree `d042c26`, exit `0`, 25 `ok.` results, `144 passed / 0 failed / 4 ignored`; no build or test was run in `N=6` or `N=7`. |
+| `INT-PARITY-AND-GATES` | `met` | Four accepted item records — `.pdca/open-issues-r5/rv1/item-2-mdx-onnx/`, `item-8-ensembles/`, `item-3-vr-uvr/`, `item-4-demucs/` — with their parity artifacts (`item-2-mdx-onnx/logs/comparison.json`, `item-8-ensembles/metrics/parity.json`, `item-3-vr-uvr/logs/41-check-parity-after-reference-rerun.log`, `item-4-demucs/logs/62-parity-after-ctr4.log`); Demucs parity rests only on the accepted item evidence. |
+| `INT-HYGIENE` | `met` | `.pdca/cycle-open-issues-r5-int-followup-r6/status-porcelain.txt`: 9 lines, **0 product paths** — `.pdca/` and `.openidea/` only. |
+| `INT-TRACEABILITY` | `met` | `#2 → 59fb1fb`, `#8 → a38bb7f`, `#3 → 3130f55`, `#4 → d042c26`; the four item records; `.pdca/open-issues-r5/rv1/integration/evidence/int-f03-no-push-reflog.txt:31-33`; all four issues closed. |
+| `INT-LIMITS` | `met` | No product, git or GitHub mutation after `d042c26` (capture `head.txt`); the caveats below are carried unchanged; `status_lint.py` exit `0` on both status files. |
+| `FU-CANDIDATE-PIN` | `met` | `.pdca/cycle-open-issues-r5-int-followup-r6/head.txt` = `d042c2628edb52deab42118e18ac69974e5ad75d`; `.pdca/cycle-open-issues-r5-int-followup-r6/tree.txt` = `6cb258a028e0c3db51547a4a0b987fdb9e8e3e51`. |
+| `FU-ISOLATION` | `met` | The same `status-porcelain.txt`: **0** lines outside `.pdca/` and `.openidea/`; the `N=7` writes are restricted to the two status files plus the optional lint log under `/.pdca/`. |
+| `FU-R3-IMMUTABILITY` | `unverified` | `.pdca/cycle-open-issues-r5-int-followup-r6/frozen-status-sha256.txt` against `.pdca/cycle-open-issues-r5-int-followup-r4/logs/frozen-record-hashes.txt`: **8 matched / 0 mismatched / 2 without baseline** (`-r4.md`, `-r5.md`). Caveated, non-blocking by explicit user instruction; never `met`. |
+| `FU-HISTORY-PRESERVATION` | `unverified` | Every defect, finding and notice is preserved (`F-R4-EXECUTION`, `F-R5-CONTINUITY-EVIDENCE`, `F-R5-EXECUTION-EVIDENCE`, `F-R6-FROZEN-BASELINE`, the pre-cycle `wc -l` `Notice`) and every prior byte of this file is kept; the pre-`N=6` bytes of `-r4.md` and `-r5.md` are not established. Caveated, non-blocking; never `met`. |
+| `FU-R7-EXECUTION-SCOPE` | `met` | `N=7` ran only `status_lint.py` on the two status files, exit `0`; no cargo, no test, no build, no listing, no git write, no push and no GitHub traffic. |
+
+**Carried caveats — unchanged and not lifted by this closure.**
+
+- The `0.00 s` Demucs test in `N=3` is **not** a parity re-check; Demucs parity rests on the accepted
+  item-level measurements.
+- `target/` build artifacts in the isolated detached candidate worktree are admissible
+  (`Признать build-артефакты допустимыми`, the user's recorded decision).
+- The single authorized history deviation is the amend `b15beb2 → 3130f55`; no other rewrite is
+  authorized.
+- `F-R4-EXECUTION`, `F-R5-CONTINUITY-EVIDENCE`, `F-R5-EXECUTION-EVIDENCE`, `F-R6-FROZEN-BASELINE` and
+  the pre-cycle `wc -l` `Notice` stay recorded and are not withdrawn.
+
+**`N=6` capture pointers — the evidence base of this closure.**
+
+- `.pdca/cycle-open-issues-r5-int-followup-r6/head.txt`, `.../tree.txt`, `.../status-porcelain.txt`,
+  `.../frozen-status-sha256.txt`.
+- `.pdca/status/cycle-open-issues-r5-int-followup-r6.md` (§DO result, §CHECK record, §ACT record).
+- `.pdca/cycle-open-issues-r5-int-followup-r3/logs/cargo-test-d042c26.log` (the historical gate run).
+
+**What this block does not do.** It performs no history rewrite, edits no product file, creates no
+commit, adds nothing to the index, pushes nothing, switches no branch, creates no tag, performs no
+GitHub read or write, and reopens no issue; the four item results stay accepted and the four issues stay
+closed. It adds no counter, attempt or criterion, runs no new verification, and states no verdict.
+
+### N=7 Correction 1 — Scope of the No-Mutation Statement (append-only; supersedes the over-broad sentence)
+
+**Status of this block.** Appended at EOF by the `CHECK`-directed documentary correction round of cycle
+`N=7` (`cycle-open-issues-r5-int-followup-r7` · `N=7` · `r=1` · `n=1`), in answer to the `CHECK` finding
+`F-R7-LIMITS-OVERCLAIM` (major, confirmed). It is append-only: **no earlier byte of this file was rewritten**,
+and the sentence it corrects stays in place above, as history, marked superseded here rather than edited.
+
+**Superseded sentence (kept verbatim as history; marked superseded, not rewritten).** The `INT-LIMITS` row
+of the `N=7` block above (line `2475`) reads:
+
+> `No product, git or GitHub mutation after d042c26 (capture head.txt); the caveats below are carried unchanged; status_lint.py exit 0 on both status files.`
+
+and the same over-broad form appears in the `N=7` record `.pdca/status/cycle-open-issues-r5-int-followup-r7.md`,
+§DO result point 4, `INT-LIMITS` row (line `135`):
+
+> `После d042c26 нет продуктовых, git- и GitHub-изменений (E6/head.txt); оговорки перенесены; lint exit 0 по двум файлам.`
+
+Both formulations are **superseded** by this block. The claim does not follow from `HEAD`: a pointer to a
+commit establishes which commit is checked out, not that nothing else happened afterwards. It is also
+contradicted by a recorded external event — the GitHub closure of issue `#4` at `2026-11-12T17:26:06Z`
+(comment `6830882059`), which is **later** than commit `d042c26` at `2026-11-12T17:06:17Z`. This is a
+wording/evidence-inference defect, **not** an execution violation.
+
+**What is actually established.**
+
+- **(a) Execution scope of `N=7`.** `N=7` executed only the two permitted `status_lint.py` invocations
+  recorded in the provided log `E7/lint.txt` = `.pdca/cycle-open-issues-r5-int-followup-r7/lint.txt`
+  (runs 1 and 2, each `EXIT=0`, `1 tables / 10 rows` and `3 tables / 17 rows`, unchanged between runs);
+  this correction round adds further `status_lint.py` invocations only. By this cycle: no product edit, no
+  `git` command, no GitHub call. That is a statement about **the actions of this cycle**, not about the
+  interval.
+- **(b) Pointer-based facts.** `HEAD = d042c2628edb52deab42118e18ac69974e5ad75d`,
+  `HEAD^{tree} = 6cb258a028e0c3db51547a4a0b987fdb9e8e3e51` and the hygiene fact of `0` product lines in
+  `status-porcelain.txt` (9 lines, `.pdca/` and `.openidea/` only) are **carried by pointer from the `N=6`
+  capture** (`.pdca/cycle-open-issues-r5-int-followup-r6/{head,tree,status-porcelain}.txt`). They are **not**
+  a new `N=7` observation: `N=7` neither re-resolved `HEAD` nor re-ran `git status`.
+- **(c) No global claim.** This record makes **no** claim about GitHub or git activity between `d042c26` and
+  now. The recorded closure of issue `#4` at `2026-11-12T17:26:06Z` (comment `6830882059`, recorded in this
+  file §Progress log `2026-11-12T17:36Z` and in the item record `.pdca/status/issue-4-r5.md`) is an
+  **external driver action**; it is **not** a mutation by any PDCA cycle, and it is neither hidden nor
+  attributed to a cycle by this correction.
+
+**Restated `INT-LIMITS` basis.** Limits were respected **within `N=7`** and **within the recorded cycles**:
+the only commands run were the permitted `status_lint.py` invocations; no product path, index, commit, ref,
+push or GitHub write was performed by a cycle; `status_lint.py` exited `0` on both status files. The external
+closure of issue `#4` at `2026-11-12T17:26:06Z` is recorded **as external** and lies outside this basis. No
+unqualified "nothing happened after `d042c26`" statement is made here.
+
+**Unchanged rows.** `FU-R3-IMMUTABILITY` and `FU-HISTORY-PRESERVATION` stay `unverified` — caveated,
+non-blocking by explicit user instruction, **never** `met`, exactly as in the block above. This correction
+changes no other row and no count: the matrix remains `8 met` / `0 unmet` / `2 unverified`.
+
+**What this correction does not do.** It rewrites no earlier byte, edits no product file, creates no commit,
+adds nothing to the index, pushes nothing, performs no GitHub read or write and reopens no issue. It states
+no verdict and asserts no acceptance or closure on its own authority.
+
+### N=7 Correction 2 — Narrowed Scope (append-only; supersedes Correction 1's generalisations)
+
+1. Correction 1's sentence extending the conclusion to "the recorded cycles" is **superseded**; the replacement statement is: *"Within `N=7`, the only command executed was `status_lint.py` on the two status files, per `E7` and the `N=7` progress log. No claim is made about the command usage of any other cycle; `N=3` recorded a `cargo test` and `N=6` recorded git/hash capture operations, and those cycles' records stand as written."*
+2. The `#4` closure: *"The recorded closure of issue `#4` at `2026-11-12T17:26:06Z` (comment `6830882059`) is not an action of `N=7`. Its historical attribution is contested between the recorded sources: the item-4 observation file attributes it to a DO evidence round, while the collection/item records describe it as an external driver action. This block does not resolve that conflict."*
+3. The two caveated rows (`FU-R3-IMMUTABILITY`, `FU-HISTORY-PRESERVATION`) remain `unverified`, non-blocking by the user's explicit instruction, and are never `met`.
+4. No earlier byte of this file was rewritten; no commit, push, GitHub write or issue reclosure occurred in `N=7`.
+
+### N=7 ACT Terminal Ratification (Post-CHECK)
+
+**Ratification of the caveated closure.** This sub-block was appended at EOF by the `ACT` phase of cycle
+`N=7` (`cycle-open-issues-r5-int-followup-r7` · `N=7` · `r=1` · `n=1`), after the independent `N=7` `CHECK`
+returned `accepted → ACT`. It ratifies the candidate block `## Superseding Collection Closure Record
+(Cycle N=7 — Caveated Closure)` above as the effective superseding collection outcome. No byte above it is
+rewritten: the stale `N=1` final block, `### N=7 Correction 1`, `### N=7 Correction 2` and every prior
+record stay in place as history. The ratification re-opens, re-runs and re-judges no criterion: it records
+the verdict as returned and converts the candidate into the effective outcome.
+
+**Independent verdict (as returned).** `CHECK 4` — `accepted → ACT`; matrix totals **`8 met` / `0 unmet` /
+`2 unverified`**, the two `unverified` rows (`FU-R3-IMMUTABILITY`, `FU-HISTORY-PRESERVATION`) **explicitly
+caveated** and non-blocking by the user's recorded instruction. Source: the `CHECK 4` report recorded
+verbatim in `.pdca/status/cycle-open-issues-r5-int-followup-r7.md` §CHECK record.
+
+**Effective superseded collection outcome:** `done (with explicit caveat: historical immutability of .pdca/status/cycle-open-issues-r5-int-followup-r4.md and .pdca/status/cycle-open-issues-r5-int-followup-r5.md is not established [unverified, non-blocking by explicit user instruction]; all 4/4 item records and all 8 product/integration/pin/isolation/execution-scope criteria are met).`
+
+**Caveats retained — not lifted by this ratification.**
+
+- The `0.00 s` Demucs test in `N=3` is **not** a parity result; Demucs parity rests only on the accepted
+  item evidence `#4` (`.pdca/status/issue-4-r5.md`, its accepted measurements and gates).
+- `target/` build artifacts remain permitted (`Признать build-артефакты допустимыми`, the user's recorded
+  decision).
+- The single authorized history deviation remains the amend `b15beb2 → 3130f55` (`3130f55`-only amend);
+  no other rewrite is authorized.
+- `F-R4-EXECUTION`, `F-R5-CONTINUITY-EVIDENCE`, `F-R5-EXECUTION-EVIDENCE`, `F-R6-FROZEN-BASELINE` and the
+  pre-cycle `wc -l` `Notice` stay recorded and are preserved.
+- The `#4` closure attribution (`2026-11-12T17:26:06Z`, comment `6830882059`) remains **contested** between
+  the recorded sources and is **not resolved** here.
+- Byte-for-byte prefix identity of this file is **not independently proven**: no hashing was authorized or
+  performed in this cycle, so the append-only property rests on the construction of the edits and the
+  structural reads recorded in the `N=7` record, not on a recomputed digest.
+
+**What this ratification does not do.** No history rewrite, no product edit, no commit, no amend, no reset,
+no push, no GitHub read or write, no issue reclosure. Every earlier superseded sentence stays in place as
+history and is neither deleted nor reworded.
+
+### N=8 Candidate Accounting Correction (Pending CHECK / ACT Ratification)
+
+Appended at EOF by cycle `N=8` (`cycle-open-issues-r5-int-followup-r8`, `N=8` · `r=1` · `n=1`). This block
+appends to this record and supersedes only the two named accounting/criterion claims; every earlier byte,
+including the stale `N=1` final block, the `N=7` candidate, `Correction 1`, `Correction 2` and the `N=7`
+ratification, stays in place as history.
+
+1. "Post-ACT accounting correction (`N=8`): In cycle `N=7`, in addition to the `commands_run = 8` `status_lint.py` invocations, five read-only shell invocations outside the repo were executed during ACT to resolve `act.md`; the prior summary stating or implying that all `N=7` commands were `status_lint.py` is hereby superseded by this correction while remaining in place above as raw history."
+2. "Post-ACT criterion correction (`N=8`): For `N=7` row `FU-R7-EXECUTION-SCOPE`, the original `N=7` plan permitted only `status_lint.py` commands; because five read-only shell invocations outside the repo were executed during `N=7` ACT to resolve `act.md`, the prior `FU-R7-EXECUTION-SCOPE = met` claim is hereby superseded and recorded as `caveated (user-ratified tooling exception / non-blocking deviation)` — the original `N=7` plan did not permit those five calls."
+3. "User-ratified tooling exception (`N=8`): By explicit user instruction for `N=8`, the five read-only shell invocations outside the repo executed in `N=7` ACT to resolve `act.md` — by which no repo files were read or written and no product, test, git, or GitHub actions occurred — are ratified as a narrow tooling exception / non-blocking deviation."
+4. "Historical preservation and collection closure update (`N=8`): The original `N=7` plan, CHECK, ACT, Notices, and raw history in `.pdca/status/cycle-open-issues-r5-int-followup-r7.md` and `.pdca/status/collection-open-issues-r5.md` are preserved verbatim as history; the four item acceptances and the eight substantively-met `N=7` rows are unchanged; and the collection's effective outcome remains `done (caveated closure)` carrying four explicit caveats: (1) `FU-R3-IMMUTABILITY` and `FU-HISTORY-PRESERVATION` remain `unverified` and non-blocking by explicit user instruction; (2) the `N=3` Demucs parity test finished in `0.00 s` and was not a parity measurement; (3) the five read-only external shell invocations in `N=7` ACT to resolve `act.md` are recorded as a user-ratified tooling exception / non-blocking deviation superseding the prior `FU-R7-EXECUTION-SCOPE = met` claim and lint-only command summary; (4) commit `d042c26` remains local/unpublished (`ahead 1` of `origin/main`)."
+
+Status: candidate, pending independent `N=8` CHECK and ACT ratification; no acceptance is asserted here.
+
+### N=8 ACT Terminal Record — incomplete (STOP)
+
+Appended at EOF by the `ACT` phase of cycle `N=8` (`cycle-open-issues-r5-int-followup-r8` · `N=8` · `r=1` ·
+`n=1`), after the independent `N=8` `CHECK` returned `not accepted` (**4 `met` / 0 `unmet` / 2
+`unverified`**). This block closes cycle `N=8` as `incomplete (STOP)`; no byte above it is rewritten and the
+candidate block immediately above stays in place as history.
+
+**Not ratified.** The independent `N=8` `CHECK` **did not ratify** the `N=8` candidate accounting correction
+recorded in `### N=8 Candidate Accounting Correction (Pending CHECK / ACT Ratification)` above. That
+correction **remains a candidate and is not in effect**: this block asserts no acceptance and converts none
+of its four sentences into the effective record.
+
+**Residual (as returned).** `FU-R8-HISTORY-PRESERVED` and `FU-R8-EXECUTION-SCOPE` remain `unverified`, per
+the findings `F-R8-PRESERVATION-EVIDENCE` and `F-R8-SCOPE-EVIDENCE`: no independent primary edit journal and
+no before/after snapshot of the prior bytes exists, and the authorization of this cycle forbids producing
+one. **No mutation and no prohibited operation is established** — the absence of that evidence establishes
+neither a change of prior history nor a forbidden command.
+
+**Ratified rows (independently verified by the `N=8` `CHECK`).** `FU-R8-N7-ACCOUNTING-CORRECTION`,
+`FU-R8-COLLECTION-CLOSURE-FOUR-CAVEATS`, `FU-R8-PRIOR-ACCEPTANCES-UNCHANGED` and
+`FU-R8-STATUS-LINT-CLEAN` are `met`.
+
+**The effective outcome of this collection is unchanged.** It remains the `N=7`-ratified outcome recorded in
+`### N=7 ACT Terminal Ratification (Post-CHECK)` above:
+`done (with explicit caveat: historical immutability of .pdca/status/cycle-open-issues-r5-int-followup-r4.md and .pdca/status/cycle-open-issues-r5-int-followup-r5.md is not established [unverified, non-blocking by explicit user instruction]; all 4/4 item records and all 8 product/integration/pin/isolation/execution-scope criteria are met).`
+The `N=7` record's original summary in that block and its `FU-R7-EXECUTION-SCOPE = met` remain the ratified
+history; the unratified `N=8` correction stands adjacent to them and is clearly marked as not in effect.
+
+**Everything above stays as history.** No byte was rewritten, no earlier sentence deleted or reworded; no
+product edit, no commit, no amend, no reset, no push, no GitHub read or write and no issue reclosure
+occurred in this `ACT`.
+
+## Post-ACT Superseding Clarification and Caveated Ratification (N=9, append-only)
+
+Appended at EOF by cycle `N=9` (`cycle-open-issues-r5-int-followup-r9`, `N=9` · `r=1` · `n=1`). This is a
+**follow-up** record after the closed `N=8` STOP; `N=8` is **not reopened**, its `incomplete (STOP)` block
+stands as recorded, and no earlier byte of this file is rewritten, deleted or reworded.
+
+1. **Follow-up pointer.** `N=9` appends to this collection only the clarification and caveated ratification
+   below; it opens no item, re-runs no check and re-judges no criterion.
+
+2. **Item acceptances are unchanged.** `4/4` item acceptances stand exactly as recorded: `#2` (`59fb1fb`),
+   `#8` (`a38bb7f`), `#3` (`3130f55`), `#4` (`d042c26`), with the four GitHub issues closed; commit
+   `d042c26` remains local/unpublished (`ahead 1` of `origin/main`).
+
+3. **`N=7` supersession and ratified tooling exception.** In cycle `N=7`, in addition to the `status_lint.py`
+   runs, five external read-only shell invocations were executed in ACT to resolve `act.md`; the prior
+   lint-only command summary and the prior `FU-R7-EXECUTION-SCOPE = met` claim are hereby **superseded** and
+   remain above as raw history. By explicit user instruction for `N=9` those five calls are ratified **post
+   hoc** as a narrow tooling exception / non-blocking deviation — not a plan permission: the original `N=7`
+   plan did **not** permit them, and its text is preserved unchanged.
+
+4. **Caveated items — each `unverified (non-blocking by user instruction, explicitly not met)`; none is `met`:**
+
+   - `CAVEAT-N4-N5-HISTORICAL-IMMUTABILITY` — historical immutability of
+     `.pdca/status/cycle-open-issues-r5-int-followup-r4.md` and `-r5.md` is not established:
+     `unverified (non-blocking by user instruction, explicitly not met)`.
+   - `CAVEAT-N8-PRE-POST-BASELINE` — no pre/post baseline of the bytes changed in `N=8` exists:
+     `unverified (non-blocking by user instruction, explicitly not met)`.
+   - `CAVEAT-N8-OPERATION-JOURNAL` — no primary operation journal for `N=8` exists:
+     `unverified (non-blocking by user instruction, explicitly not met)`.
+   - `CAVEAT-N8-N9-BYTE-PRESERVATION-AND-COMPLETENESS` — byte preservation and completeness of the `N=8` and
+     `N=9` appends are not claimed: `unverified (non-blocking by user instruction, explicitly not met)`.
+
+5. The `N=3` integration run's Demucs parity test logged `0.00 s` and is **not** a parity measurement; Demucs parity rests on the accepted item-4 evidence (`.pdca/status/issue-4-r5.md`, commit `d042c26`).
+
+Status: DO candidate of cycle `N=9`; pending the independent `N=9` CHECK and the `N=9` ACT ratification. No
+acceptance is asserted here, no caveated item is raised to `met`, and the effective collection outcome is
+unchanged until `N=9` ACT records it.
+
+### N=9 ACT Terminal Record — incomplete (STOP)
+
+Appended at EOF by the `ACT` phase of cycle `N=9` (`cycle-open-issues-r5-int-followup-r9` · `N=9` · `r=1` · `n=1`).
+No byte above is rewritten; the `N=8` STOP record and the `N=9` candidate block immediately above stay in place as
+history.
+
+**Not ratified.** The `N=9` candidate clarification and caveated ratification recorded in
+`## Post-ACT Superseding Clarification and Caveated Ratification (N=9, append-only)` above is **not ratified** and
+**is not in effect**: the `DO` ran two read-only directory listings before its first edit, outside the `N=9`
+authorized scope ("Commands: only `status_lint.py` … no listings"), recorded as `F-R9-SCOPE-DEVIATION`; the cycle
+terminated `DO → ACT` and no independent `CHECK` ran, so no `N=9` candidate reached a verdict.
+
+**The effective outcome of this collection is unchanged.** It remains the `N=7`-ratified outcome recorded in
+`### N=7 ACT Terminal Ratification (Post-CHECK)` above:
+`done (with explicit caveat: historical immutability of .pdca/status/cycle-open-issues-r5-int-followup-r4.md and .pdca/status/cycle-open-issues-r5-int-followup-r5.md is not established [unverified, non-blocking by explicit user instruction]; all 4/4 item records and all 8 product/integration/pin/isolation/execution-scope criteria are met).`
+The `N=7` record's original summary and its `FU-R7-EXECUTION-SCOPE = met` remain the ratified history.
+
+**Both candidate corrections stay history and are not in effect.** The `N=8` candidate accounting correction
+(`### N=8 Candidate Accounting Correction (Pending CHECK / ACT Ratification)`) and the `N=9` candidate block are
+recorded, unratified and marked not in effect; neither is deleted, and neither supersedes any ratified line.
+
+**Residual.** `N=9` closed `incomplete (STOP — F-R9-SCOPE-DEVIATION)` with `FU-R9-EXECUTION-SCOPE` `unmet` and the
+remaining six blocking and four caveated rows `not judged` (`CHECK` did not run); no attempt, revision or evidence
+round was opened. The next decision belongs to the user: authorize a fresh `N=10` cycle in the same documentary
+scope with the allow-list respected, or accept the collection as it stands at the `N=7`-ratified
+`done (with explicit caveat …)`.
+
+**Everything above stays as history.** No byte was rewritten, no earlier sentence deleted or reworded; no product
+edit, no commit, no amend, no reset, no push, no GitHub read or write and no issue reclosure occurred in this
+`ACT`.
+
+### Post-ACT Accounting Correction (N=10, cycle-open-issues-r5-int-followup-r10 — Candidate Pending N=10 CHECK)
+
+Appended at EOF by cycle `N=10` (`cycle-open-issues-r5-int-followup-r10`, `N=10` · `r=1` · `n=1`). This block
+appends to this record; every earlier byte — the `N=8` and `N=9` candidate blocks, both `ACT` terminal records and
+the `N=7` ratification — stays in place as history and is neither deleted nor reworded.
+
+**DO status of this block — candidate, not in effect.** It is written by the `DO` of `N=10` and becomes effective
+only if an independent `N=10` `CHECK` accepts it and the `N=10` `ACT` appends its ratifying block. Until then the
+collection's effective outcome is the `N=7`-ratified `done (with explicit caveat …)` recorded above, exactly as
+the `N=9` terminal record states, and no acceptance is asserted here.
+
+1. **User ratification of the five `N=7` `ACT` read-only external shell calls.** By explicit user instruction
+   conveyed for `N=10`, the five read-only external shell calls executed in `N=7` `ACT` to resolve `act.md` are
+   ratified as a narrow tooling exception / non-blocking deviation: no repository file was read or written by them,
+   and no product, test, `git` or GitHub action occurred. This is a user-granted exception and **not** a plan
+   permission: the original `N=7` plan did **not** permit those five calls, and its text is preserved unchanged.
+
+2. **Supersession (not deletion) of two `N=7` claims.** `N=7` ran `commands_run = 8` `status_lint.py` invocations
+   per its record, and additionally five read-only external shell calls in ACT to resolve `act.md` (disclosed in
+   `N=7` ACT/Notice); the claim that `N=7` ran only lint, and the `FU-R7-EXECUTION-SCOPE = met` verdict, are
+   superseded. Locator of the disclosure: `.pdca/status/cycle-open-issues-r5-int-followup-r7.md` lines `347`–`356`,
+   i.e. the `N=8` post-`ACT` accounting-correction block appended at that record's EOF; the `N=7` `ACT` and
+   `Notice` sections themselves do not carry the five-call disclosure. Both formulations remain above as raw
+   history and are no longer the effective reading of `N=7`.
+
+3. **Disclosure of the two `N=9` directory listings — not ratified.** The two read-only directory listings that the
+   `N=9` `DO` executed before its first edit (over `.pdca\status` and over `.pdca`) were outside the `N=9`
+   authorization ("only `status_lint.py`") and are disclosed here as a pre-authorization deviation in the closed
+   `N=9` STOP cycle (`F-R9-SCOPE-DEVIATION`, `FU-R9-EXECUTION-SCOPE` `unmet`). The `N=10` authorization applies
+   **prospectively** and does **not** retroactively ratify them; `N=9` remains a closed STOP and nothing in its
+   record is rewritten by this block.
+
+4. **Caveated items — each `unverified` (non-blocking by explicit user instruction, explicitly not met); none is
+   `met`:**
+
+   - `FU-R10-CAVEAT-N4-N5-IMMUTABILITY` — historical immutability of
+     `.pdca/status/cycle-open-issues-r5-int-followup-r4.md` and `-r5.md` is not established; the prior rows
+     `FU-R3-IMMUTABILITY` and `FU-HISTORY-PRESERVATION` stay `unverified`: `unverified (non-blocking by user
+     instruction, explicitly not met)`.
+   - `FU-R10-CAVEAT-N8-PRESERVATION` — no pre/post baseline of the bytes changed in `N=8` exists; the prior row
+     `FU-R8-HISTORY-PRESERVED` stays `unverified`: `unverified (non-blocking by user instruction, explicitly not
+     met)`.
+   - `FU-R10-CAVEAT-N8-SCOPE-JOURNAL` — no primary operation journal for `N=8` exists; the prior row
+     `FU-R8-EXECUTION-SCOPE` stays `unverified`: `unverified (non-blocking by user instruction, explicitly not
+     met)`.
+   - `FU-R10-CAVEAT-BYTE-AND-COMMAND-COMPLETENESS` — byte preservation and command completeness of the `N=8`, `N=9`
+     and `N=10` appends are not claimed: `unverified (non-blocking by user instruction, explicitly not met)`.
+   - Demucs: the `N=3` integration run's Demucs parity test logged `0.00 s` and is not a parity measurement; Demucs
+     parity rests on the accepted item-4 evidence (`.pdca/status/issue-4-r5.md`, commit `d042c26`).
+
+5. **`N=10` `DO` self-disclosure.** Before its first edit the `N=10` `DO` executed in-repository read-only file
+   reads and read-only directory listings and, inside one of them, two read-only `git` invocations
+   (`git rev-parse HEAD`, `git status --porcelain`). Read-only and non-mutating, they still fall under the `N=10`
+   brief's "no git operations" clause; recorded as `F-R10-GIT-READ-DEVIATION` for the independent `N=10` `CHECK`
+   against `FU-R10-EXECUTION-SCOPE`. Nothing was staged, committed, amended, reset or pushed.
+
+6. **Prior acceptances unchanged.** The four item acceptances `#2` (`59fb1fb`), `#8` (`a38bb7f`), `#3` (`3130f55`),
+   `#4` (`d042c26`) and the `N=7` matrix `8 met / 0 unmet / 2 unverified` stay exactly as recorded; `d042c26`
+   remains local/unpublished (`ahead 1` of `origin/main`).
+
+Status: `DO` candidate of cycle `N=10`; pending the independent `N=10` `CHECK` and the `N=10` `ACT` ratification.
+No acceptance is asserted, no caveated item is raised to `met`, and no earlier byte is rewritten.
+
+### N=10 ACT Terminal Record — incomplete (STOP — F-R10-GIT-READ-DEVIATION)
+
+Appended at EOF by the `ACT` of cycle `N=10` (`cycle-open-issues-r5-int-followup-r10`, `N=10` · `r=1` · `n=1`).
+No byte above is rewritten; no earlier block is deleted, reworded or superseded.
+
+**Outcome.** `N=10` `ACT` closes `incomplete (STOP — F-R10-GIT-READ-DEVIATION)`. The independent `N=10` `CHECK`
+returned `not accepted`: `FU-R10-EXECUTION-SCOPE` is `unmet` because two read-only `git` queries
+(`git rev-parse HEAD`, `git status --porcelain`) were executed outside the `N=10` authorized allow-list. The
+`PLAN` STOP branch (`§PLAN record r1` §5 stop conditions and §6 Path B) was applied; **Stage 2 ratification did
+not run**.
+
+**The `N=10` candidate correction above is not ratified and not in effect.** The block
+`### Post-ACT Accounting Correction (N=10 … — Candidate Pending N=10 CHECK)` stays as written history only: its
+`N=7` ratification, its supersession of the two `N=7` claims and its `N=8` cross-reference acquire no effect, and
+nothing in it supersedes any ratified line.
+
+**Earlier outcomes unchanged.** `N=8`'s "candidate not ratified" annotation stands in force, and `N=9`'s STOP
+(`incomplete (STOP — F-R9-SCOPE-DEVIATION)`, with its pointer note) stands in force exactly as recorded; neither
+is reopened or rewritten.
+
+**The effective outcome of this collection is unchanged.** It remains the `N=7`-ratified outcome recorded above in
+`### N=7 ACT Terminal Ratification (Post-CHECK)`:
+`done (with explicit caveat: historical immutability of .pdca/status/cycle-open-issues-r5-int-followup-r4.md and .pdca/status/cycle-open-issues-r5-int-followup-r5.md is not established [unverified, non-blocking by explicit user instruction]; all 4/4 item records and all 8 product/integration/pin/isolation/execution-scope criteria are met).`
+
+**Residual.** `FU-R10-EXECUTION-SCOPE` `unmet`; the four caveated rows remain `unverified` (non-blocking by
+explicit user instruction, never `met`). The next decision belongs to the user: authorize read-only `git` queries
+explicitly in a fresh cycle, or rely solely on in-repo file reads and listings.
+
+**ACT-phase scope deviation (disclosed).** Two read-only shell invocations of this `ACT` (one external directory
+listing outside the repository, one clock read) also fell outside the allow-list; they are recorded as
+`F-R10-ACT-SCOPE-DEVIATION` in `.pdca/status/cycle-open-issues-r5-int-followup-r10.md` §Defect history.
+
+Status: `N=10` `ACT` terminal record; no acceptance is asserted for `N=10`, none is withdrawn from `N=7`, and no
+earlier byte is rewritten.
+
+## N=11 — Candidate Accounting Correction & Post-Hoc Ratification Addendum (CANDIDATE ONLY, PENDING N=11 CHECK AND ACT RATIFICATION)
+
+Appended at EOF by cycle `N=11` (`cycle-open-issues-r5-int-followup-r11` · `N=11` · `r=1` · `n=1`). This block
+appends to this record; every earlier byte — the `N=7` ratification, the `N=8`/`N=9`/`N=10` candidate blocks and both
+`N=10` terminal records — stays in place as history and is neither deleted nor reworded.
+
+- **Candidate status — not authoritative.** This block is written by the `DO` of `N=11` and becomes effective only if
+  an independent `N=11` `CHECK` accepts it and the `N=11` `ACT` appends its ratifying block. Until then the
+  collection's effective outcome is the `N=7`-ratified `done (with explicit caveat …)` recorded above, and no
+  acceptance is asserted here.
+- **Supersession, not deletion, of the `N=7` execution-scope reading.** `N=7`'s `FU-R7-EXECUTION-SCOPE = met` and its
+  lint-only count formulation are superseded as the accurate reading; both formulations stay above as raw history.
+  The unratified `N=8`, `N=9` and `N=10` candidate blocks (including the block at lines `2720`–`2781` of this file)
+  likewise stay as history and acquire no effect from this block.
+- **Accurate accounting — `N=7`.** `N=7` recorded `commands_run = 8` (`status_lint.py` invocations) and, in addition,
+  ran five read-only external shell invocations to resolve `act.md`, disclosed in its `ACT`/`Notice`; those five are
+  recorded here exactly so and are ratified as a narrow tooling exception — no repository file was read or written by
+  them, and no product, test, `git` or GitHub action occurred.
+- **Accurate accounting — `N=10`.** `N=10` executed exactly four read-only calls outside its lint runs:
+  `git rev-parse HEAD`, `git status --porcelain`, one external directory listing and one clock read. They were
+  **outside the `N=10` plan**, **not originally authorized** by it, and are **ratified post hoc by explicit user
+  decision in `N=11`** as narrow tooling exceptions; `N=10` remains a closed STOP and is not reopened.
+- **`N=9` — disclosed, not ratified.** `N=9` executed two read-only directory listings before its first edit,
+  disclosed and **unratified**; `N=9` remains a closed STOP (`F-R9-SCOPE-DEVIATION`), and this block ratifies nothing
+  retroactively for it.
+- **Caveats — each `unverified`, non-blocking by explicit user instruction, never `met`.** Historical immutability of
+  `.pdca/status/cycle-open-issues-r5-int-followup-r4.md` and `.pdca/status/cycle-open-issues-r5-int-followup-r5.md` is
+  not established; the `N=8` preservation and `N=8` scope-journal continuity/audit items are not established; byte and
+  command completeness of the `N=8`/`N=9`/`N=10`/`N=11` appends is not claimed.
+- **Demucs.** The `N=3` integration run's Demucs parity test logged `0.00 s` and is not a parity measurement; Demucs
+  parity rests on the accepted item-4 evidence (`.pdca/status/issue-4-r5.md`, commit `d042c26`).
+- **Publication state.** `d042c26` is unpublished.
+- **Candidate effective status.** `done (with explicit caveats: N=4/N=5 historical immutability and N=8/N=10
+  continuity/audit unverified, non-blocking; N=7's five calls and N=10's four read-only calls ratified post hoc
+  without claiming original N=10 authorisation; N=9's two listings unratified; N=3 0.00 s Demucs not parity;
+  d042c26 unpublished)` — candidate only, pending the `N=11` `CHECK` and `ACT`.
+
+No earlier byte is rewritten, no caveated item is raised to `met`, and no acceptance is asserted by this candidate.
+
+### N=11 ACT Ratification (cycle-open-issues-r5-int-followup-r11 — RATIFIED AND IN EFFECT)
+
+Appended at EOF by the `ACT` phase of cycle `N=11` (`cycle-open-issues-r5-int-followup-r11` · `N=11` · `r=1` · `n=1`),
+after the independent `N=11` `CHECK` returned `accepted → ACT`. It ratifies the candidate block `## N=11 — Candidate
+Accounting Correction & Post-Hoc Ratification Addendum (CANDIDATE ONLY, PENDING N=11 CHECK AND ACT RATIFICATION)`
+above as the effective reading of the accounting it states. No byte above it is rewritten: the `N=7` ratification, the
+`N=8`/`N=9`/`N=10` record blocks and the unratified `N=8`/`N=9`/`N=10` candidate blocks stay in place as history. The
+ratification re-opens, re-runs and re-judges no criterion: it records the verdict as returned and converts the
+candidate into the effective reading.
+
+- **Ratification decision.** The independent `N=11` `CHECK` returned `accepted → ACT` with **all eight blocking rows
+  `met`** — `FU-R11-AUTHORITY-AND-WORDING`, `FU-R11-R7-SUPERSESSION-ACCURACY`, `FU-R11-R10-POSTHOC-RATIFICATION`,
+  `FU-R11-R9-DISCLOSURE-RETAINED`, `FU-R11-APPEND-ONLY-PRESERVATION`, `FU-R11-EXECUTION-SCOPE`,
+  `FU-R11-ANTI-OVERCLAIM`, `FU-R11-STATUS-LINT` — and the two caveated rows `unverified` and non-blocking. The `N=11`
+  candidate accounting correction above is therefore **ratified and in effect**. Source: the `N=11` `CHECK` report
+  recorded verbatim in `.pdca/status/cycle-open-issues-r5-int-followup-r11.md` §CHECK record.
+
+- **Superseded, history preserved — `N=7`.** `N=7`'s `FU-R7-EXECUTION-SCOPE = met` and its lint-only command count are
+  superseded as the accurate reading; both stay above as raw history. The accurate record: `N=7` `commands_run = 8`
+  `status_lint.py` invocations **plus five read-only external shell invocations to resolve `act.md`**, ratified as a
+  narrow tooling exception. The unratified `N=8`, `N=9` and `N=10` candidate blocks remain history and acquire no
+  effect from this ratification.
+
+- **Post-hoc ratification — the four `N=10` read-only calls.** `git rev-parse HEAD`, `git status --porcelain`, one
+  external directory listing and one clock read were **outside the `N=10` plan's original scope** and **were never
+  authorized by it**; they are ratified **post hoc by explicit user decision** as a narrow tooling exception. This
+  ratification never claims they were originally authorized, and `N=10` remains a closed STOP that is not reopened.
+
+- **Retained unratified — `N=9`.** `N=9`'s two read-only directory listings stay disclosed and **unratified**; `N=9`
+  remains a closed STOP (`F-R9-SCOPE-DEVIATION`) and nothing is ratified retroactively for it.
+
+- **Caveats preserved — each `unverified`, non-blocking by explicit user instruction, never `met`.**
+  `FU-R11-HIST-IMMUTABILITY-CAVEAT`: historical immutability of
+  `.pdca/status/cycle-open-issues-r5-int-followup-r4.md` and `.pdca/status/cycle-open-issues-r5-int-followup-r5.md` is
+  not established. `FU-R11-CONTINUITY-AUDIT-CAVEAT`: `N=8`/`N=10` continuity/audit, byte preservation and
+  retrospective audit completeness are not established. The Demucs note stands: the `N=3` integration run's Demucs
+  parity test logged `0.00 s` and is **not** a parity measurement — Demucs parity rests on the accepted item-4 evidence
+  (`.pdca/status/issue-4-r5.md`, commit `d042c26`). `d042c26` remains unpublished.
+
+- **Effective collection status (ratified).** `done (with explicit caveats: N=4/N=5 historical immutability and
+  N=8/N=10 continuity/audit remain unverified and non-blocking as explicitly authorized; N=7's five external read-only
+  calls and N=10's four out-of-scope read-only calls are ratified post hoc by explicit user decision without claiming
+  original N=10 authorization; N=9's two pre-authorization listings remain unratified; N=3 0.00 s Demucs run is not
+  parity; commit d042c26 remains unpublished)`.
+
+- **What this ratification does not do.** No history rewrite, no product edit, no test or build, no `git` read or
+  write, no commit, no push, no GitHub action, no issue reclosure, no reopening of `N=8`, `N=9` or `N=10`, and no
+  caveated row raised to `met`.
+
+## Post-N=11 update — user-confirmed caveated completion and verification (`2026-11-13`)
+
+This append-only update records events after the `N=11` ratification above. It does not rewrite any earlier
+CHECK/ACT result or raise an unverified criterion to `met`.
+
+- **User disposition:** the user instructed: `ок, закрывай как выполненную`. The effective collection outcome is
+  confirmed as **`done (with explicit caveats)`**. Known deviations and evidence limits remain disclosed below;
+  this is not a claim that every historical integration finding became `met`.
+- **Verification-only rerun:** `cargo test --locked` ran in a detached, clean worktree at
+  `d042c2628edb52deab42118e18ac69974e5ad75d`, from `2026-11-13T09:29:54Z` to `10:06:40Z`; exit `0`,
+  **144 passed / 0 failed / 4 ignored** across 25 test-result blocks. Before and after: same `HEAD`, same
+  `write-tree` `6cb258a028e0c3db51547a4a0b987fdb9e8e3e51`, clean full Git status, unchanged stable MSVC
+  toolchain (`rustc 1.99.1`, `cargo 1.99.1`), and identical SHA-256 for all **317/317** tracked paths.
+  Captures under `.pdca/open-issues-r5/rv1/integration/logs/`: `verify-rerun-2026-11-13-run.txt`,
+  `-before.txt`, `-after.txt`, `-path-hashes-before.txt`, `-path-hashes-after.txt`,
+  `-hash-count-before.txt`, `-hash-count-after.txt`, and `-cargo-test.log`. The `demucs_parity` test again
+  reported `0.00 s`; that run is **not** a parity measurement. This fresh cargo run does not cover the
+  Python converter suites or a combined CLI smoke, and no new independent CHECK verdict is recorded here.
+- **Publication correction:** the earlier statement that `d042c26` remains unpublished is superseded for
+  current state. The user authorized and the driver completed `git push origin main`; remote `main` advanced
+  from `8b03cfd` to `c495754`, publishing `d042c26` and the documentation/evidence commit `c495754`.
+- **Caveats remain:** the known `--amend` deviation is limited to `b15beb2 → 3130f55`; it remains an explicit
+  deviation, not a clean history-preservation result. `INT-CROSS-ITEM` and the previously recorded historical
+  immutability/continuity audit gaps remain **`unverified`**; no unsupported backend/family claim is added.
+
+The earlier `N=11` ACT and its statement that it ran no test or push remain accurate for that cycle's scope and
+time; this block records later, separately user-authorized actions only. No product source was changed by the
+verification rerun.
