@@ -1,0 +1,32 @@
+observed_utc: 2026-11-13T09:14:13Z
+Fri Nov 13 14:14:13 2026       
++-----------------------------------------------------------------------------------------+
+| NVIDIA-SMI 621.24                 KMD Version: 621.24        CUDA UMD Version: 13.5     |
++-----------------------------------------+------------------------+----------------------+
+| GPU  Name                  Driver-Model | Bus-Id          Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
+|                                         |                        |               MIG M. |
+|=========================================+========================+======================|
+|   0  NVIDIA GeForce RTX 5070 Ti   WDDM  |   00000000:01:00.0  On |                  N/A |
+|  0%   42C    P8             26W /  300W |     342MiB /  16303MiB |      3%      Default |
+|                                         |                        |                  N/A |
++-----------------------------------------+------------------------+----------------------+
+
++-----------------------------------------------------------------------------------------+
+| Processes:                                                                              |
+|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |
+|        ID   ID                                                               Usage      |
+|=========================================================================================|
+|    0   N/A  N/A            2324    C+G   ...SnippingTool\SnippingTool.exe      N/A      |
+|    0   N/A  N/A            7612    C+G   C:\Windows\explorer.exe               N/A      |
+|    0   N/A  N/A           11872    C+G   ...yb3d8bbwe\WindowsTerminal.exe      N/A      |
+|    0   N/A  N/A           14328    C+G   ...em32\ApplicationFrameHost.exe      N/A      |
+|    0   N/A  N/A           17616    C+G   ...owser\Application\browser.exe      N/A      |
++-----------------------------------------------------------------------------------------+
+nvcc: NVIDIA (R) Cuda compiler driver
+Copyright (c) 2005-2026 NVIDIA Corporation
+Built on Sun_Oct_12_19:25:36_Pacific_Standard_Time_2026
+Cuda compilation tools, release 13.5, V13.5.37
+Build cuda_13.5.r13.5/compiler.39125733_0
+rustc 1.99.1 (58cf8f9c3 2026-10-13)
+cargo 1.99.1 (5f94df478 2026-08-27)

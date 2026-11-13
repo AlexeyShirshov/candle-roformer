@@ -6,8 +6,11 @@ including the failures. Nothing here is a claim about a backend that did not run
 
 | File | What it is |
 |---|---|
-| `cuda-2026-11-12-host.txt` | Host facts for the CUDA attempt (GPU, compute capability, driver, toolkit, OS/toolchain). |
-| `cuda-2026-11-12-smoke.log` | `cargo test --release --features cuda --test gpu_smoke -- --ignored --nocapture` on that host. **Failed** (see below). |
+| `cuda-2026-11-12-host.txt` | Host facts for the original CUDA attempt (driver 610.88). |
+| `cuda-2026-11-12-smoke.log` | Original CUDA smoke on driver 610.88. **Failed** with PTX-version mismatch; kept as historical evidence. |
+| `cuda-2026-11-13-host.txt` | Host facts for the passing CUDA run (GPU, compute capability, updated driver, toolkit, OS/toolchain). |
+| `cuda-2026-11-13-run.txt` | UTC start/exit record for the passing run. |
+| `cuda-2026-11-13-smoke.log` | `cargo-cuda.bat test --release --offline --features cuda --test gpu_smoke -- --ignored --nocapture` on the same Windows host. **Passed**. |
 | `metal-2026-11-12-runner.txt` | Host facts for the Metal run (GitHub Actions `macos-15`, Apple M1 virtual). |
 | `metal-2026-11-12-macos-15.log` | CI artifact `metal-smoke-macos-15` of run [43227797972](https://github.com/AlexeyShirshov/candle-roformer/actions/runs/43227797972): same command with `--features metal` on `macos-15`. **Passed** (see below). |
 | `metal-2026-11-12-macos-15-before-fix.log` | The same job on the two earlier commits: **failed** with `MetalKernelError::MatMulNonContiguous` before the operand-materialisation fixes. Kept so the fix is auditable. |
@@ -20,28 +23,37 @@ deterministic 2 s stereo fixture on the CPU and on the backend, then compare
 `max_abs` / `RMSE` / `SDR` / correlation per stem and report peak device memory.
 Zero compared stems or a silent stem fails the run.
 
-## CUDA — not verified (toolkit/driver version skew)
+## CUDA — verified on one Windows host, for BS-RoFormer
 
 Host: Windows 11 x86_64, NVIDIA GeForce RTX 5070 Ti (compute capability 12.0,
-16,303 MiB), driver 610.88 (CUDA UMD 13.3), CUDA Toolkit 13.5 (nvcc 13.5.37,
-`CUDARC_CUDA_VERSION=13040` workaround), MSVC 2022, CMake 3.31.8.
+16,303 MiB), driver 621.24 (CUDA UMD 13.5), CUDA Toolkit 13.5 (nvcc 13.5.37,
+`CUDARC_CUDA_VERSION=13040` workaround), MSVC 2022, CMake 3.31.8. Host details
+and the captured command/exit are in the files listed above.
 
-Build with `--features cuda` succeeds (exit 0). The run itself reaches the device:
-the checkpoint is loaded and the model is materialised on the GPU, then the first
-kernel launch fails with
+Command (through `cargo-cuda.bat`, which supplies the CUDA/MSVC build environment):
 
 ```
-DriverError(CUDA_ERROR_UNSUPPORTED_PTX_VERSION, "the provided PTX was compiled with an unsupported toolchain.")
+cargo-cuda.bat test --release --offline --features cuda --test gpu_smoke -- --ignored --nocapture
 ```
 
-Cause: `candle-kernels 0.11.1` ships **PTX only** (`cudaforge` `build_ptx`,
-i.e. `nvcc --ptx -gencode arch=compute_120,code=compute_120`). nvcc 13.5 emits
-PTX ISA 9.1, while driver 610.88 (CUDA 13.3 UMD) accepts PTX ISA ≤ 9.0, so
-`cuModuleLoadData` cannot JIT the modules. Consequence: **no CUDA parity, no CUDA
-peak-memory number, and no CUDA support claim.** This is an environment
-requirement, not a crate defect; either an installation of CUDA Toolkit ≤ 13.3 or
-a newer display driver resolves it, and both need administrator rights that the
-executing agent did not have.
+Exit `0`, `1 passed; 0 failed`. On the real ViperX 1297 BS-RoFormer checkpoint
+(639,109,056 B f32) and deterministic 2 s stereo fixture (88,200 frames, 88,200
+sample chunk), CUDA matched the CPU reference:
+
+```
+[gpu-smoke] peak_device_mib=1475 baseline_mib=611 delta_mib=864 source=nvidia-smi memory.used (whole device, MiB)
+[gpu-smoke] stem=vocals samples=176400 max_abs=1.371e-6 rmse=4.823e-8 sdr_db=118.66 corr=1.0000000 ref_peak=0.9000 cand_peak=0.9000
+[gpu-smoke] stem=instrumental samples=176400 max_abs=8.941e-8 rmse=3.500e-9 sdr_db=162.21 corr=1.0000000 ref_peak=0.9000 cand_peak=0.9000
+[gpu-smoke] timing cpu_seconds=18.56 backend_load_seconds=0.50 backend_seconds=10.96 stems_compared=2 result=PASS
+```
+
+The earlier attempt on driver 610.88 / CUDA UMD 13.3 failed with
+`CUDA_ERROR_UNSUPPORTED_PTX_VERSION`: nvcc 13.5 emits PTX ISA 9.1, which that
+driver could not JIT. The original failure remains in
+`cuda-2026-11-12-smoke.log`; after installing driver 621.24 / CUDA UMD 13.5, the
+same smoke passed. This confirms one real CUDA execution path, not every family
+or workload: the claim is limited to this Windows host, BS-RoFormer, this fixture
+and chunk size, f32. No throughput claim is made.
 
 Additional facts worth keeping: `nvcc` needs `vcvars64.bat`; it fails when
 `TMP`/`TEMP` contain non-ASCII characters (Cyrillic user profile); it cannot open

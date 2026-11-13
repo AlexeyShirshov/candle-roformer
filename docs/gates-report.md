@@ -54,7 +54,7 @@ CPU results:
 - DSP short-input fix: `src/dsp.rs` uses signed arithmetic in `reflect_pad` (no unsigned underflow) and `stft` refuses inputs with length <= pad (1024) with a typed `DspError::InvalidParams` instead of silently substituting padding.
 - Dependency license audit: `docs/dependency-audit.md` (191 third-party crates per `Cargo.lock`, per-crate evidence under `docs/dependency-audit-evidence/`).
 
-Hardware (real-backend runs of `tests/gpu_smoke.rs`, 2026-11-12):
+Hardware (real-backend runs of `tests/gpu_smoke.rs`, 2026-11-12 and 2026-11-13):
 
 - Harness: `tests/gpu_smoke.rs` holds one opt-in (`#[ignore]`d) test per backend,
   compiled only under `--features cuda` / `--features metal`. Each run loads a real
@@ -64,21 +64,28 @@ Hardware (real-backend runs of `tests/gpu_smoke.rs`, 2026-11-12):
   (`max_abs`, `RMSE`, `SDR`, correlation; floors 1e-3 / 1e-4 / 60 dB / 0.999) and
   reports peak device memory. A missing checkpoint, an unavailable backend, a
   silent stem or zero compared stems fails the run — it never skips green.
-- `CUDA — NOT VERIFIED` (Windows 11, RTX 5070 Ti, compute capability 12.0,
-  driver 610.88 = CUDA UMD 13.3, CUDA Toolkit 13.5 / nvcc 13.5.37):
-  - Command: `cargo build --release --features cuda --lib` → exit `0`, then
-    `cargo test --release --features cuda --test gpu_smoke -- --ignored --nocapture`
-    → exit `101`.
-  - Evidence: `docs/gpu-smoke-evidence/cuda-2026-11-12-smoke.log` and
-    `docs/gpu-smoke-evidence/cuda-2026-11-12-host.txt`.
-  - Result: the checkpoint loads and the model is materialised on the GPU, then the
-    first kernel launch fails with
-    `DriverError(CUDA_ERROR_UNSUPPORTED_PTX_VERSION, "the provided PTX was compiled with an unsupported toolchain.")`.
-    Cause: `candle-kernels 0.11.1` ships PTX only; nvcc 13.5 emits PTX ISA 9.1 while
-    driver 610.88 accepts PTX ISA ≤ 9.0, so `cuModuleLoadData` cannot JIT the kernels.
-    There is therefore no CUDA parity number and no CUDA peak-memory number, and no
-    CUDA support claim is made. Fixing it is an environment change (install CUDA
-    Toolkit ≤ 13.3 or a newer display driver), not a crate change.
+- `CUDA — VERIFIED (one host, one family, this fixture)` (Windows 11, RTX 5070 Ti,
+  compute capability 12.0, driver 621.24 / CUDA UMD 13.5, CUDA Toolkit 13.5.37):
+  - Command: `cargo-cuda.bat test --release --offline --features cuda --test gpu_smoke -- --ignored --nocapture`
+    → exit `0`, `1 passed; 0 failed`. The wrapper configures the MSVC/CUDA build
+    environment; exact invocation and exit are in
+    `docs/gpu-smoke-evidence/cuda-2026-11-13-run.txt`.
+  - Evidence: `docs/gpu-smoke-evidence/cuda-2026-11-13-smoke.log` and
+    `docs/gpu-smoke-evidence/cuda-2026-11-13-host.txt`.
+  - Result, BS-RoFormer ViperX 1297 (`639,109,056 B` f32), 2 s stereo fixture,
+    88,200-sample chunk, CPU reference vs CUDA:
+    | stem | samples | max_abs | RMSE | SDR | corr | peak |
+    |---|---:|---:|---:|---:|---:|---:|
+    | vocals | 176,400 | 1.371e-6 | 4.823e-8 | 118.66 dB | 1.0000000 | 0.9000 / 0.9000 |
+    | instrumental | 176,400 | 8.941e-8 | 3.500e-9 | 162.21 dB | 1.0000000 | 0.9000 / 0.9000 |
+  - Peak memory: `peak_device_mib=1475`, baseline `611`, delta `864 MiB`, measured
+    with `nvidia-smi` for the whole device. Timing: CPU reference 18.56 s, CUDA
+    model load 0.50 s, CUDA separation 10.96 s for the 2 s fixture.
+  - The earlier 2026-11-12 run on driver 610.88 / CUDA UMD 13.3 failed at the
+    first kernel launch with `CUDA_ERROR_UNSUPPORTED_PTX_VERSION`; its original
+    log remains preserved as `cuda-2026-11-12-smoke.log`. The 621.24 driver update
+    resolved that PTX mismatch. Scope: one Windows host, BS-RoFormer, this fixture
+    and chunk size, f32; other model families and larger chunks are not verified.
 - `Metal — VERIFIED (one host, one family, this fixture)` (GitHub Actions
   `macos-15`: Apple M1 (Virtual), 3 vCPU, 7.5 GB RAM, rustc 1.99.1
   aarch64-apple-darwin):
@@ -118,6 +125,11 @@ Hardware (real-backend runs of `tests/gpu_smoke.rs`, 2026-11-12):
   `windows-latest` and `ubuntu-latest` (build + full CPU suite, no GPU assertions).
   `macos-14` was dropped from the matrix: GitHub answered
   `The configuration 'macos-14-arm64-us-default' is not supported`.
+
+The issue #11 hardware-smoke `Done when` is now met: one real CUDA host and one
+Apple Silicon host passed, with both logs committed as evidence. This is a narrow
+smoke-test result, not a general CUDA/Metal support claim. fp16 remains rejected;
+the decision and numerical evidence are recorded below.
 
 Reduced precision (fp16) — **decision: rejected for every supported family**:
 

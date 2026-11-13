@@ -183,9 +183,9 @@ cargo build --release
 CUDA: `cargo build --release --features cuda` (NVIDIA + CUDA toolkit).
 Metal: `cargo build --release --features metal` (macOS).
 
-Both feature builds compile. Metal execution is verified on the host listed under
-"Status and limits" (one Apple Silicon host, BS-RoFormer, one fixture); CUDA and
-every other GPU family remain untested — see `docs/gpu-smoke-evidence/`.
+Both feature builds compile. CUDA and Metal execution are each verified on one
+host for BS-RoFormer and one fixture; every other GPU family remains untested —
+see `docs/gpu-smoke-evidence/`.
 
 ## Status and limits
 
@@ -206,13 +206,18 @@ every other GPU family remain untested — see `docs/gpu-smoke-evidence/`.
     This is the *entire* Metal claim: one host, one family, this fixture, f32.
     MelBandRoformer, VR/UVR, MDX-Net and Whisper are **not tested** on Metal, and
     neither are larger chunks. Evidence: `docs/gpu-smoke-evidence/`.
-  - **CUDA: not tested.** Windows, RTX 5070 Ti 16 GB (compute capability 12.0),
-    driver 610.88 (CUDA UMD 13.3), CUDA Toolkit 13.5: the crate builds and the
-    checkpoint loads onto the device, then the first kernel launch fails with
-    `CUDA_ERROR_UNSUPPORTED_PTX_VERSION`. `candle-kernels 0.11.1` ships PTX only;
-    nvcc 13.5 emits PTX ISA 9.1 while driver 610.88 accepts PTX ISA ≤ 9.0, so the
-    kernels cannot be JIT-compiled. No CUDA parity and no CUDA peak-memory number
-    exists; CUDA Toolkit ≤ 13.3 or a newer display driver is required.
+  - **CUDA: tested and passing on one Windows host, for BS-RoFormer only.**
+    Windows 11, RTX 5070 Ti 16 GB (compute capability 12.0), driver 621.24
+    (CUDA UMD 13.5), CUDA Toolkit 13.5.37; real ViperX 1297 checkpoint, 2 s
+    stereo fixture, 88,200-sample chunk. CUDA vs CPU: vocals `max_abs 1.371e-6`,
+    `RMSE 4.823e-8`, `SDR 118.66 dB`, corr `1.0000000`; instrumental
+    `max_abs 8.941e-8`, `RMSE 3.500e-9`, `SDR 162.21 dB`, corr `1.0000000`.
+    Peak memory 1,475 MiB (baseline 611, delta 864 MiB, whole-device
+    `nvidia-smi` measurement); CPU reference 18.56 s, CUDA model load 0.50 s,
+    CUDA separation 10.96 s for the 2 s fixture. The earlier driver 610.88 run
+    failed with `CUDA_ERROR_UNSUPPORTED_PTX_VERSION`; updating to 621.24 resolved
+    the PTX mismatch. This is the *entire* CUDA claim: one host, one family, this
+    fixture, f32. Evidence: `docs/gpu-smoke-evidence/`.
   - `DeviceChoice::Cuda`/`DeviceChoice::Metal` still fail with a typed
     `DeviceError::Unavailable` instead of silently falling back to CPU.
 - Reduced precision (fp16) is **rejected for every supported family** in this
@@ -231,8 +236,10 @@ every other GPU family remain untested — see `docs/gpu-smoke-evidence/`.
   4 s step, so a written stem is not bit-identical to a single-pass reference
   run. Measured with the original Candle git revision and re-checked against
   crates.io `candle-core 0.11.1`: both builds produce byte-identical stems.
-  Hardware smoke tests (G2) remain open — see the CUDA/Metal entry above and
-  `docs/gpu-smoke-evidence/`.
+  The isolated G2 smoke has passed on one CUDA host and one Apple Silicon host,
+  for BS-RoFormer only; see the CUDA/Metal entries above and
+  `docs/gpu-smoke-evidence/`. Other model families and larger fixtures remain
+  untested on both backends.
 - Supported architecture families: MelBandRoformer (`voc_fv7` 256/12 and Kimberley 384/6),
   BS-RoFormer (`configs/bs_roformer_viperx_1297.yaml`, "Viperx 1297" 512/12, 62 bands), and
   MDX-Net (ONNX) via a caller-supplied checkpoint (`UVR-MDX-NET-Inst_HQ_3.onnx`, pinned SHA-256
