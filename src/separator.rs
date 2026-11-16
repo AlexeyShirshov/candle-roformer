@@ -54,8 +54,8 @@ use crate::wav::AudioBuffer;
 ///
 /// * **Residual mode ("rest of the mix").** Used when the model estimates a
 ///   single target stem (`num_stems == 1`, e.g. a MelBandRoformer vocals
-///   model). The model produces the target (`vocals`); the secondary stem
-///   (`instrumental`) is the input residual. In **exact residual mode**
+///   model). The model produces the target (vocals by default, instrumental
+///   for Unwa); the secondary stem is the input residual. In **exact residual mode**
 ///   (level processing disabled: `normalization = 0.0`, `amplification = 0.0`,
 ///   `invert_spect = false`) this is the exact waveform residual
 ///   `input - vocals`, so `vocals + instrumental == input` pointwise (within
@@ -117,11 +117,12 @@ pub struct Stems {
     /// is the model estimate; in independent mode it is the stem named
     /// `"vocals"` if present, otherwise the first stem.
     pub vocals: AudioBuffer,
-    /// Two-stem convenience: the instrumental stem. In residual mode this is
+    /// Two-stem convenience: the instrumental stem. For vocals-target models this is
     /// the input residual (exact `input - vocals` only in exact residual mode,
     /// i.e. level processing disabled; see "Residual exactness"); in
     /// independent mode it is the stem named `"instrumental"` if present,
     /// otherwise the second stem (or the first when only one exists).
+    /// For instrumental-target models it is the direct model estimate.
     pub instrumental: AudioBuffer,
     /// All stems returned by the model, in model order, as `(name, buffer)`
     /// pairs. In residual mode this is `[("vocals", ..), ("instrumental", ..)]`;
@@ -179,6 +180,7 @@ pub struct Separator {
     config: SeparatorConfig,
     inference: InferenceConfig,
     device: DeviceChoice,
+    primary_is_instrumental: bool,
 }
 
 /// Placeholder model slot for pipelines that are not RoFormer families.
@@ -245,6 +247,9 @@ impl Separator {
         cfg.validate()?;
         let inference = InferenceConfig::from_yaml_file(&assets.config)?;
         inference.validate()?;
+        let profile = std::fs::read_to_string(&assets.config)
+            .map_err(|e| Error::Config(crate::error::ConfigError::Invalid(e.to_string())))?;
+        let primary_is_instrumental = primary_is_instrumental(&profile, cfg.num_stems)?;
         let dev = device.resolve()?;
         strict_check(
             assets.checkpoint.to_str().ok_or_else(|| {
@@ -263,7 +268,8 @@ impl Separator {
             crate::config::ModelFamily::MelBandRoformer => {
                 Box::new(MelBandRoformer::new(&cfg, vb).map_err(Error::Candle)?)
             }
-            crate::config::ModelFamily::BSRoformer => {
+            crate::config::ModelFamily::BSRoformer
+            | crate::config::ModelFamily::BSRoformerHyperAceV2 => {
                 Box::new(BSRoformer::new(&cfg, vb).map_err(Error::Candle)?)
             }
             // MDX-Net is an ONNX graph loaded and driven by `crate::mdx`; it has
@@ -297,6 +303,7 @@ impl Separator {
             config: cfg,
             inference,
             device,
+            primary_is_instrumental,
         })
     }
 
@@ -323,6 +330,7 @@ impl Separator {
             config,
             inference,
             device,
+            primary_is_instrumental: false,
         })
     }
 
@@ -353,8 +361,8 @@ impl Separator {
     /// input's sample rate with the input's channel layout and exact length.
     ///
     /// The number of stems returned follows the loaded profile:
-    /// - `num_stems == 1`: residual mode — `vocals` is the model estimate and
-    ///   `instrumental` is the input residual (`input - vocals` exactly only in
+    /// - `num_stems == 1`: residual mode — the target is the model estimate and
+    ///   the other stem is the input residual (`input - target` exactly only in
     ///   exact residual mode; see "Residual exactness"); `stems` holds
     ///   `[("vocals", ..), ("instrumental", ..)]`.
     /// - `num_stems > 1`: independent mode — every stem comes from the model
@@ -476,7 +484,7 @@ impl Separator {
         }
 
         let mut stems_vec: Vec<(String, AudioBuffer)> = Vec::new();
-        let (vocals, instrumental) = if residual_mode {
+        let (mut vocals, mut instrumental) = if residual_mode {
             let mut vocals_audio = stem_audios
                 .into_iter()
                 .next()
@@ -585,8 +593,6 @@ impl Separator {
                 channels: audio.channels,
                 planar: instrumental_planar,
             };
-            stems_vec.push(("vocals".to_string(), vocals_audio.clone()));
-            stems_vec.push(("instrumental".to_string(), instrumental_audio.clone()));
             (vocals_audio, instrumental_audio)
         } else {
             let names = default_stem_names(stem_audios.len());
@@ -602,12 +608,45 @@ impl Separator {
             let instrumental_audio = named_or_index(&stems_vec, "instrumental", 1);
             (vocals_audio, instrumental_audio)
         };
+        if residual_mode {
+            // Instrumental-target models (e.g. Unwa v1e Plus) predict the
+            // accompaniment; their residual is vocals, not the other way round.
+            if self.primary_is_instrumental {
+                std::mem::swap(&mut vocals, &mut instrumental);
+            }
+            stems_vec.push(("vocals".to_string(), vocals.clone()));
+            stems_vec.push(("instrumental".to_string(), instrumental.clone()));
+        }
 
         Ok(Stems {
             vocals,
             instrumental,
             stems: stems_vec,
         })
+    }
+}
+
+fn primary_is_instrumental(text: &str, num_stems: usize) -> Result<bool, Error> {
+    #[derive(serde::Deserialize, Default)]
+    struct Training {
+        target_instrument: Option<String>,
+    }
+    #[derive(serde::Deserialize)]
+    struct Root {
+        #[serde(default)]
+        training: Training,
+    }
+    let root: Root = serde_yaml::from_str(&text.replace("!!python/tuple", ""))
+        .map_err(|e| Error::Config(crate::error::ConfigError::Invalid(e.to_string())))?;
+    if num_stems != 1 {
+        return Ok(false);
+    }
+    match root.training.target_instrument.as_deref() {
+        None | Some("vocals") => Ok(false),
+        Some("other" | "instrumental" | "instrument") => Ok(true),
+        Some(target) => Err(Error::Config(crate::error::ConfigError::Invalid(format!(
+            "unsupported single-stem target_instrument: {target}"
+        )))),
     }
 }
 
@@ -753,6 +792,13 @@ impl Separator {
             return Ok(());
         }
 
+        // Below, the streaming implementation writes the primary estimate to
+        // its first path and the residual to its second path.
+        let (vocals_path, instrumental_path) = if self.primary_is_instrumental {
+            (instrumental_path, vocals_path)
+        } else {
+            (vocals_path, instrumental_path)
+        };
         let inference = &self.inference;
         let norm_thr = inference.normalization;
         let amp_thr = inference.amplification;

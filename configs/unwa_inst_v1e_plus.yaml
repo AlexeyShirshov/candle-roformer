@@ -1,0 +1,32 @@
+# Published profile: config_melbandroformer_inst.yaml from
+# https://github.com/nomadkaraoke/python-audio-separator/releases/tag/model-configs
+# Checkpoint: melband_roformer_inst_v1e_plus.ckpt (913090472 bytes).
+# Convert offline with tools/convert_unwa_v1e_plus.py; no runtime downloads.
+audio:
+  chunk_size: 485100
+  sample_rate: 44100
+model:
+  dim: 384
+  depth: 6
+  stereo: true
+  num_stems: 1
+  time_transformer_depth: 1
+  freq_transformer_depth: 1
+  num_bands: 60
+  dim_head: 64
+  heads: 8
+  flash_attn: true
+  dim_freqs_in: 1025
+  sample_rate: 44100
+  stft_n_fft: 2048
+  stft_hop_length: 441
+  stft_win_length: 2048
+  stft_normalized: false
+  mask_estimator_depth: 2
+training:
+  instruments: [other, vocals]
+  target_instrument: other
+inference:
+  batch_size: 1
+  dim_t: 1101
+  num_overlap: 2

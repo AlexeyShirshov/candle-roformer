@@ -8,6 +8,7 @@ use crate::mel::mel_bin_membership;
 pub mod bs_roformer;
 pub mod demucs;
 pub mod demucs_pipeline;
+pub mod hyperace;
 pub mod vr_arch;
 pub mod vr_pipeline;
 pub mod vr_resample;
@@ -480,7 +481,7 @@ pub struct MelBandRoformer {
 pub fn expected_key_shapes(cfg: &SeparatorConfig) -> Vec<(String, Vec<usize>)> {
     match cfg.family() {
         ModelFamily::MelBandRoformer => expected_key_shapes_melband(cfg),
-        ModelFamily::BSRoformer => bs_roformer::expected_key_shapes(cfg),
+        ModelFamily::BSRoformer | ModelFamily::BSRoformerHyperAceV2 => bs_roformer::expected_key_shapes(cfg),
         // MDX-Net is an ONNX graph with no safetensors key schema; it is loaded
         // by `crate::mdx::MdxSeparator`.
         ModelFamily::MdxNet => Vec::new(),

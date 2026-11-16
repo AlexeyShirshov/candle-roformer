@@ -194,7 +194,10 @@ impl SeparatorConfig {
                     ));
                 }
             }
-            ModelFamily::BSRoformer => {
+            ModelFamily::BSRoformer | ModelFamily::BSRoformerHyperAceV2 => {
+                if self.family() == ModelFamily::BSRoformerHyperAceV2 && !self.stereo {
+                    return Err(ConfigError::Invalid("HyperACE v2 requires stereo".into()));
+                }
                 let freqs = self.freqs_per_bands.as_ref().ok_or_else(|| {
                     ConfigError::Invalid("freqs_per_bands is required for bs_roformer".into())
                 })?;
@@ -277,6 +280,9 @@ pub enum ModelFamily {
     MelBandRoformer,
     #[serde(rename = "bs_roformer", alias = "bsroformer", alias = "bs-roformer")]
     BSRoformer,
+    /// BS-RoFormer trunk with Unwa's HyperACE v2 mask-estimator branch.
+    #[serde(rename = "bs_roformer_hyperace_v2")]
+    BSRoformerHyperAceV2,
     #[serde(
         rename = "mdx_net",
         alias = "MdxNet",
@@ -449,7 +455,7 @@ impl InferenceConfig {
     pub fn for_family(family: ModelFamily) -> Self {
         match family {
             ModelFamily::MelBandRoformer => Self::melband(),
-            ModelFamily::BSRoformer => Self::bsroformer(),
+            ModelFamily::BSRoformer | ModelFamily::BSRoformerHyperAceV2 => Self::bsroformer(),
             ModelFamily::MdxNet => Self::mdx(),
             ModelFamily::VrArch => Self::vr_arch(),
             ModelFamily::Demucs => Self::demucs(),
@@ -542,10 +548,26 @@ impl InferenceConfig {
         struct Root {
             #[serde(default)]
             inference: Option<InferenceConfig>,
+            #[serde(default)]
+            audio: Option<Audio>,
+        }
+        #[derive(serde::Deserialize)]
+        struct Audio {
+            chunk_size: Option<usize>,
+            sample_rate: Option<usize>,
         }
         let root: Root =
-            serde_yaml::from_str(text).map_err(|e| ConfigError::Invalid(e.to_string()))?;
-        let cfg = root.inference.unwrap_or_default();
+            serde_yaml::from_str(&text.replace("!!python/tuple", ""))
+                .map_err(|e| ConfigError::Invalid(e.to_string()))?;
+        let mut cfg = root.inference.unwrap_or_default();
+        if let Some(audio) = root.audio {
+            if cfg.segment_size.is_none() {
+                cfg.segment_size = audio.chunk_size;
+            }
+            if let Some(rate) = audio.sample_rate {
+                cfg.sample_rate = rate;
+            }
+        }
         cfg.validate()?;
         Ok(cfg)
     }

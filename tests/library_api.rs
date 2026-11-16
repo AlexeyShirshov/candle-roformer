@@ -76,6 +76,82 @@ fn write_tiny_model(
 }
 
 #[test]
+fn instrumental_target_routes_primary_and_residual_correctly() {
+    let dir = tmpdir("instrumental_target");
+    let (model, config) = write_tiny_model(&dir, &tiny_config());
+    let yaml = format!(
+        "{}\ninference:\n  normalization: 0.0\n  segment_size: 128\n",
+        fs::read_to_string(&config).unwrap()
+    );
+    fs::write(&config, &yaml).unwrap();
+    let assets = LocalSeparationAssets::new(&model, &config);
+    let vocal_model = Separator::load(&assets, DeviceChoice::Cpu).unwrap();
+    // Use exactly the same weights: changing the target must only swap the
+    // semantic assignment, not change either waveform.
+    fs::write(
+        &config,
+        format!("{yaml}\ntraining:\n  target_instrument: other\n"),
+    ).unwrap();
+    let instrumental_model = Separator::load(&assets, DeviceChoice::Cpu).unwrap();
+    for channels in [1, 2] {
+        let audio = AudioBuffer {
+            sample_rate: 44100,
+            channels,
+            planar: (0..128 * channels as usize)
+                .map(|i| (i as f32 * 0.05).sin() * 0.5)
+                .collect(),
+        };
+        let baseline = vocal_model.separate(&audio).unwrap();
+        let actual = instrumental_model.separate(&audio).unwrap();
+        assert_eq!(actual.instrumental.planar, baseline.vocals.planar);
+        assert_eq!(actual.vocals.planar, baseline.instrumental.planar);
+        assert_eq!(actual.get("vocals").unwrap().planar, actual.vocals.planar);
+        assert_eq!(actual.get("instrumental").unwrap().planar, actual.instrumental.planar);
+        for ((v, i), input) in actual.vocals.planar.iter()
+            .zip(&actual.instrumental.planar).zip(&audio.planar) {
+            assert!((v + i - input).abs() < 1e-6);
+        }
+        let input_path = dir.join("input.wav");
+        let base_v = dir.join("base_v.wav");
+        let base_i = dir.join("base_i.wav");
+        let target_v = dir.join("target_v.wav");
+        let target_i = dir.join("target_i.wav");
+        candle_roformer::wav::write_wav_f32(&input_path, &audio).unwrap();
+        vocal_model.separate_file(&input_path, &base_v, &base_i, 128.0 / 44100.0).unwrap();
+        instrumental_model.separate_file(&input_path, &target_v, &target_i, 128.0 / 44100.0).unwrap();
+        assert_eq!(
+            candle_roformer::wav::read_audio(&target_i).unwrap().planar,
+            candle_roformer::wav::read_audio(&base_v).unwrap().planar,
+        );
+        assert_eq!(
+            candle_roformer::wav::read_audio(&target_v).unwrap().planar,
+            candle_roformer::wav::read_audio(&base_i).unwrap().planar,
+        );
+    }
+}
+
+#[test]
+fn unwa_profile_has_supported_geometry_and_chunk_size() {
+    use candle_roformer::config::{InferenceConfig, ModelFamily};
+    let yaml = include_str!("../configs/unwa_inst_v1e_plus.yaml");
+    let cfg = SeparatorConfig::from_yaml_str(yaml).unwrap();
+    cfg.validate().unwrap();
+    assert_eq!(cfg.family(), ModelFamily::MelBandRoformer);
+    assert_eq!((cfg.dim, cfg.depth, cfg.num_bands), (384, 6, 60));
+    let inference = InferenceConfig::from_yaml_str(yaml).unwrap();
+    assert_eq!(inference.segment_size, Some(485100));
+    assert_eq!(inference.num_overlap, 2);
+    // Published configs contain Python-only tuple tags in training loss fields.
+    let tagged = format!("{yaml}\nloss_windows: !!python/tuple [4096, 2048]\n");
+    InferenceConfig::from_yaml_str(&tagged).unwrap();
+    let overridden = yaml.replace("  dim_t: 1101", "  segment_size: 88200\n  dim_t: 1101");
+    assert_eq!(
+        InferenceConfig::from_yaml_str(&overridden).unwrap().segment_size,
+        Some(88200),
+    );
+}
+
+#[test]
 fn separator_loads_and_separates_in_memory_exact_residual() {
     let cfg = tiny_config();
     let dir = tmpdir("stems_exact");

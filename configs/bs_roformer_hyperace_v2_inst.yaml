@@ -1,0 +1,43 @@
+# Unwa BS-RoFormer HyperACE v2 Inst.
+# Source: pcunwa/BS-Roformer-HyperACE at
+# 5b1f8283125d5e4a3614d0e3635a636e09c84059/v2_inst/config.yaml
+# Explicit family is essential: the original YAML does not identify the head.
+audio:
+  chunk_size: 960000
+  sample_rate: 44100
+model:
+  family: bs_roformer_hyperace_v2
+  dim: 256
+  depth: 12
+  stereo: true
+  num_stems: 1
+  time_transformer_depth: 1
+  freq_transformer_depth: 1
+  linear_transformer_depth: 0
+  freqs_per_bands: [
+    2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+    2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+    4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
+    12, 12, 12, 12, 12, 12, 12, 12,
+    24, 24, 24, 24, 24, 24, 24, 24,
+    48, 48, 48, 48, 48, 48, 48, 48,
+    128, 129]
+  dim_head: 64
+  heads: 8
+  flash_attn: true
+  dim_freqs_in: 1025
+  stft_n_fft: 2048
+  stft_hop_length: 512
+  stft_win_length: 2048
+  stft_normalized: false
+  mask_estimator_depth: 2
+  mlp_expansion_factor: 4
+  use_torch_checkpoint: true
+  skip_connection: false
+training:
+  instruments: [vocals, instrument]
+  target_instrument: instrument
+inference:
+  batch_size: 2
+  dim_t: 1876
+  num_overlap: 4

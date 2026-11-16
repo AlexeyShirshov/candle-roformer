@@ -17,6 +17,12 @@ It is a Rust/Candle port and reimplementation of work by others:
   https://github.com/Anjok07/ultimatevocalremovergui
   MIT.
 
+- BS-RoFormer HyperACE v2 architecture: Unwa (pcunwa),
+  https://huggingface.co/pcunwa/BS-Roformer-HyperACE
+  revision 5b1f8283125d5e4a3614d0e3635a636e09c84059, v2_inst.
+  Independently implemented in Rust from the published architecture. The
+  original source and weights are not redistributed; no model licence is asserted.
+
 - Whisper transcription layer and mel filter banks: OpenAI Whisper
   https://github.com/openai/whisper
   MIT, Copyright 2022 OpenAI.

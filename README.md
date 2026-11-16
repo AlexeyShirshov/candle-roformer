@@ -32,8 +32,9 @@ candle_roformer::wav::write_wav_f32("out/instrumental.wav", &stems.instrumental)
   `Stems::stems` (a `Vec<(String, AudioBuffer)>`) and keeps the two-stem
   convenience fields `Stems::vocals` / `Stems::instrumental`.
 - **Residual vs. independent stems.** A single-stem profile (`num_stems == 1`,
-  e.g. MelBandRoformer vocals) runs in *residual* mode: `vocals` is the model
-  estimate and `instrumental` is the input residual. The pointwise identity
+   e.g. MelBandRoformer vocals) runs in *residual* mode: the target stem is the model
+   estimate and the other stem is the input residual (Unwa targets instrumental).
+   The pointwise identity
   `vocals + instrumental == input` holds exactly only in exact residual mode
   (level processing disabled: `normalization = 0.0`, `amplification = 0.0`,
   `invert_spect = false`); see "Level processing" below. A multi-stem profile
@@ -145,7 +146,9 @@ downmixed back to mono; stereo stays stereo.
 | Family | Status | Config file(s) | Checkpoint expectation |
 |---|---|---|---|
 | MelBandRoformer | implemented | `configs/voc_fv7.yaml` (dim 256 / depth 12), `configs/kijai_melband_384.yaml` (384 / 6) | `voc_fv7.ckpt` converted with `tools/convert_voc_fv7.py`; `MelBandRoformer_fp32.safetensors` as published |
+| Unwa Inst v1e Plus (MelBandRoformer) | implemented; real-checkpoint inference not yet verified | `configs/unwa_inst_v1e_plus.yaml` (384 / 6, instrumental target) | `melband_roformer_inst_v1e_plus.ckpt` converted with `tools/convert_unwa_v1e_plus.py` |
 | BS-RoFormer | implemented | `configs/bs_roformer_viperx_1297.yaml` (dim 512 / depth 12, 62 bands) | `model_bs_roformer_ep_317_sdr_12.9755.ckpt` converted with `tools/convert_bs_roformer.py` (pinned size/SHA-256) |
+| BS-RoFormer HyperACE v2 Inst (Unwa) | implemented; real-weight CPU parity verified on short fixtures | `configs/bs_roformer_hyperace_v2_inst.yaml` (256 / 12, 62 bands, HyperACE head) | `v2_inst/bs_roformer_inst_hyperacev2.ckpt` from `pcunwa/BS-Roformer-HyperACE`; `tools/convert_hyperace.py` |
 | Whisper | implemented (transcription) | `config.json` from the checkpoint | `model.safetensors` + `tokenizer.json` |
 | MDX-Net (ONNX) | implemented | built-in profile `mdx::uvr_mdx_net_inst_hq_3()` | `UVR-MDX-NET-Inst_HQ_3.onnx` as published (SHA-256 checked before inference) |
 | VR Arch / UVR (.pth) | implemented | built-in `4band_v2` profile (`VrProfile::four_band_v2()`, nn_arch 123812) | `2_HP-UVR.pth` converted offline with `tools/convert_vr_arch.py` (pinned SHA-256 and size) |
@@ -153,7 +156,7 @@ downmixed back to mono; stereo stays stereo.
 | MDX23C | not implemented | - | - |
 
 The family is selected from the profile: an explicit `family:` key (`mel_band_roformer` /
-`bs_roformer`), or, when absent, the config shape — `freqs_per_bands` selects BS-RoFormer,
+`bs_roformer` / `bs_roformer_hyperace_v2`), or, when absent, the config shape — `freqs_per_bands` selects standard BS-RoFormer,
 `num_bands` selects MelBandRoformer. `Separator::load` validates every tensor name and shape
 against that family before allocating the model, so a wrong architecture, a partial download or a
 stray tensor fails loudly instead of loading garbage.
@@ -192,6 +195,60 @@ negative path on a tiny checkpoint.
 
 Weights are never downloaded, bundled, cached or redistributed by this project.
 You supply locally obtained, lawfully licensed weights.
+
+### Unwa Inst v1e Plus
+
+Convert your local checkpoint once (Python with `torch` and `safetensors` required).
+Supply a trusted source SHA-256; the converter checks it and the published file
+size before restricted loading, then checks every tensor name and shape:
+
+```sh
+python tools/convert_unwa_v1e_plus.py --ckpt melband_roformer_inst_v1e_plus.ckpt \
+  --out unwa_v1e_plus.safetensors --sha256 <trusted-source-sha256>
+```
+
+Load using `LocalSeparationAssets::new("unwa_v1e_plus.safetensors",
+"configs/unwa_inst_v1e_plus.yaml")` and `Separator::load` as above.
+`training.target_instrument: other` (or `instrumental`) makes the model estimate
+`Stems::instrumental` and the residual `Stems::vocals`; absent targets retain the
+existing vocals-first behavior. The published 485,100-sample chunk is read from
+`audio.chunk_size` unless `inference.segment_size` overrides it. This also accepts
+the original `config_melbandroformer_inst.yaml`, including its Python tuple tags.
+Architecture/configuration and stem routing are covered by synthetic tests;
+numerical parity on the real Unwa checkpoint has not been established.
+An opt-in real-weight smoke test is available with
+`CANDLE_ROFORMER_UNWA_SAFETENSORS` pointing to the converted checkpoint:
+`cargo test --release --test unwa_checkpoint -- --ignored --nocapture`.
+
+### BS-RoFormer HyperACE v2 Inst by Unwa
+
+This is **not** MelBand Unwa Inst v1e Plus and **not** the standard BS mask head.
+The Rust implementation adds the author's segmentation branch to each MLP mask:
+depthwise-convolution backbone, adaptive hypergraph fusion, gated decoder,
+frequency pixel shuffle and TFC/TDF blocks. InstanceNorm uses input statistics
+with `eps=1e-8`; interpolation is bilinear with `align_corners=false`.
+
+Use the repository profile: its explicit `family: bs_roformer_hyperace_v2` selects
+the changed architecture. The author's original YAML alone does not identify the
+head, so family inference would select standard BS-RoFormer and strict loading
+would correctly reject the extra weights. `training.target_instrument: instrument`
+assigns the direct estimate to instrumental and the residual to vocals.
+
+Convert locally (requires Python `torch` + `safetensors`):
+
+```sh
+cargo run --quiet --example checkpoint_schema -- configs/bs_roformer_hyperace_v2_inst.yaml hyperace-schema.json
+python tools/convert_hyperace.py --ckpt bs_roformer_inst_hyperacev2.ckpt \
+  --schema hyperace-schema.json --out hyperace_v2_inst.safetensors
+```
+
+The converter pins the published source size and SHA-256 and validates all
+names/shapes against the schema exported by the Rust runtime. No head parameters
+are dropped or renamed. Load the result using `Separator::load` with
+`configs/bs_roformer_hyperace_v2_inst.yaml`. The profile retains the published
+960,000-sample chunk, 512-sample STFT hop and four-way overlap.
+
+Verification instructions and scope: [`docs/hyperace-v2.md`](docs/hyperace-v2.md).
 
 ## Build
 

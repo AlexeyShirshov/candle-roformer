@@ -28,7 +28,7 @@ use super::{
     run_freq_transformer, run_time_transformer, Attention, BandSplit, FeedForward, RmsNorm,
     BAND_BLOCK, T_BLOCK,
 };
-use crate::config::SeparatorConfig;
+use crate::config::{ModelFamily, SeparatorConfig};
 
 // ---------- MLP (reference layout: depth linear layers, Tanh between) ----------
 
@@ -79,6 +79,7 @@ impl BsMlp {
 #[derive(Debug, Clone)]
 struct BsMaskEstimator {
     to_freqs: Vec<BsMlp>,
+    hyperace: Option<super::hyperace::HyperAce>,
 }
 
 impl BsMaskEstimator {
@@ -87,6 +88,7 @@ impl BsMaskEstimator {
         dim_inputs: &[usize],
         depth: usize,
         mlp_expansion_factor: usize,
+        hyperace: bool,
         vb: VarBuilder,
     ) -> candle_core::Result<Self> {
         let dim_hidden = dim * mlp_expansion_factor;
@@ -101,7 +103,14 @@ impl BsMaskEstimator {
             )?;
             to_freqs.push(mlp);
         }
-        Ok(Self { to_freqs })
+        let hyperace = if hyperace {
+            Some(super::hyperace::HyperAce::new(
+                dim, dim_inputs.len(), dim_inputs.iter().sum::<usize>() / 4, vb.pp("segm"),
+            )?)
+        } else {
+            None
+        };
+        Ok(Self { to_freqs, hyperace })
     }
 
     fn forward(&self, x: &Tensor) -> candle_core::Result<Tensor> {
@@ -119,7 +128,11 @@ impl BsMaskEstimator {
             let gate = candle_nn::ops::sigmoid(&b)?;
             outs.push(a.broadcast_mul(&gate)?);
         }
-        Tensor::cat(&outs, D::Minus1)
+        let mask = Tensor::cat(&outs, D::Minus1)?;
+        match &self.hyperace {
+            Some(head) => mask + head.forward(x)?,
+            None => Ok(mask),
+        }
     }
 }
 
@@ -218,6 +231,11 @@ pub fn expected_key_shapes(cfg: &SeparatorConfig) -> Vec<(String, Vec<usize>)> {
     out.push(("final_norm.gamma".to_string(), vec![dim]));
 
     for s in 0..cfg.num_stems {
+        if cfg.family() == ModelFamily::BSRoformerHyperAceV2 {
+            out.extend(super::hyperace::expected_key_shapes(
+                dim, freqs_per_bands.len(), &format!("mask_estimators.{s}.segm"),
+            ));
+        }
         for (i, &bins) in freqs_per_bands.iter().enumerate() {
             let dim_in = 2 * bins * audio_channels;
             let p = format!("mask_estimators.{s}.to_freqs.{i}.0");
@@ -302,6 +320,7 @@ impl BSRoformer {
                 &dim_inputs,
                 cfg.mask_estimator_depth,
                 ff_mult,
+                cfg.family() == ModelFamily::BSRoformerHyperAceV2,
                 vb.pp("mask_estimators").pp(si.to_string()),
             )?);
         }
