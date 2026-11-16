@@ -1,6 +1,6 @@
 [package]
 name = "candle-roformer"
-version = "1.0.0"
+version = "1.0.1"
 edition = "2021"
 license = "MIT"
 description = "Offline Rust/Candle library for vocal/instrumental separation and vocal transcription"

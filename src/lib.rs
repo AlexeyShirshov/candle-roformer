@@ -37,7 +37,9 @@ pub use model::{BSRoformer, MelBandRoformer, RoformerModel, VrProfile, VrSeparat
 pub use separator::{Separator, Stems};
 pub use tensor_ops::{average_by_counts, gather_1d, scatter_add_1d};
 pub use wav::{AudioBuffer, AudioStreamReader, StreamingWavWriter};
-pub use whisper::{TranscribeOptions, Transcriber, Transcript, TranscriptSegment};
+pub use whisper::{
+    TranscribeOptions, TranscribeProgress, Transcriber, Transcript, TranscriptSegment,
+};
 
 // Re-export candle_core::Device for convenience.
 pub use candle_core::Device;

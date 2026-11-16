@@ -92,6 +92,24 @@ multilingual checkpoints; `TranscribeOptions::language` forces a code and
 `transcribe_with` exposes the no-speech / log-prob / compression-ratio
 thresholds. A `*.en` checkpoint rejects an explicit foreign language.
 
+For progress without changing the existing transcription API:
+
+```rust
+let transcript = transcriber.transcribe_with_progress(
+    &stems.vocals,
+    &Default::default(),
+    |progress| println!("Whisper: {:.1}%", progress.fraction() * 100.0),
+)?;
+```
+
+The callback runs synchronously: zero after input validation, then an update
+after every completed 30 s window, including no-speech windows, and exactly
+100% on success. `TranscribeProgress` exposes `processed_seconds` and
+`total_seconds` on the input timeline. This measures processed audio, not time
+remaining: preparation, language detection and decoding retries do not advance
+the percentage. Errors do not emit completion; short inputs normally report
+only 0% and 100%.
+
 ### Combining the two
 
 The crate deliberately stops at in-memory buffers: it does not pick output

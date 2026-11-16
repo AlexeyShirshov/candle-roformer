@@ -67,6 +67,26 @@ impl Default for TranscribeOptions {
     }
 }
 
+/// Progress through the input audio, not an estimate of elapsed/remaining time.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct TranscribeProgress {
+    /// Duration of successfully processed audio (including no-speech windows).
+    pub processed_seconds: f64,
+    /// Duration of the caller's audio buffer.
+    pub total_seconds: f64,
+}
+
+impl TranscribeProgress {
+    /// Completed fraction in `0.0..=1.0`; multiply by 100 for a percentage.
+    pub fn fraction(&self) -> f64 {
+        if self.total_seconds > 0.0 {
+            (self.processed_seconds / self.total_seconds).clamp(0.0, 1.0)
+        } else {
+            0.0
+        }
+    }
+}
+
 /// A loaded Whisper model bound to a device. Load once, transcribe many stems.
 pub struct Transcriber {
     model: m::model::Whisper,
@@ -256,7 +276,36 @@ impl Transcriber {
         vocals: &AudioBuffer,
         options: &TranscribeOptions,
     ) -> Result<Transcript, Error> {
+        self.transcribe_with_progress(vocals, options, |_| {})
+    }
+
+    /// Transcribe with synchronous progress notifications on the calling thread.
+    ///
+    /// Reports zero after input validation, before audio preparation, then reports
+    /// after each successfully decoded and assembled window (including silence).
+    /// Preparation, language detection and temperature retries do not advance
+    /// progress. The final notification is exactly 100% on success; errors do
+    /// not emit a completion notification. Updates have 30 s granularity, so a
+    /// short buffer normally produces only the initial and final notifications.
+    /// The callback may borrow caller state; it should return quickly.
+    ///
+    /// Audio preparation and timestamps follow [`Self::transcribe_with`].
+    pub fn transcribe_with_progress<F>(
+        &mut self,
+        vocals: &AudioBuffer,
+        options: &TranscribeOptions,
+        mut on_progress: F,
+    ) -> Result<Transcript, Error>
+    where
+        F: FnMut(TranscribeProgress),
+    {
         vocals.validate()?;
+        // Use the caller's timeline, not the resampler's rounded sample count.
+        let total_duration = vocals.duration_secs();
+        on_progress(TranscribeProgress {
+            processed_seconds: 0.0,
+            total_seconds: total_duration,
+        });
         let mono = downmix_to_mono(vocals);
         let pcm = resample::resample_planar(&mono, 1, vocals.sample_rate, SAMPLE_RATE);
         if pcm.is_empty() {
@@ -264,10 +313,6 @@ impl Transcriber {
                 "vocal stem is empty after resampling".into(),
             )));
         }
-        // Clamp segment timestamps to the caller's timeline, not to the
-        // resampler's rounded sample count.
-        let total_duration = vocals.duration_secs();
-
         let mel = audio::pcm_to_mel(&self.config, &pcm, &self.mel_filters);
         let n_mel = self.config.num_mel_bins;
         let frames = mel.len() / n_mel;
@@ -297,6 +342,7 @@ impl Transcriber {
             if dr.no_speech_prob > options.no_speech_threshold
                 && dr.avg_logprob < options.logprob_threshold
             {
+                on_progress(window_progress(seek, frames, total_duration));
                 continue;
             }
 
@@ -316,6 +362,7 @@ impl Transcriber {
                 }
             }
             segments.extend(window_segments);
+            on_progress(window_progress(seek, frames, total_duration));
         }
 
         Ok(Transcript { language, segments })
@@ -634,6 +681,17 @@ impl Transcriber {
             logits = logits.broadcast_add(&Tensor::new(buffer.as_slice(), &device)?)?;
         }
         Ok(logits)
+    }
+}
+
+fn window_progress(seek: usize, frames: usize, total_seconds: f64) -> TranscribeProgress {
+    TranscribeProgress {
+        processed_seconds: if seek == frames {
+            total_seconds
+        } else {
+            (seek as f64 * m::HOP_LENGTH as f64 / SAMPLE_RATE as f64).min(total_seconds)
+        },
+        total_seconds,
     }
 }
 

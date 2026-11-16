@@ -13,7 +13,9 @@ use candle_core::{DType, Device};
 use candle_nn::{VarBuilder, VarMap};
 use candle_roformer::wav::AudioBuffer;
 use candle_roformer::whisper::{TranscribeOptions, Transcriber, SAMPLE_RATE};
-use candle_roformer::{DeviceChoice, LocalWhisperAssets, Transcript, TranscriptSegment};
+use candle_roformer::{
+    DeviceChoice, LocalWhisperAssets, TranscribeProgress, Transcript, TranscriptSegment,
+};
 
 fn tmpdir(name: &str) -> PathBuf {
     let mut p = std::env::temp_dir();
@@ -157,6 +159,30 @@ fn transcriber_loads_and_runs_end_to_end() {
     // that the assembled text is valid UTF-8 and does not panic.
     let _ = transcript.text();
 
+    let mut progress = Vec::new();
+    let with_progress = transcriber
+        .transcribe_with_progress(&audio, &TranscribeOptions::default(), |p| progress.push(p))
+        .unwrap();
+    assert_eq!(
+        serde_json::to_value(&with_progress).unwrap(),
+        serde_json::to_value(&transcript).unwrap()
+    );
+    assert_eq!(
+        progress,
+        vec![
+            TranscribeProgress {
+                processed_seconds: 0.0,
+                total_seconds: seconds,
+            },
+            TranscribeProgress {
+                processed_seconds: seconds,
+                total_seconds: seconds,
+            },
+        ]
+    );
+    assert_eq!(progress[0].fraction(), 0.0);
+    assert_eq!(progress[1].fraction(), 1.0);
+
     // An English-only model must refuse an explicit foreign language.
     let options = TranscribeOptions {
         language: Some("ru".to_string()),
@@ -164,6 +190,57 @@ fn transcriber_loads_and_runs_end_to_end() {
     };
     let err = transcriber.transcribe_with(&audio, &options).unwrap_err();
     assert!(err.to_string().contains("English-only"));
+
+    progress.clear();
+    assert!(transcriber
+        .transcribe_with_progress(&audio, &options, |p| progress.push(p))
+        .is_err());
+    assert_eq!(progress.len(), 1);
+    assert_eq!(progress[0].fraction(), 0.0);
+
+    progress.clear();
+    let invalid = AudioBuffer {
+        sample_rate: 0,
+        channels: 1,
+        planar: vec![0.0],
+    };
+    assert!(transcriber
+        .transcribe_with_progress(&invalid, &TranscribeOptions::default(), |p| {
+            progress.push(p)
+        })
+        .is_err());
+    assert!(progress.is_empty());
+}
+
+#[test]
+fn progress_tracks_completed_windows_including_silence() {
+    let assets = synth_assets("progress_windows");
+    let mut transcriber = Transcriber::load(&assets, DeviceChoice::Cpu).unwrap();
+    let audio = AudioBuffer {
+        sample_rate: SAMPLE_RATE,
+        channels: 1,
+        planar: vec![0.0; SAMPLE_RATE as usize * 30 + SAMPLE_RATE as usize / 4],
+    };
+    // Force the no-speech branch regardless of the random model's output.
+    let options = TranscribeOptions {
+        no_speech_threshold: -1.0,
+        logprob_threshold: f64::INFINITY,
+        ..Default::default()
+    };
+    let mut progress = Vec::new();
+    let transcript = transcriber
+        .transcribe_with_progress(&audio, &options, |p| progress.push(p))
+        .unwrap();
+    assert!(transcript.segments.is_empty());
+    assert_eq!(progress.len(), 3);
+    assert_eq!(progress[0].processed_seconds, 0.0);
+    assert_eq!(progress[1].processed_seconds, 30.0);
+    assert_eq!(progress[2].processed_seconds, 30.25);
+    assert_eq!(progress[2].fraction(), 1.0);
+    assert!(progress.iter().all(|p| p.total_seconds == 30.25));
+    assert!(progress
+        .windows(2)
+        .all(|pair| pair[0].fraction() < pair[1].fraction()));
 }
 
 #[test]
